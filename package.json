@@ -1,0 +1,41 @@
+{
+  "name": "d3v-ai-setup",
+  "version": "1.0.0",
+  "description": "Interactive CLI to bootstrap your AI-powered dev environment — MCP servers, agent skills, cursor rules & more across Cursor, Claude Code, Codex, Gemini CLI, and VS Code.",
+  "keywords": [
+    "ai",
+    "cursor",
+    "claude-code",
+    "codex",
+    "gemini-cli",
+    "mcp",
+    "agent-skills",
+    "developer-tools",
+    "setup",
+    "cli"
+  ],
+  "author": "d3v",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "d3v-ai-setup": "./bin/cli.js"
+  },
+  "main": "src/index.js",
+  "files": [
+    "bin/",
+    "src/",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "chalk": "^5.3.0",
+    "inquirer": "^9.2.23",
+    "ora": "^8.0.1",
+    "fs-extra": "^11.2.0",
+    "toml": "^3.0.0",
+    "@iarna/toml": "^2.2.5"
+  }
+}
