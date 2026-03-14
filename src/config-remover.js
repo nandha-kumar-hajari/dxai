@@ -244,7 +244,7 @@ const CUSTOM_EDIT_FILES = new Set([
 ]);
 
 /**
- * Known project files that d3v-ai-setup generates.
+ * Known project files that dxai generates.
  */
 export const KNOWN_PROJECT_FILES = [
   'CLAUDE.md',
@@ -256,7 +256,7 @@ export const KNOWN_PROJECT_FILES = [
 ];
 
 /**
- * Scan for d3v-generated project files in the current working directory.
+ * Scan for dxai-generated project files in the current working directory.
  * Returns array of { relativePath, absolutePath, mayHaveCustomEdits }.
  */
 export function scanProjectFiles(cwd) {

@@ -1,18 +1,19 @@
-# d3v-ai-setup
+# dxai
 
 ```
-  ██████╗  ██████╗ ██╗   ██╗
-  ██╔══██╗ ╚════██╗██║   ██║
-  ██║  ██║  █████╔╝██║   ██║
-  ██║  ██║  ╚═══██╗╚██╗ ██╔╝
-  ██████╔╝ ██████╔╝ ╚████╔╝
-  ╚═════╝  ╚═════╝   ╚═══╝
+  ██████╗ ██╗  ██╗ █████╗ ██╗
+  ██╔══██╗╚██╗██╔╝██╔══██╗██║
+  ██║  ██║ ╚███╔╝ ███████║██║
+  ██║  ██║ ██╔██╗ ██╔══██║██║
+  ██████╔╝██╔╝ ██╗██║  ██║██║
+  ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝
   AI-Powered Dev Environment Setup
+  Powered by D3V
 ```
 
 > **One command to bootstrap your entire AI development environment.**
 
-`d3v-ai-setup` is an interactive CLI that configures **MCP servers**, **agent skills**, **Cursor rules and commands**, **project instruction files**, and **AI-friendly project scaffolding** across all major AI coding tools — simultaneously and in the correct format for each.
+`dxai` is an interactive CLI that configures **MCP servers**, **agent skills**, **Cursor rules and commands**, **project instruction files**, and **AI-friendly project scaffolding** across all major AI coding tools — simultaneously and in the correct format for each.
 
 It works with **Cursor, Claude Code, VS Code / GitHub Copilot, OpenAI Codex CLI, Gemini CLI, Windsurf, and Google Antigravity**.
 
@@ -22,8 +23,8 @@ It works with **Cursor, Claude Code, VS Code / GitHub Copilot, OpenAI Codex CLI,
 
 - [Quick Start](#quick-start)
 - [Usage](#usage)
-- [System Setup](#system-setup-d3v-ai-setup-system)
-- [Project Setup](#project-setup-d3v-ai-setup-project)
+- [System Setup](#system-setup-dxai-system)
+- [Project Setup](#project-setup-dxai-project)
 - [Supported Tools](#supported-tools)
 - [MCP Servers](#mcp-servers)
 - [Agent Skills](#agent-skills)
@@ -40,7 +41,7 @@ It works with **Cursor, Claude Code, VS Code / GitHub Copilot, OpenAI Codex CLI,
 ## Quick Start
 
 ```bash
-npx d3v-ai-setup
+npx dxai
 ```
 
 You'll be prompted to choose what to set up:
@@ -55,9 +56,9 @@ You'll be prompted to choose what to set up:
 Or run a specific mode directly:
 
 ```bash
-npx d3v-ai-setup system     # global machine-level setup
-npx d3v-ai-setup project    # project-level setup in current directory
-npx d3v-ai-setup --help     # show usage
+npx dxai system     # global machine-level setup
+npx dxai project    # project-level setup in current directory
+npx dxai --help     # show usage
 ```
 
 ---
@@ -65,7 +66,7 @@ npx d3v-ai-setup --help     # show usage
 ## Usage
 
 ```
-d3v-ai-setup [command]
+dxai [command]
 
 Commands:
   system    System-level setup (global IDE configs, MCP servers, skills)
@@ -87,7 +88,7 @@ After that, each mode runs its own flow.
 
 ---
 
-## System Setup (`d3v-ai-setup system`)
+## System Setup (`dxai system`)
 
 System mode configures **global, machine-level settings** that apply everywhere regardless of what project you're in.
 
@@ -110,11 +111,11 @@ System mode configures **global, machine-level settings** that apply everywhere 
 | Windsurf | JSON (`mcpServers`) | `~/.codeium/windsurf/mcp_config.json` |
 | Google Antigravity | JSON (`mcpServers`) | `~/.gemini/antigravity/mcp_config.json` |
 
-Each tool uses a different config format and key name. `d3v-ai-setup` translates a single server selection into the correct format for every tool you selected.
+Each tool uses a different config format and key name. `dxai` translates a single server selection into the correct format for every tool you selected.
 
 ---
 
-## Project Setup (`d3v-ai-setup project`)
+## Project Setup (`dxai project`)
 
 Project mode sets up **AI-friendly configuration inside your current working directory**. Everything it creates is meant to be committed to your repo so your whole team (and their AI agents) benefit.
 
@@ -152,7 +153,7 @@ Project mode sets up **AI-friendly configuration inside your current working dir
 
 ## Supported Tools
 
-`d3v-ai-setup` auto-detects these tools and pre-selects any that are installed:
+`dxai` auto-detects these tools and pre-selects any that are installed:
 
 | Tool | Detection | Description |
 |------|-----------|-------------|
@@ -164,7 +165,7 @@ Project mode sets up **AI-friendly configuration inside your current working dir
 | **Windsurf** | `windsurf` command | Codeium's AI IDE. Global MCP via JSON |
 | **Google Antigravity** | `agy` command | Google's agent-first AI IDE. Global MCP via JSON |
 
-If a selected tool is not installed, `d3v-ai-setup` shows platform-specific install commands:
+If a selected tool is not installed, `dxai` shows platform-specific install commands:
 
 ```
   ⚠ Not installed: Claude Code, Codex
@@ -238,7 +239,7 @@ Skills are installed to `.cursor/skills/` (if Cursor is selected) or `.agents/sk
 
 ## Tech Stacks & Cursor Rules
 
-When you select tech stacks during project setup, `d3v-ai-setup` generates stack-specific `.mdc` rule files in `.cursor/rules/`. These files teach Cursor's AI the conventions, patterns, and best practices for your stack.
+When you select tech stacks during project setup, `dxai` generates stack-specific `.mdc` rule files in `.cursor/rules/`. These files teach Cursor's AI the conventions, patterns, and best practices for your stack.
 
 ### Supported Stacks
 
@@ -327,7 +328,7 @@ Excludes noisy files from Cursor's AI context:
 
 ### Config merging
 
-All config writes are **merge-based and idempotent**. If a config file already exists, `d3v-ai-setup`:
+All config writes are **merge-based and idempotent**. If a config file already exists, `dxai`:
 
 1. Creates a timestamped backup (e.g., `mcp.json.bak.2025-01-15T10-30-00`)
 2. Reads the existing config
@@ -367,7 +368,7 @@ To test the CLI locally before publishing:
 ### 1. Install dependencies
 
 ```bash
-cd d3v-ai-cli
+cd dxai
 npm install
 ```
 
@@ -380,25 +381,25 @@ node bin/cli.js project      # project setup only
 node bin/cli.js --help       # show usage
 ```
 
-### 3. Link globally (simulates `npx d3v-ai-setup`)
+### 3. Link globally (simulates `npx dxai`)
 
 ```bash
 npm link
 ```
 
-This creates a global symlink so you can run `d3v-ai-setup` from any directory, just like an end user would:
+This creates a global symlink so you can run `dxai` from any directory, just like an end user would:
 
 ```bash
 cd ~/some-real-project
-d3v-ai-setup                 # interactive
-d3v-ai-setup system          # global configs only
-d3v-ai-setup project         # project configs only
+dxai                 # interactive
+dxai system          # global configs only
+dxai project         # project configs only
 ```
 
 ### 4. Unlink when done
 
 ```bash
-npm unlink -g d3v-ai-setup
+npm unlink -g dxai
 ```
 
 ### Project structure
@@ -441,7 +442,7 @@ Select the ones you plan to use. The tool will generate configs for them and sho
 Into `.cursor/skills/` if Cursor is selected, otherwise `.agents/skills/` in the project directory.
 
 **Can I use system and project setup separately?**
-Yes. Run `npx d3v-ai-setup system` for just global configs, or `npx d3v-ai-setup project` for just the current project. They're fully independent flows that share the same agent detection and selection step.
+Yes. Run `npx dxai system` for just global configs, or `npx dxai project` for just the current project. They're fully independent flows that share the same agent detection and selection step.
 
 **What config formats does it handle?**
 JSON (Cursor, VS Code, Gemini, Windsurf, Antigravity), TOML (Codex CLI), and CLI commands (Claude Code). The translation is automatic.

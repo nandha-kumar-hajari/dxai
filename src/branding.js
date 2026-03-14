@@ -16,12 +16,19 @@ export const theme = {
 };
 
 export const BANNER = `
-${chalk.cyanBright(`  ██████╗  ██████╗ ██╗   ██╗`)}
-${chalk.cyanBright(`  ██╔══██╗ ╚════██╗██║   ██║`)}
-${chalk.cyan(     `  ██║  ██║  █████╔╝██║   ██║`)}
-${chalk.cyan(     `  ██║  ██║  ╚═══██╗╚██╗ ██╔╝`)}
-${chalk.cyanBright(`  ██████╔╝ ██████╔╝ ╚████╔╝ `)}
-${chalk.cyanBright(`  ╚═════╝  ╚═════╝   ╚═══╝  `)}
+${chalk.cyanBright(`  ██████╗ ██╗  ██╗ █████╗ ██╗`)}
+${chalk.cyanBright(`  ██╔══██╗╚██╗██╔╝██╔══██╗██║`)}
+${chalk.cyan(     `  ██║  ██║ ╚███╔╝ ███████║██║`)}
+${chalk.cyan(     `  ██║  ██║ ██╔██╗ ██╔══██║██║`)}
+${chalk.cyanBright(`  ██████╔╝██╔╝ ██╗██║  ██║██║`)}
+${chalk.cyanBright(`  ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝`)}
+${chalk.dim(`  ──────────── `)}${chalk.white.bold(`by`)}${chalk.dim(` ────────────`)}
+${chalk.cyan(`   ██████╗ ██████╗ ██╗   ██╗`)}
+${chalk.cyan(`   ██╔══██╗╚════██╗██║   ██║`)}
+${chalk.cyan(`   ██║  ██║ █████╔╝██║   ██║`)}
+${chalk.cyan(`   ██║  ██║ ╚═══██╗╚██╗ ██╔╝`)}
+${chalk.cyan(`   ██████╔╝██████╔╝ ╚████╔╝`)}
+${chalk.cyan(`   ╚═════╝ ╚═════╝   ╚═══╝`)}
 ${chalk.dim(`  ─────────────────────────────`)}
 ${chalk.bold.white(`  AI-Powered Dev Environment Setup`)}
 ${chalk.dim(`  v1.0.0`)}

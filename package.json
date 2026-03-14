@@ -1,5 +1,5 @@
 {
-  "name": "d3v-ai-setup",
+  "name": "dxai",
   "version": "1.0.0",
   "description": "Interactive CLI to bootstrap your AI-powered dev environment — MCP servers, agent skills, cursor rules & more across Cursor, Claude Code, Codex, Gemini CLI, and VS Code.",
   "keywords": [
@@ -18,7 +18,7 @@
   "license": "MIT",
   "type": "module",
   "bin": {
-    "d3v-ai-setup": "./bin/cli.js"
+    "dxai": "./bin/cli.js"
   },
   "main": "src/index.js",
   "files": [

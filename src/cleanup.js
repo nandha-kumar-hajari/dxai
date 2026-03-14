@@ -84,7 +84,7 @@ async function runSystemCleanup(home) {
   // Check if anything was found
   const totalMcpServers = agentFindings.reduce((sum, f) => sum + f.foundServers.length, 0);
   if (totalMcpServers === 0 && foundSkills.length === 0 && foundBackups.length === 0) {
-    infoMsg('No d3v-managed system configurations found.');
+    infoMsg('No dxai-managed system configurations found.');
     return;
   }
 
@@ -295,7 +295,7 @@ async function runProjectCleanup() {
   spinner.stop();
 
   if (foundFiles.length === 0 && projectMcpFindings.length === 0) {
-    infoMsg('No d3v-managed project files found in current directory.');
+    infoMsg('No dxai-managed project files found in current directory.');
     return;
   }
 

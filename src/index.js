@@ -90,7 +90,7 @@ async function sharedSetup() {
         console.log(theme.dim(`    ${agent.name}: `) + theme.accent(cmd));
       }
       console.log();
-      infoMsg('Install them and re-run d3v-ai-setup, or continue to configure anyway.');
+      infoMsg('Install them and re-run dxai, or continue to configure anyway.');
 
       const { continueAnyway } = await inquirer.prompt([
         {
@@ -103,7 +103,7 @@ async function sharedSetup() {
 
       if (!continueAnyway) {
         console.log();
-        infoMsg('Run d3v-ai-setup again after installing your tools. Bye!');
+        infoMsg('Run dxai again after installing your tools. Bye!');
         process.exit(0);
       }
     }
@@ -202,7 +202,7 @@ async function runSystem(ctx) {
   ]);
 
   if (!confirm) {
-    infoMsg('Setup cancelled. Run d3v-ai-setup again anytime.');
+    infoMsg('Setup cancelled. Run dxai again anytime.');
     process.exit(0);
   }
 
@@ -386,7 +386,7 @@ async function runProject(ctx) {
   ]);
 
   if (!confirm) {
-    infoMsg('Setup cancelled. Run d3v-ai-setup again anytime.');
+    infoMsg('Setup cancelled. Run dxai again anytime.');
     process.exit(0);
   }
 
@@ -536,7 +536,7 @@ export async function run(mode) {
   // ══════════════════════════════════════════════
   console.log();
   console.log(theme.dim('  ─────────────────────────────'));
-  console.log(theme.highlight('  ✨ d3v setup complete!'));
+  console.log(theme.highlight('  ✨ dxai setup complete!'));
   console.log();
 
   // Show env var reminders from system setup
@@ -565,6 +565,6 @@ export async function run(mode) {
       console.log(theme.dim(`    ${step++}. Fill in AGENTS.md with your project's architecture details`));
     }
   }
-  console.log(theme.dim(`    ${step}. Re-run ${chalk.cyan('npx d3v-ai-setup')} anytime to add more tools`));
+  console.log(theme.dim(`    ${step}. Re-run ${chalk.cyan('npx dxai')} anytime to add more tools`));
   console.log();
 }
