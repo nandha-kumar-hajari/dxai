@@ -115,7 +115,7 @@ function configureClaudeCodeMcp(servers) {
       }
 
       const args = config.args.join(' ');
-      execSync(`${args}`, {
+      execSync(`claude ${args}`, {
         stdio: 'pipe',
         timeout: 15000,
         env: { ...process.env },

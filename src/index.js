@@ -58,6 +58,7 @@ async function sharedSetup() {
       name: 'selectedAgentIds',
       message: 'Which AI tools do you use? (Space to toggle, Enter to confirm)',
       choices: agentChoices,
+      loop: false,
       validate: (ans) => ans.length > 0 || 'Please select at least one tool.',
     },
   ]);
@@ -150,6 +151,7 @@ async function runSystem(ctx) {
       message: 'Select MCP servers to install globally:',
       choices: mcpChoices,
       pageSize: 25,
+      loop: false,
     },
   ]);
 
@@ -181,6 +183,7 @@ async function runSystem(ctx) {
       message: 'Select agent skills to install:',
       choices: skillChoices,
       pageSize: 20,
+      loop: false,
     },
   ]);
 
@@ -279,6 +282,7 @@ async function runProject(ctx) {
         name: s.label,
         value: s.id,
       })),
+      loop: false,
       validate: (ans) => ans.length > 0 || 'Please select at least one stack.',
     },
   ]);
@@ -321,6 +325,7 @@ async function runProject(ctx) {
       name: 'selectedFeatures',
       message: 'Which project configs should we set up? (Space to toggle)',
       choices: featureChoices,
+      loop: false,
     },
   ]);
 
@@ -357,6 +362,7 @@ async function runProject(ctx) {
         message: 'Select MCP servers for project config:',
         choices: mcpChoices,
         pageSize: 25,
+        loop: false,
       },
     ]);
     projectMcpIds = selectedProjectMcpIds;

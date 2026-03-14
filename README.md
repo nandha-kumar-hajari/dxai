@@ -32,6 +32,7 @@ It works with **Cursor, Claude Code, VS Code / GitHub Copilot, OpenAI Codex CLI,
 - [Generated Project Files](#generated-project-files)
 - [How It Works](#how-it-works)
 - [Requirements](#requirements)
+- [Local Development & Testing](#local-development--testing)
 - [FAQ](#faq)
 
 ---
@@ -224,18 +225,10 @@ Skills are downloadable instruction packages that teach AI agents specialized ca
 | | Canvas Design | HTML Canvas-based visual design |
 | | MCP Server Builder | Build custom MCP servers |
 | | Web App Testing | Automated testing for web applications |
-| **Vercel Labs** | React/Next.js Performance ★ | Optimize React & Next.js apps |
-| | Web Design Guidelines | Modern web design patterns |
-| | React Native | React Native mobile development |
-| | Vercel Deploy | Deploy to Vercel platform |
-| **Google Labs** | Stitch React Components | Design-to-React with Google Stitch |
-| | Stitch shadcn/ui | Design-to-shadcn component mapping |
-| **OpenAI** | Cloudflare Deploy | Deploy to Cloudflare Workers/Pages |
-| | Web Game Dev | Browser-based game development |
-| **Community** | Trail of Bits Security | Security auditing and analysis |
-| | Better Auth | Authentication best practices |
-| | Context Engineering | Optimize AI context and prompts |
-| | Recursive Decomposition | Break complex tasks into subtasks |
+| | Claude API | Build apps with the Claude API |
+| | Web Artifacts Builder | Build interactive web artifacts |
+| **Vercel Labs** | Find Skills | Discover and install agent skills |
+| **Community** | Better Auth | Authentication best practices |
 
 ★ = recommended (pre-selected)
 
@@ -364,6 +357,72 @@ You select once, and every tool gets the right format.
 - **Node.js 18+** (required)
 - **npm** or **npx** (required, comes with Node.js)
 - **Git** (recommended — needed for skills installation fallback)
+
+---
+
+## Local Development & Testing
+
+To test the CLI locally before publishing:
+
+### 1. Install dependencies
+
+```bash
+cd d3v-ai-cli
+npm install
+```
+
+### 2. Run directly with Node
+
+```bash
+node bin/cli.js              # interactive mode
+node bin/cli.js system       # system setup only
+node bin/cli.js project      # project setup only
+node bin/cli.js --help       # show usage
+```
+
+### 3. Link globally (simulates `npx d3v-ai-setup`)
+
+```bash
+npm link
+```
+
+This creates a global symlink so you can run `d3v-ai-setup` from any directory, just like an end user would:
+
+```bash
+cd ~/some-real-project
+d3v-ai-setup                 # interactive
+d3v-ai-setup system          # global configs only
+d3v-ai-setup project         # project configs only
+```
+
+### 4. Unlink when done
+
+```bash
+npm unlink -g d3v-ai-setup
+```
+
+### Project structure
+
+```
+bin/
+  cli.js                    # CLI entry point (shebang, arg parsing)
+src/
+  index.js                  # Main logic (prompts, orchestration)
+  branding.js               # Banner, colors, message helpers
+  config-writer.js          # File writers (JSON/TOML merge, backups)
+  detect.js                 # OS, prerequisite, and agent detection
+  registry/
+    mcp-servers.js           # MCP server definitions + per-agent configs
+    skills.js                # Agent skills registry
+    stacks.js                # Tech stacks, Cursor rules, commands, templates
+```
+
+### Tips
+
+- **Safe to re-run** — config writes are idempotent (merge-based, never overwrites existing entries)
+- **Project mode uses `cwd`** — run it from inside the project you want to configure
+- **System mode writes to `~`** — touches global config files like `~/.cursor/mcp.json`
+- **Backups** — any existing config file is backed up with a timestamp before modification (e.g., `mcp.json.bak.2025-01-15T10-30-00`)
 
 ---
 
