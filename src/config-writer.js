@@ -3,6 +3,7 @@ import path from 'path';
 import os from 'os';
 import { execSync } from 'child_process';
 import { successMsg, warnMsg, errorMsg, infoMsg, theme } from './branding.js';
+import { buildAgentsMd, buildClaudeMd, buildGeminiMd, buildCursorRule } from './registry/stacks.js';
 
 const HOME = os.homedir();
 
@@ -204,17 +205,18 @@ export function writeMcpConfigs(selectedAgents, selectedServers, mcpRegistry) {
 // ══════════════════════════════════════════════
 // Cursor Rules Writer
 // ══════════════════════════════════════════════
-export function writeCursorRules(selectedStacks, rulesMap) {
+export function writeCursorRules(selectedStacks, rulesMap, profile = null) {
   const rulesDir = path.join(process.cwd(), '.cursor', 'rules');
   fs.ensureDirSync(rulesDir);
 
   const written = [];
 
-  // Always write general rules
+  // Always write general rules (with optional profile injection)
   if (rulesMap.general) {
     const filePath = path.join(rulesDir, 'general.mdc');
     if (!fs.existsSync(filePath)) {
-      fs.writeFileSync(filePath, rulesMap.general, 'utf-8');
+      const content = buildCursorRule('general', profile) || rulesMap.general;
+      fs.writeFileSync(filePath, content, 'utf-8');
       written.push('general.mdc');
     }
   }
@@ -301,8 +303,7 @@ pnpm-lock.yaml
 // ══════════════════════════════════════════════
 // CLAUDE.md / GEMINI.md Writer
 // ══════════════════════════════════════════════
-export function writeProjectInstructions(selectedAgents, selectedStacks, templates) {
-  const stackDesc = selectedStacks.join(', ');
+export function writeProjectInstructions(selectedAgents, selectedStacks, profile = null) {
   const written = [];
 
   const hasClaudeCode = selectedAgents.some((a) => a.id === 'claude-code');
@@ -311,8 +312,7 @@ export function writeProjectInstructions(selectedAgents, selectedStacks, templat
   if (hasClaudeCode) {
     const filePath = path.join(process.cwd(), 'CLAUDE.md');
     if (!fs.existsSync(filePath)) {
-      const content = templates.claudeMd.replace('{{STACK_DESCRIPTION}}', stackDesc);
-      fs.writeFileSync(filePath, content, 'utf-8');
+      fs.writeFileSync(filePath, buildClaudeMd(selectedStacks, profile), 'utf-8');
       written.push('CLAUDE.md');
     }
   }
@@ -320,8 +320,7 @@ export function writeProjectInstructions(selectedAgents, selectedStacks, templat
   if (hasGemini) {
     const filePath = path.join(process.cwd(), 'GEMINI.md');
     if (!fs.existsSync(filePath)) {
-      const content = templates.geminiMd.replace('{{STACK_DESCRIPTION}}', stackDesc);
-      fs.writeFileSync(filePath, content, 'utf-8');
+      fs.writeFileSync(filePath, buildGeminiMd(selectedStacks, profile), 'utf-8');
       written.push('GEMINI.md');
     }
   }
@@ -464,75 +463,10 @@ indent_style = tab
 // ══════════════════════════════════════════════
 // AGENTS.md Writer
 // ══════════════════════════════════════════════
-export function writeAgentsMd(selectedStacks) {
-  const stackDesc = selectedStacks.join(', ');
-
-  const AGENTS_MD_CONTENT = `# AGENTS.md — Project Context for AI Agents
-
-> This file provides context for AI coding agents working in this repository.
-> Fill in the sections below so any agent (Claude Code, Cursor, Copilot, Codex, Gemini, etc.)
-> can understand your project quickly.
-
-## Project Overview
-
-<!-- What does this project do? Who is it for? -->
-
-## Tech Stack
-
-${stackDesc}
-
-## Architecture
-
-<!-- High-level description of the codebase structure -->
-<!--
-- src/           — application source code
-- tests/         — test files
-- scripts/       — build/deploy scripts
-- docs/          — documentation
--->
-
-## Key Commands
-
-\`\`\`bash
-# Install dependencies
-# npm install
-
-# Run development server
-# npm run dev
-
-# Run tests
-# npm test
-
-# Build for production
-# npm run build
-
-# Lint / format
-# npm run lint
-\`\`\`
-
-## Conventions
-
-- <!-- e.g. "We use conventional commits (feat:, fix:, chore:)" -->
-- <!-- e.g. "All new code must have tests" -->
-- <!-- e.g. "Use Zod for runtime validation at API boundaries" -->
-
-## Gotchas
-
-- <!-- e.g. "The auth module uses a custom session store — don't replace with express-session" -->
-- <!-- e.g. "Tests require a running Postgres instance (see docker-compose.yml)" -->
-
-## Environment Variables
-
-<!-- List required env vars and where to get them -->
-<!--
-- DATABASE_URL — Postgres connection string
-- API_KEY — from the internal dashboard
--->
-`;
-
+export function writeAgentsMd(selectedStacks, profile = null) {
   const filePath = path.join(process.cwd(), 'AGENTS.md');
   if (!fs.existsSync(filePath)) {
-    fs.writeFileSync(filePath, AGENTS_MD_CONTENT, 'utf-8');
+    fs.writeFileSync(filePath, buildAgentsMd(selectedStacks, profile), 'utf-8');
     return true;
   }
   return false;

@@ -12,7 +12,8 @@ import {
 } from './detect.js';
 import { MCP_SERVERS, MCP_CATEGORIES } from './registry/mcp-servers.js';
 import { SKILLS, SKILL_CATEGORIES } from './registry/skills.js';
-import { TECH_STACKS, CURSOR_RULES, CURSOR_COMMANDS, CLAUDE_MD_TEMPLATE, GEMINI_MD_TEMPLATE } from './registry/stacks.js';
+import { TECH_STACKS, CURSOR_RULES, CURSOR_COMMANDS } from './registry/stacks.js';
+import { detectProject } from './detect-project.js';
 import {
   writeMcpConfigs, writeProjectMcpConfigs, writeCursorRules, writeCursorCommands,
   writeCursorIgnore, writeProjectInstructions, installSkills,
@@ -268,6 +269,51 @@ async function runProject(ctx) {
   const { selectedAgents, selectedAgentIds } = ctx;
   const hasCursor = selectedAgentIds.includes('cursor');
 
+  // ── Project Detection ──
+  console.log();
+  const spinner = ora({ text: 'Scanning project...', color: 'cyan' }).start();
+  const profile = detectProject(process.cwd());
+  spinner.stop();
+
+  if (profile.exists) {
+    sectionHeader('Project Detected');
+    console.log();
+
+    const maturityDetail = profile.git.isRepo
+      ? `${profile.maturity} (${profile.git.commitCount} commits, ${profile.git.ageInDays} days)`
+      : profile.maturity;
+    successMsg(`Maturity: ${maturityDetail}`);
+
+    if (profile.detectedStacks.length > 0) {
+      successMsg(`Detected stacks: ${profile.detectedStacks.join(', ')}`);
+    }
+    if (profile.tooling.linter) {
+      successMsg(`Linter: ${profile.tooling.linter.type}`);
+    }
+    if (profile.tooling.formatter) {
+      successMsg(`Formatter: ${profile.tooling.formatter.type}`);
+    }
+    if (profile.tooling.testFramework) {
+      successMsg(`Tests: ${profile.tooling.testFramework.type}`);
+    }
+    if (profile.tooling.ci) {
+      successMsg(`CI: ${profile.tooling.ci.type}`);
+    }
+    if (profile.monorepo.detected) {
+      successMsg(`Monorepo: ${profile.monorepo.type}`);
+    }
+
+    const cmdEntries = Object.entries(profile.commands);
+    if (cmdEntries.length > 0) {
+      const cmdStr = cmdEntries.map(([k, v]) => `${k}="${v}"`).join(', ');
+      infoMsg(`Commands: ${cmdStr}`);
+    }
+  } else {
+    sectionHeader('New Project');
+    console.log();
+    infoMsg('No project files detected — configuring for a greenfield project.');
+  }
+
   // ── Tech Stack Selection ──
   console.log();
   sectionHeader('Select Your Tech Stack');
@@ -279,8 +325,9 @@ async function runProject(ctx) {
       name: 'selectedStackIds',
       message: 'What do you work with? (Space to toggle)',
       choices: TECH_STACKS.map((s) => ({
-        name: s.label,
+        name: s.label + (profile.detectedStacks.includes(s.id) ? chalk.green(' (detected)') : ''),
         value: s.id,
+        checked: profile.detectedStacks.includes(s.id),
       })),
       loop: false,
       validate: (ans) => ans.length > 0 || 'Please select at least one stack.',
@@ -417,7 +464,7 @@ async function runProject(ctx) {
 
   // 2. Cursor Rules
   if (selectedFeatures.includes('cursor-rules')) {
-    const written = writeCursorRules(selectedStackIds, CURSOR_RULES);
+    const written = writeCursorRules(selectedStackIds, CURSOR_RULES, profile);
     if (written.length > 0) {
       successMsg(`Cursor rules created: ${written.join(', ')}`);
     } else {
@@ -447,10 +494,7 @@ async function runProject(ctx) {
 
   // 5. CLAUDE.md / GEMINI.md
   if (selectedFeatures.includes('agent-instructions')) {
-    const instructionFiles = writeProjectInstructions(selectedAgents, selectedStackIds, {
-      claudeMd: CLAUDE_MD_TEMPLATE,
-      geminiMd: GEMINI_MD_TEMPLATE,
-    });
+    const instructionFiles = writeProjectInstructions(selectedAgents, selectedStackIds, profile);
     if (instructionFiles.length > 0) {
       successMsg(`Project instructions created: ${instructionFiles.join(', ')}`);
     }
@@ -458,7 +502,7 @@ async function runProject(ctx) {
 
   // 6. AGENTS.md
   if (selectedFeatures.includes('agents-md')) {
-    const created = writeAgentsMd(selectedStackIds);
+    const created = writeAgentsMd(selectedStackIds, profile);
     if (created) {
       successMsg('AGENTS.md created');
     } else {

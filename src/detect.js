@@ -204,7 +204,7 @@ export function printDetectionResults(osInfo, prereqs, agents) {
   }
 
   // Agents
-  const found = agents.filter((a) => a.installed || a.configExists);
+  const found = agents.filter((a) => a.installed);
   if (found.length > 0) {
     successMsg(`Detected: ${found.map((a) => a.name).join(', ')}`);
   } else {
