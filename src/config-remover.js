@@ -1,7 +1,7 @@
 import fs from 'fs-extra';
 import path from 'path';
 import { execSync } from 'child_process';
-import { infoMsg } from './branding.js';
+import { infoMsg, warnMsg } from './branding.js';
 
 // ══════════════════════════════════════════════
 // JSON Config Scanning & Removal
@@ -19,7 +19,8 @@ export function scanJsonMcpConfig(filePath, mcpKey, knownIds) {
     if (!config[mcpKey] || typeof config[mcpKey] !== 'object') return [];
 
     return knownIds.filter((id) => id in config[mcpKey]);
-  } catch {
+  } catch (err) {
+    warnMsg(`Could not parse ${filePath}: ${err.message}`);
     return [];
   }
 }
@@ -181,18 +182,23 @@ export function scanClaudeCodeMcpServers(knownIds) {
 // ══════════════════════════════════════════════
 
 /**
- * Find .bak.* files in the given directories.
+ * Find .bak.* files alongside the given config file paths.
+ * Matches siblings of the form <basename>.bak.<ts> only — avoids surfacing
+ * unrelated backup files when a config sits in a shared dir like $HOME.
  */
-export function scanBackupFiles(directories) {
+export function scanBackupFiles(configFilePaths) {
   const backups = [];
 
-  for (const dir of directories) {
+  for (const configPath of configFilePaths) {
+    const dir = path.dirname(configPath);
+    const base = path.basename(configPath);
     if (!fs.existsSync(dir)) continue;
 
     try {
       const files = fs.readdirSync(dir);
+      const prefix = `${base}.bak.`;
       for (const file of files) {
-        if (file.includes('.bak.')) {
+        if (file.startsWith(prefix)) {
           backups.push(path.join(dir, file));
         }
       }

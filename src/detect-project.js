@@ -135,18 +135,6 @@ function detectTooling(cwd, pkg) {
   };
 
   const exists = (f) => fs.existsSync(path.join(cwd, f));
-  const globExists = (pattern) => {
-    try {
-      const dir = path.dirname(path.join(cwd, pattern));
-      const base = path.basename(pattern);
-      if (!fs.existsSync(dir)) return null;
-      const files = fs.readdirSync(dir);
-      const match = files.find((f) => f.startsWith(base.replace('*', '')) || f.match(new RegExp('^' + base.replace(/\*/g, '.*'))));
-      return match ? path.join(path.dirname(pattern), match) : null;
-    } catch {
-      return null;
-    }
-  };
 
   // Linter detection
   const linterChecks = [

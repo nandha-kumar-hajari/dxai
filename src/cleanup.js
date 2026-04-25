@@ -21,8 +21,26 @@ import {
   scanProjectFiles, isEmptyDir,
 } from './config-remover.js';
 
+import { readManifest, SYSTEM_MANIFEST_PATH, PROJECT_MANIFEST_PATH, writeManifest } from './manifest.js';
+
 const KNOWN_MCP_IDS = MCP_SERVERS.map((s) => s.id);
 const KNOWN_SKILL_IDS = SKILLS.map((s) => s.id);
+
+// Build the candidate ID list for scanning. If the manifest has entries,
+// prefer it (precise — we only target what dxai installed). Otherwise fall
+// back to the full known set (legacy behavior for installs predating manifest).
+function candidateMcpIds(manifest, agentId) {
+  if (manifest && manifest.mcp[agentId]) {
+    const ids = Object.keys(manifest.mcp[agentId]);
+    if (ids.length > 0) return ids;
+  }
+  return KNOWN_MCP_IDS;
+}
+
+function candidateSkillIds(manifest) {
+  const fromManifest = Object.keys(manifest.skills || {});
+  return fromManifest.length > 0 ? fromManifest : KNOWN_SKILL_IDS;
+}
 
 // ══════════════════════════════════════════════
 // System Cleanup
@@ -32,27 +50,29 @@ async function runSystemCleanup(home) {
   sectionHeader('System Cleanup — Scanning');
 
   const spinner = ora({ text: 'Scanning global configs...', color: 'cyan' }).start();
+  const manifest = readManifest(SYSTEM_MANIFEST_PATH);
 
-  // 1. Scan MCP servers across all agents
+  // 1. Scan MCP servers across all agents — prefer manifest IDs when present
   const agentFindings = [];
   for (const agent of AGENT_DEFINITIONS) {
     const finding = { agent, foundServers: [] };
+    const ids = candidateMcpIds(manifest, agent.id);
 
     switch (agent.configFormat) {
       case 'json': {
         const configPath = agent.globalMcpPath(home);
-        finding.foundServers = scanJsonMcpConfig(configPath, agent.mcpKey, KNOWN_MCP_IDS);
+        finding.foundServers = scanJsonMcpConfig(configPath, agent.mcpKey, ids);
         finding.configPath = configPath;
         break;
       }
       case 'toml': {
         const configPath = agent.globalMcpPath(home);
-        finding.foundServers = scanTomlMcpConfig(configPath, KNOWN_MCP_IDS);
+        finding.foundServers = scanTomlMcpConfig(configPath, ids);
         finding.configPath = configPath;
         break;
       }
       case 'cli': {
-        finding.foundServers = scanClaudeCodeMcpServers(KNOWN_MCP_IDS);
+        finding.foundServers = scanClaudeCodeMcpServers(ids);
         break;
       }
     }
@@ -63,21 +83,24 @@ async function runSystemCleanup(home) {
   }
 
   // 2. Scan skills directories
+  const skillIds = candidateSkillIds(manifest);
   const skillBaseDirs = [
     path.join(home, '.cursor', 'skills'),
     path.join(home, '.agents', 'skills'),
     path.join(process.cwd(), '.cursor', 'skills'),
     path.join(process.cwd(), '.agents', 'skills'),
   ];
-  const foundSkills = scanSkillDirectories(skillBaseDirs, KNOWN_SKILL_IDS);
+  const foundSkills = scanSkillDirectories(skillBaseDirs, skillIds);
 
-  // 3. Scan backup files
-  const backupDirs = AGENT_DEFINITIONS
+  // 3. Scan backup files (only for file-based agents — CLI agents don't write backups,
+  // and their globalMcpPath sits in $HOME which would surface unrelated .bak files)
+  const backupTargets = AGENT_DEFINITIONS
+    .filter((a) => a.configFormat !== 'cli')
     .map((a) => {
-      try { return path.dirname(a.globalMcpPath(home)); } catch { return null; }
+      try { return a.globalMcpPath(home); } catch { return null; }
     })
     .filter(Boolean);
-  const foundBackups = scanBackupFiles([...new Set(backupDirs)]);
+  const foundBackups = scanBackupFiles(backupTargets);
 
   spinner.stop();
 

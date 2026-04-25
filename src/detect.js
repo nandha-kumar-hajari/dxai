@@ -121,7 +121,12 @@ export const AGENT_DEFINITIONS = [
       if (platform === 'win32') return path.join(home, 'AppData', 'Roaming', 'Code', 'User');
       return path.join(home, '.config', 'Code', 'User');
     },
-    globalMcpPath: () => path.join('.vscode', 'mcp.json'),
+    globalMcpPath: (home) => {
+      const platform = os.platform();
+      if (platform === 'darwin') return path.join(home, 'Library', 'Application Support', 'Code', 'User', 'mcp.json');
+      if (platform === 'win32') return path.join(home, 'AppData', 'Roaming', 'Code', 'User', 'mcp.json');
+      return path.join(home, '.config', 'Code', 'User', 'mcp.json');
+    },
     projectMcpPath: () => path.join('.vscode', 'mcp.json'),
     configFormat: 'json',
     mcpKey: 'servers',
@@ -235,7 +240,7 @@ export const INSTALL_COMMANDS = {
     Windows: 'npm install -g @openai/codex',
   },
   'gemini': {
-    macOS: 'npm install -g @anthropic-ai/claude-code  # or: brew install gemini-cli',
+    macOS: 'npm install -g @google/gemini-cli',
     Linux: 'npm install -g @google/gemini-cli',
     Windows: 'npm install -g @google/gemini-cli',
   },

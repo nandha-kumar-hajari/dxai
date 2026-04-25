@@ -1,303 +1,14 @@
-// ══════════════════════════════════════════════
-// MCP Server Registry
-// Each entry has per-agent config variants
-// ══════════════════════════════════════════════
+// MCP server registry — data lives in data/mcp-servers.json.
+// At import time we use the cache (if present) or fall back to bundled JSON.
+// Run `dxai update` to refresh the cache from a remote source.
 
-export const MCP_CATEGORIES = [
-  { id: 'essential', label: '🔧 Essential', description: 'Core tools every developer should have' },
-  { id: 'code-git', label: '💻 Code & Git', description: 'Source control and code intelligence' },
-  { id: 'design', label: '🎨 Design', description: 'Design-to-code workflows' },
-  { id: 'productivity', label: '📋 Productivity', description: 'Project management and communication' },
-  { id: 'database', label: '🗄️  Database', description: 'Database access and management' },
-  { id: 'browser', label: '🌐 Browser & Testing', description: 'Browser automation and testing' },
-  { id: 'cloud', label: '☁️  Cloud & Deploy', description: 'Deployment and infrastructure' },
-  { id: 'advanced', label: '⚡ Advanced', description: 'Agent orchestration and specialized tools' },
-];
+import { loadRegistry } from './loader.js';
 
-export const MCP_SERVERS = [
-  // ── Essential ──
-  {
-    id: 'context7',
-    name: 'Context7',
-    description: 'Live, version-specific library documentation',
-    category: 'essential',
-    recommended: true,
-    configs: {
-      cursor: { url: 'https://mcp.context7.com/mcp' },
-      'claude-code': { command: 'claude', args: ['mcp', 'add', 'context7', '--transport', 'http', 'https://mcp.context7.com/mcp'] },
-      codex: { toml: '[mcp_servers.context7]\nurl = "https://mcp.context7.com/mcp"' },
-      gemini: { httpUrl: 'https://mcp.context7.com/mcp' },
-      vscode: { url: 'https://mcp.context7.com/mcp' },
-      windsurf: { serverUrl: 'https://mcp.context7.com/mcp' },
-      antigravity: { serverUrl: 'https://mcp.context7.com/mcp' },
-    },
-  },
-  {
-    id: 'sequential-thinking',
-    name: 'Sequential Thinking',
-    description: 'Multi-step structured reasoning for complex problems',
-    category: 'essential',
-    recommended: true,
-    configs: {
-      cursor: { command: 'npx', args: ['-y', '@modelcontextprotocol/server-sequential-thinking'] },
-      'claude-code': { command: 'claude', args: ['mcp', 'add', 'sequential-thinking', '--', 'npx', '-y', '@modelcontextprotocol/server-sequential-thinking'] },
-      codex: { toml: '[mcp_servers.sequential-thinking]\ncommand = "npx"\nargs = ["-y", "@modelcontextprotocol/server-sequential-thinking"]' },
-      gemini: { command: 'npx', args: ['-y', '@modelcontextprotocol/server-sequential-thinking'] },
-      vscode: { command: 'npx', args: ['-y', '@modelcontextprotocol/server-sequential-thinking'] },
-      windsurf: { command: 'npx', args: ['-y', '@modelcontextprotocol/server-sequential-thinking'] },
-      antigravity: { command: 'npx', args: ['-y', '@modelcontextprotocol/server-sequential-thinking'] },
-    },
-  },
+const data = loadRegistry('mcp-servers');
 
-  // ── Code & Git ──
-  {
-    id: 'github',
-    name: 'GitHub',
-    description: 'PRs, issues, repos, code search',
-    category: 'code-git',
-    recommended: true,
-    requiresEnv: { GITHUB_PERSONAL_ACCESS_TOKEN: 'GitHub Personal Access Token' },
-    configs: {
-      cursor: { command: 'npx', args: ['-y', '@modelcontextprotocol/server-github'], env: { GITHUB_PERSONAL_ACCESS_TOKEN: '${GITHUB_PERSONAL_ACCESS_TOKEN}' } },
-      'claude-code': { command: 'claude', args: ['mcp', 'add', 'github', '--', 'npx', '-y', '@modelcontextprotocol/server-github'], env: { GITHUB_PERSONAL_ACCESS_TOKEN: true } },
-      codex: { toml: '[mcp_servers.github]\ncommand = "npx"\nargs = ["-y", "@modelcontextprotocol/server-github"]\n\n[mcp_servers.github.env]\nGITHUB_PERSONAL_ACCESS_TOKEN = "$GITHUB_PERSONAL_ACCESS_TOKEN"' },
-      gemini: { command: 'npx', args: ['-y', '@modelcontextprotocol/server-github'], env: { GITHUB_PERSONAL_ACCESS_TOKEN: '${GITHUB_PERSONAL_ACCESS_TOKEN}' } },
-      vscode: { command: 'npx', args: ['-y', '@modelcontextprotocol/server-github'], env: { GITHUB_PERSONAL_ACCESS_TOKEN: '${GITHUB_PERSONAL_ACCESS_TOKEN}' } },
-      windsurf: { command: 'npx', args: ['-y', '@modelcontextprotocol/server-github'], env: { GITHUB_PERSONAL_ACCESS_TOKEN: '${GITHUB_PERSONAL_ACCESS_TOKEN}' } },
-      antigravity: { command: 'npx', args: ['-y', '@modelcontextprotocol/server-github'], env: { GITHUB_PERSONAL_ACCESS_TOKEN: '${GITHUB_PERSONAL_ACCESS_TOKEN}' } },
-    },
-  },
-  {
-    id: 'gitlab',
-    name: 'GitLab',
-    description: 'Merge requests, issues, pipelines',
-    category: 'code-git',
-    requiresEnv: { GITLAB_TOKEN: 'GitLab Personal Access Token' },
-    configs: {
-      cursor: { command: 'npx', args: ['-y', '@modelcontextprotocol/server-gitlab'], env: { GITLAB_TOKEN: '${GITLAB_TOKEN}' } },
-      'claude-code': { command: 'claude', args: ['mcp', 'add', 'gitlab', '--', 'npx', '-y', '@modelcontextprotocol/server-gitlab'] },
-      codex: { toml: '[mcp_servers.gitlab]\ncommand = "npx"\nargs = ["-y", "@modelcontextprotocol/server-gitlab"]\n\n[mcp_servers.gitlab.env]\nGITLAB_TOKEN = "$GITLAB_TOKEN"' },
-      gemini: { command: 'npx', args: ['-y', '@modelcontextprotocol/server-gitlab'], env: { GITLAB_TOKEN: '${GITLAB_TOKEN}' } },
-      vscode: { command: 'npx', args: ['-y', '@modelcontextprotocol/server-gitlab'], env: { GITLAB_TOKEN: '${GITLAB_TOKEN}' } },
-      windsurf: { command: 'npx', args: ['-y', '@modelcontextprotocol/server-gitlab'], env: { GITLAB_TOKEN: '${GITLAB_TOKEN}' } },
-      antigravity: { command: 'npx', args: ['-y', '@modelcontextprotocol/server-gitlab'], env: { GITLAB_TOKEN: '${GITLAB_TOKEN}' } },
-    },
-  },
-  {
-    id: 'claude-code-mcp',
-    name: 'Claude Code as MCP',
-    description: 'Use Claude Code as a sub-agent inside other editors',
-    category: 'code-git',
-    configs: {
-      cursor: { command: 'npx', args: ['-y', '@anthropic-ai/claude-code-mcp'] },
-      gemini: { command: 'npx', args: ['-y', '@anthropic-ai/claude-code-mcp'] },
-      vscode: { command: 'npx', args: ['-y', '@anthropic-ai/claude-code-mcp'] },
-      windsurf: { command: 'npx', args: ['-y', '@anthropic-ai/claude-code-mcp'] },
-      antigravity: { command: 'npx', args: ['-y', '@anthropic-ai/claude-code-mcp'] },
-    },
-  },
+export const MCP_CATEGORIES = data.categories;
+export const MCP_SERVERS = data.servers;
 
-  // ── Design ──
-  {
-    id: 'figma',
-    name: 'Figma',
-    description: 'Design-to-code from Figma components',
-    category: 'design',
-    configs: {
-      cursor: { url: 'https://mcp.figma.com/mcp' },
-      'claude-code': { command: 'claude', args: ['mcp', 'add', 'figma', '--transport', 'http', 'https://mcp.figma.com/mcp'] },
-      codex: { toml: '[mcp_servers.figma]\nurl = "https://mcp.figma.com/mcp"' },
-      gemini: { httpUrl: 'https://mcp.figma.com/mcp' },
-      vscode: { url: 'https://mcp.figma.com/mcp' },
-      windsurf: { serverUrl: 'https://mcp.figma.com/mcp' },
-      antigravity: { serverUrl: 'https://mcp.figma.com/mcp' },
-    },
-  },
-
-  // ── Productivity ──
-  {
-    id: 'notion',
-    name: 'Notion',
-    description: 'Read/write Notion pages and databases',
-    category: 'productivity',
-    configs: {
-      cursor: { url: 'https://mcp.notion.com/mcp' },
-      'claude-code': { command: 'claude', args: ['mcp', 'add', 'notion', '--transport', 'http', 'https://mcp.notion.com/mcp'] },
-      codex: { toml: '[mcp_servers.notion]\nurl = "https://mcp.notion.com/mcp"' },
-      gemini: { httpUrl: 'https://mcp.notion.com/mcp' },
-      vscode: { url: 'https://mcp.notion.com/mcp' },
-      windsurf: { serverUrl: 'https://mcp.notion.com/mcp' },
-      antigravity: { serverUrl: 'https://mcp.notion.com/mcp' },
-    },
-  },
-  {
-    id: 'slack',
-    name: 'Slack',
-    description: 'Search messages, channels, send notifications',
-    category: 'productivity',
-    requiresEnv: { SLACK_BOT_TOKEN: 'Slack Bot OAuth Token' },
-    configs: {
-      cursor: { command: 'npx', args: ['-y', '@modelcontextprotocol/server-slack'], env: { SLACK_BOT_TOKEN: '${SLACK_BOT_TOKEN}' } },
-      'claude-code': { command: 'claude', args: ['mcp', 'add', 'slack', '--', 'npx', '-y', '@modelcontextprotocol/server-slack'] },
-      codex: { toml: '[mcp_servers.slack]\ncommand = "npx"\nargs = ["-y", "@modelcontextprotocol/server-slack"]\n\n[mcp_servers.slack.env]\nSLACK_BOT_TOKEN = "$SLACK_BOT_TOKEN"' },
-      gemini: { command: 'npx', args: ['-y', '@modelcontextprotocol/server-slack'], env: { SLACK_BOT_TOKEN: '${SLACK_BOT_TOKEN}' } },
-      vscode: { command: 'npx', args: ['-y', '@modelcontextprotocol/server-slack'], env: { SLACK_BOT_TOKEN: '${SLACK_BOT_TOKEN}' } },
-      windsurf: { command: 'npx', args: ['-y', '@modelcontextprotocol/server-slack'], env: { SLACK_BOT_TOKEN: '${SLACK_BOT_TOKEN}' } },
-      antigravity: { command: 'npx', args: ['-y', '@modelcontextprotocol/server-slack'], env: { SLACK_BOT_TOKEN: '${SLACK_BOT_TOKEN}' } },
-    },
-  },
-  {
-    id: 'linear',
-    name: 'Linear',
-    description: 'Issues, projects, cycles management',
-    category: 'productivity',
-    requiresEnv: { LINEAR_API_KEY: 'Linear API Key' },
-    configs: {
-      cursor: { command: 'npx', args: ['-y', '@modelcontextprotocol/server-linear'], env: { LINEAR_API_KEY: '${LINEAR_API_KEY}' } },
-      'claude-code': { command: 'claude', args: ['mcp', 'add', 'linear', '--', 'npx', '-y', '@modelcontextprotocol/server-linear'] },
-      codex: { toml: '[mcp_servers.linear]\ncommand = "npx"\nargs = ["-y", "@modelcontextprotocol/server-linear"]\n\n[mcp_servers.linear.env]\nLINEAR_API_KEY = "$LINEAR_API_KEY"' },
-      gemini: { command: 'npx', args: ['-y', '@modelcontextprotocol/server-linear'], env: { LINEAR_API_KEY: '${LINEAR_API_KEY}' } },
-      vscode: { command: 'npx', args: ['-y', '@modelcontextprotocol/server-linear'], env: { LINEAR_API_KEY: '${LINEAR_API_KEY}' } },
-      windsurf: { command: 'npx', args: ['-y', '@modelcontextprotocol/server-linear'], env: { LINEAR_API_KEY: '${LINEAR_API_KEY}' } },
-      antigravity: { command: 'npx', args: ['-y', '@modelcontextprotocol/server-linear'], env: { LINEAR_API_KEY: '${LINEAR_API_KEY}' } },
-    },
-  },
-
-  // ── Database ──
-  {
-    id: 'supabase',
-    name: 'Supabase',
-    description: 'Supabase database, auth, storage',
-    category: 'database',
-    requiresEnv: { SUPABASE_ACCESS_TOKEN: 'Supabase Access Token' },
-    configs: {
-      cursor: { command: 'npx', args: ['-y', 'supabase', '--experimental', 'mcp'] },
-      'claude-code': { command: 'claude', args: ['mcp', 'add', 'supabase', '--', 'npx', '-y', 'supabase', '--experimental', 'mcp'] },
-      codex: { toml: '[mcp_servers.supabase]\ncommand = "npx"\nargs = ["-y", "supabase", "--experimental", "mcp"]' },
-      gemini: { command: 'npx', args: ['-y', 'supabase', '--experimental', 'mcp'] },
-      vscode: { command: 'npx', args: ['-y', 'supabase', '--experimental', 'mcp'] },
-      windsurf: { command: 'npx', args: ['-y', 'supabase', '--experimental', 'mcp'] },
-      antigravity: { command: 'npx', args: ['-y', 'supabase', '--experimental', 'mcp'] },
-    },
-  },
-  {
-    id: 'neon',
-    name: 'Neon Postgres',
-    description: 'Serverless Postgres database',
-    category: 'database',
-    requiresEnv: { NEON_API_KEY: 'Neon API Key' },
-    configs: {
-      cursor: { command: 'npx', args: ['-y', '@neondatabase/mcp-server-neon'], env: { NEON_API_KEY: '${NEON_API_KEY}' } },
-      'claude-code': { command: 'claude', args: ['mcp', 'add', 'neon', '--', 'npx', '-y', '@neondatabase/mcp-server-neon'] },
-      codex: { toml: '[mcp_servers.neon]\ncommand = "npx"\nargs = ["-y", "@neondatabase/mcp-server-neon"]\n\n[mcp_servers.neon.env]\nNEON_API_KEY = "$NEON_API_KEY"' },
-      gemini: { command: 'npx', args: ['-y', '@neondatabase/mcp-server-neon'], env: { NEON_API_KEY: '${NEON_API_KEY}' } },
-      vscode: { command: 'npx', args: ['-y', '@neondatabase/mcp-server-neon'], env: { NEON_API_KEY: '${NEON_API_KEY}' } },
-      windsurf: { command: 'npx', args: ['-y', '@neondatabase/mcp-server-neon'], env: { NEON_API_KEY: '${NEON_API_KEY}' } },
-      antigravity: { command: 'npx', args: ['-y', '@neondatabase/mcp-server-neon'], env: { NEON_API_KEY: '${NEON_API_KEY}' } },
-    },
-  },
-
-  // ── Browser & Testing ──
-  {
-    id: 'playwright',
-    name: 'Playwright',
-    description: 'Browser automation, E2E testing, screenshots',
-    category: 'browser',
-    recommended: true,
-    configs: {
-      cursor: { command: 'npx', args: ['-y', '@playwright/mcp@latest'] },
-      'claude-code': { command: 'claude', args: ['mcp', 'add', 'playwright', '--', 'npx', '-y', '@playwright/mcp@latest'] },
-      codex: { toml: '[mcp_servers.playwright]\ncommand = "npx"\nargs = ["-y", "@playwright/mcp@latest"]' },
-      gemini: { command: 'npx', args: ['-y', '@playwright/mcp@latest'] },
-      vscode: { command: 'npx', args: ['-y', '@playwright/mcp@latest'] },
-      windsurf: { command: 'npx', args: ['-y', '@playwright/mcp@latest'] },
-      antigravity: { command: 'npx', args: ['-y', '@playwright/mcp@latest'] },
-    },
-  },
-  {
-    id: 'browserbase',
-    name: 'Browserbase',
-    description: 'Cloud browser sessions for testing',
-    category: 'browser',
-    requiresEnv: { BROWSERBASE_API_KEY: 'Browserbase API Key' },
-    configs: {
-      cursor: { command: 'npx', args: ['-y', '@browserbasehq/mcp-server-browserbase'], env: { BROWSERBASE_API_KEY: '${BROWSERBASE_API_KEY}' } },
-      'claude-code': { command: 'claude', args: ['mcp', 'add', 'browserbase', '--', 'npx', '-y', '@browserbasehq/mcp-server-browserbase'] },
-      codex: { toml: '[mcp_servers.browserbase]\ncommand = "npx"\nargs = ["-y", "@browserbasehq/mcp-server-browserbase"]' },
-      gemini: { command: 'npx', args: ['-y', '@browserbasehq/mcp-server-browserbase'], env: { BROWSERBASE_API_KEY: '${BROWSERBASE_API_KEY}' } },
-      vscode: { command: 'npx', args: ['-y', '@browserbasehq/mcp-server-browserbase'], env: { BROWSERBASE_API_KEY: '${BROWSERBASE_API_KEY}' } },
-      windsurf: { command: 'npx', args: ['-y', '@browserbasehq/mcp-server-browserbase'], env: { BROWSERBASE_API_KEY: '${BROWSERBASE_API_KEY}' } },
-      antigravity: { command: 'npx', args: ['-y', '@browserbasehq/mcp-server-browserbase'], env: { BROWSERBASE_API_KEY: '${BROWSERBASE_API_KEY}' } },
-    },
-  },
-
-  // ── Cloud & Deploy ──
-  {
-    id: 'vercel',
-    name: 'Vercel',
-    description: 'Deploy, manage projects, domains',
-    category: 'cloud',
-    requiresEnv: { VERCEL_TOKEN: 'Vercel Access Token' },
-    configs: {
-      cursor: { command: 'npx', args: ['-y', '@vercel/mcp'], env: { VERCEL_TOKEN: '${VERCEL_TOKEN}' } },
-      'claude-code': { command: 'claude', args: ['mcp', 'add', 'vercel', '--', 'npx', '-y', '@vercel/mcp'] },
-      codex: { toml: '[mcp_servers.vercel]\ncommand = "npx"\nargs = ["-y", "@vercel/mcp"]\n\n[mcp_servers.vercel.env]\nVERCEL_TOKEN = "$VERCEL_TOKEN"' },
-      gemini: { command: 'npx', args: ['-y', '@vercel/mcp'], env: { VERCEL_TOKEN: '${VERCEL_TOKEN}' } },
-      vscode: { command: 'npx', args: ['-y', '@vercel/mcp'], env: { VERCEL_TOKEN: '${VERCEL_TOKEN}' } },
-      windsurf: { command: 'npx', args: ['-y', '@vercel/mcp'], env: { VERCEL_TOKEN: '${VERCEL_TOKEN}' } },
-      antigravity: { command: 'npx', args: ['-y', '@vercel/mcp'], env: { VERCEL_TOKEN: '${VERCEL_TOKEN}' } },
-    },
-  },
-  {
-    id: 'cloudflare',
-    name: 'Cloudflare',
-    description: 'Workers, Pages, DNS, R2 storage',
-    category: 'cloud',
-    configs: {
-      cursor: { command: 'npx', args: ['-y', '@cloudflare/mcp-server-cloudflare'] },
-      'claude-code': { command: 'claude', args: ['mcp', 'add', 'cloudflare', '--', 'npx', '-y', '@cloudflare/mcp-server-cloudflare'] },
-      codex: { toml: '[mcp_servers.cloudflare]\ncommand = "npx"\nargs = ["-y", "@cloudflare/mcp-server-cloudflare"]' },
-      gemini: { command: 'npx', args: ['-y', '@cloudflare/mcp-server-cloudflare'] },
-      vscode: { command: 'npx', args: ['-y', '@cloudflare/mcp-server-cloudflare'] },
-      windsurf: { command: 'npx', args: ['-y', '@cloudflare/mcp-server-cloudflare'] },
-      antigravity: { command: 'npx', args: ['-y', '@cloudflare/mcp-server-cloudflare'] },
-    },
-  },
-
-  // ── Advanced ──
-  {
-    id: 'filesystem',
-    name: 'Filesystem',
-    description: 'Secure file access outside project root',
-    category: 'advanced',
-    configs: {
-      cursor: { command: 'npx', args: ['-y', '@modelcontextprotocol/server-filesystem', '/path/to/allowed'] },
-      'claude-code': { command: 'claude', args: ['mcp', 'add', 'filesystem', '--', 'npx', '-y', '@modelcontextprotocol/server-filesystem', '/path/to/allowed'] },
-      codex: { toml: '[mcp_servers.filesystem]\ncommand = "npx"\nargs = ["-y", "@modelcontextprotocol/server-filesystem", "/path/to/allowed"]' },
-      gemini: { command: 'npx', args: ['-y', '@modelcontextprotocol/server-filesystem', '/path/to/allowed'] },
-      vscode: { command: 'npx', args: ['-y', '@modelcontextprotocol/server-filesystem', '/path/to/allowed'] },
-      windsurf: { command: 'npx', args: ['-y', '@modelcontextprotocol/server-filesystem', '/path/to/allowed'] },
-      antigravity: { command: 'npx', args: ['-y', '@modelcontextprotocol/server-filesystem', '/path/to/allowed'] },
-    },
-  },
-  {
-    id: 'memory',
-    name: 'Memory',
-    description: 'Persistent memory across agent sessions',
-    category: 'advanced',
-    configs: {
-      cursor: { command: 'npx', args: ['-y', '@modelcontextprotocol/server-memory'] },
-      'claude-code': { command: 'claude', args: ['mcp', 'add', 'memory', '--', 'npx', '-y', '@modelcontextprotocol/server-memory'] },
-      codex: { toml: '[mcp_servers.memory]\ncommand = "npx"\nargs = ["-y", "@modelcontextprotocol/server-memory"]' },
-      gemini: { command: 'npx', args: ['-y', '@modelcontextprotocol/server-memory'] },
-      vscode: { command: 'npx', args: ['-y', '@modelcontextprotocol/server-memory'] },
-      windsurf: { command: 'npx', args: ['-y', '@modelcontextprotocol/server-memory'] },
-      antigravity: { command: 'npx', args: ['-y', '@modelcontextprotocol/server-memory'] },
-    },
-  },
-];
-
-// Helper: get servers by category
 export function getServersByCategory() {
   const grouped = {};
   for (const cat of MCP_CATEGORIES) {
@@ -309,20 +20,20 @@ export function getServersByCategory() {
   return grouped;
 }
 
-// Helper: build choices for inquirer
+// Helper: build choices for inquirer (kept for any external callers; the main
+// flow in src/index.js builds choices inline so it can apply chalk styling).
 export function buildMcpChoices(selectedAgents) {
   const grouped = getServersByCategory();
   const choices = [];
 
   for (const cat of MCP_CATEGORIES) {
     const servers = grouped[cat.id]?.servers || [];
-    // Filter servers that have config for at least one selected agent
     const available = servers.filter((s) =>
       selectedAgents.some((agentId) => s.configs[agentId])
     );
     if (available.length === 0) continue;
 
-    choices.push({ type: 'separator', line: `\n  ${cat.label}  ${chalk_dim(cat.description)}` });
+    choices.push({ type: 'separator', line: `\n  ${cat.label}  ${cat.description}` });
     for (const s of available) {
       const rec = s.recommended ? ' ★' : '';
       const envNote = s.requiresEnv ? ' (needs API key)' : '';
@@ -335,6 +46,3 @@ export function buildMcpChoices(selectedAgents) {
   }
   return choices;
 }
-
-// Placeholder for chalk.dim in non-import context
-function chalk_dim(s) { return `\x1b[2m${s}\x1b[0m`; }

@@ -8,6 +8,56 @@ import { buildAgentsMd, buildClaudeMd, buildGeminiMd, buildCursorRule } from './
 const HOME = os.homedir();
 
 // ══════════════════════════════════════════════
+// Input substitution
+// ══════════════════════════════════════════════
+// Resolve a user-provided path: expand ~ and $HOME.
+function resolveInputPath(value) {
+  if (typeof value !== 'string') return value;
+  let v = value.trim();
+  if (v === '~' || v.startsWith('~/')) v = path.join(HOME, v.slice(1));
+  v = v.replace(/\$HOME\b/g, HOME);
+  return v;
+}
+
+// Walk a config object (deep) and replace each placeholder string with its resolved value.
+function substitutePlaceholders(config, replacements) {
+  if (!replacements || Object.keys(replacements).length === 0) return config;
+
+  const replace = (s) => {
+    let out = s;
+    for (const [placeholder, value] of Object.entries(replacements)) {
+      if (typeof out === 'string' && out.includes(placeholder)) {
+        out = out.split(placeholder).join(value);
+      }
+    }
+    return out;
+  };
+
+  if (typeof config === 'string') return replace(config);
+  if (Array.isArray(config)) return config.map((v) => substitutePlaceholders(v, replacements));
+  if (config && typeof config === 'object') {
+    const out = {};
+    for (const [k, v] of Object.entries(config)) out[k] = substitutePlaceholders(v, replacements);
+    return out;
+  }
+  return config;
+}
+
+// Build a placeholder→value map for one server entry, given user-provided inputs.
+// Inputs is { [serverId]: { [inputKey]: value } }.
+function buildReplacements(server, inputs) {
+  const out = {};
+  if (!server.requiresInput) return out;
+  const provided = (inputs && inputs[server.id]) || {};
+  for (const [key, def] of Object.entries(server.requiresInput)) {
+    if (!def.placeholder) continue;
+    const raw = provided[key] ?? def.default ?? '';
+    out[def.placeholder] = resolveInputPath(raw);
+  }
+  return out;
+}
+
+// ══════════════════════════════════════════════
 // Backup helper
 // ══════════════════════════════════════════════
 function backupFile(filePath) {
@@ -31,8 +81,9 @@ function mergeJsonMcpConfig(filePath, mcpKey, newServers) {
   if (fs.existsSync(filePath)) {
     try {
       config = fs.readJsonSync(filePath);
-    } catch {
-      config = {};
+    } catch (err) {
+      warnMsg(`Could not parse ${filePath} as JSON (${err.message}). Leaving existing file untouched and aborting merge.`);
+      throw new Error(`Refusing to overwrite malformed JSON at ${filePath}`);
     }
   }
 
@@ -131,9 +182,80 @@ function configureClaudeCodeMcp(servers) {
 }
 
 // ══════════════════════════════════════════════
+// Dry-run preview helpers
+// ══════════════════════════════════════════════
+// Given the same inputs writeMcpConfigs would receive, return a structured
+// preview describing exactly what *would* change for each agent: target file
+// path, server IDs that would be added, and server IDs that would be skipped
+// because they're already present.
+export function previewMcpConfigs(selectedAgents, selectedServers, mcpRegistry, inputs = {}) {
+  const HOME_DIR = HOME;
+  const previews = {};
+
+  for (const agent of selectedAgents) {
+    const ap = { agent: agent.name, agentId: agent.id, format: agent.configFormat };
+
+    const serversForAgent = selectedServers
+      .map((serverId) => {
+        const server = mcpRegistry.find((s) => s.id === serverId);
+        if (!server || !server.configs[agent.id]) return null;
+        const replacements = buildReplacements(server, inputs);
+        const config = substitutePlaceholders(server.configs[agent.id], replacements);
+        return { id: serverId, config };
+      })
+      .filter(Boolean);
+
+    if (serversForAgent.length === 0) {
+      previews[agent.id] = { ...ap, path: null, wouldAdd: [], wouldSkip: selectedServers, exists: false };
+      continue;
+    }
+
+    if (agent.configFormat === 'cli') {
+      previews[agent.id] = {
+        ...ap,
+        path: '<via `claude mcp add`>',
+        wouldAdd: serversForAgent.map((s) => s.id),
+        wouldSkip: [],
+        exists: true,
+      };
+      continue;
+    }
+
+    const filePath = agent.globalMcpPath(HOME_DIR);
+    let existing = {};
+    let existingToml = '';
+    const exists = fs.existsSync(filePath);
+
+    if (exists) {
+      if (agent.configFormat === 'json') {
+        try { existing = fs.readJsonSync(filePath); } catch { existing = {}; }
+      } else if (agent.configFormat === 'toml') {
+        existingToml = fs.readFileSync(filePath, 'utf-8');
+      }
+    }
+
+    const wouldAdd = [];
+    const wouldSkip = [];
+    for (const { id } of serversForAgent) {
+      if (agent.configFormat === 'json') {
+        const present = existing[agent.mcpKey] && id in existing[agent.mcpKey];
+        if (present) wouldSkip.push(id);
+        else wouldAdd.push(id);
+      } else if (agent.configFormat === 'toml') {
+        if (existingToml.includes(`[mcp_servers.${id}]`)) wouldSkip.push(id);
+        else wouldAdd.push(id);
+      }
+    }
+
+    previews[agent.id] = { ...ap, path: filePath, wouldAdd, wouldSkip, exists };
+  }
+  return previews;
+}
+
+// ══════════════════════════════════════════════
 // Main Config Writer — orchestrates per-agent
 // ══════════════════════════════════════════════
-export function writeMcpConfigs(selectedAgents, selectedServers, mcpRegistry) {
+export function writeMcpConfigs(selectedAgents, selectedServers, mcpRegistry, inputs = {}) {
   const results = {};
 
   for (const agent of selectedAgents) {
@@ -144,7 +266,9 @@ export function writeMcpConfigs(selectedAgents, selectedServers, mcpRegistry) {
       .map((serverId) => {
         const server = mcpRegistry.find((s) => s.id === serverId);
         if (!server || !server.configs[agent.id]) return null;
-        return { id: serverId, config: server.configs[agent.id], meta: server };
+        const replacements = buildReplacements(server, inputs);
+        const config = substitutePlaceholders(server.configs[agent.id], replacements);
+        return { id: serverId, config, meta: server };
       })
       .filter(Boolean);
 
@@ -331,7 +455,7 @@ export function writeProjectInstructions(selectedAgents, selectedStacks, profile
 // ══════════════════════════════════════════════
 // Project-Level MCP Config Writer
 // ══════════════════════════════════════════════
-export function writeProjectMcpConfigs(agentsWithProjectMcp, selectedServers, mcpRegistry) {
+export function writeProjectMcpConfigs(agentsWithProjectMcp, selectedServers, mcpRegistry, inputs = {}) {
   const results = {};
 
   for (const agent of agentsWithProjectMcp) {
@@ -341,7 +465,9 @@ export function writeProjectMcpConfigs(agentsWithProjectMcp, selectedServers, mc
       .map((serverId) => {
         const server = mcpRegistry.find((s) => s.id === serverId);
         if (!server || !server.configs[agent.id]) return null;
-        return { id: serverId, config: server.configs[agent.id], meta: server };
+        const replacements = buildReplacements(server, inputs);
+        const config = substitutePlaceholders(server.configs[agent.id], replacements);
+        return { id: serverId, config, meta: server };
       })
       .filter(Boolean);
 
