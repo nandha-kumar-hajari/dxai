@@ -1,0 +1,48 @@
+---
+title: Non-interactive / CI
+description: Flags, env vars, and JSON output for unattended runs.
+---
+
+Every setup command accepts flags to run unattended. Pass `--yes` (or set `CI=true`) to skip prompts entirely.
+
+## Flag summary
+
+| Flag | Description |
+|---|---|
+| `-y, --yes` | Skip prompts; use defaults / values from flags |
+| `--agents <list>` | Comma-separated agent IDs |
+| `--mcp <list>` | Comma-separated MCP server IDs |
+| `--skills <list>` | Comma-separated skill IDs |
+| `--features <list>` | Comma-separated project feature IDs |
+| `--stack <list>` | Comma-separated tech stack IDs |
+| `--profile <nameOrPath>` | Load a saved profile |
+| `--no-profile` | Skip auto-discovery of profiles |
+| `--json` | Machine-readable output |
+| `--dry-run` | Preview changes without writing |
+
+## Environment variables
+
+| Variable | Effect |
+|---|---|
+| `CI=true` | Forces non-interactive mode + JSON output |
+| `NO_COLOR=1` | Disables ANSI colors |
+| `DXAI_DRY_RUN=1` | Equivalent to `--dry-run` |
+| `DXAI_REGISTRY_URL` | Override default remote registry base URL |
+
+## Examples
+
+```bash
+# Accept defaults — uses recommended MCPs + skills, all features.
+dxai project --yes
+
+# Pin exactly what to install.
+dxai system -y --agents cursor,claude-code --mcp github,playwright,context7
+
+# CI pipeline run, JSON output, no writes.
+CI=true dxai system --agents cursor --dry-run
+
+# Pipe results into jq.
+dxai project --yes --json --stack react | jq '.project.features'
+```
+
+For the auto-generated, always-current flag reference see [Reference / Flags](/d3v-ai-cli/reference/flags/).

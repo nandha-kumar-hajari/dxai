@@ -1,0 +1,380 @@
+/*
+ * dxai landing page styles
+ * Scoped: most rules nest under `.dxai-landing` so doc pages aren't affected.
+ * Card/LinkCard restyles target Starlight 0.37.7 internal classnames.
+ * The "Site header" block at the bottom is intentionally GLOBAL — it
+ * polishes Starlight's top bar on every page for brand consistency.
+ */
+
+:root {
+  --sl-color-accent: #0ea5e9;
+  --sl-color-accent-low: #0c4a6e;
+  --sl-color-accent-high: #7dd3fc;
+}
+
+:root[data-theme='light'] {
+  --sl-color-accent: #0284c7;
+  --sl-color-accent-low: #e0f2fe;
+  --sl-color-accent-high: #075985;
+}
+
+.dxai-landing {
+  --dx-accent: #0ea5e9;
+  --dx-accent-strong: #0284c7;
+  --dx-accent-glow: color-mix(in srgb, var(--dx-accent) 22%, transparent);
+  --dx-surface: color-mix(in srgb, var(--sl-color-bg) 88%, var(--dx-accent));
+  --dx-surface-strong: color-mix(in srgb, var(--sl-color-bg) 78%, var(--dx-accent));
+  --dx-border: color-mix(in srgb, var(--dx-accent) 26%, transparent);
+  --dx-border-strong: color-mix(in srgb, var(--dx-accent) 55%, transparent);
+  --dx-mono: ui-monospace, SFMono-Regular, 'JetBrains Mono', Menlo, monospace;
+
+  display: block;
+  margin-top: 0;
+}
+
+.dxai-landing .dxai-section {
+  margin: 3.5rem auto;
+  max-width: 78rem;
+  padding: 0 1.5rem;
+}
+
+/* First section after the hero shouldn't double-pad the gap. */
+.dxai-landing > .dxai-section:first-child {
+  margin-top: 1.5rem;
+}
+
+/* ============================================================
+ * Landing-only ancestor unconstraint.
+ * The Hero override is rendered by Starlight as a sibling of the MDX
+ * body — both inside .sl-container > .content-panel > main. To let the
+ * hero gradient and section widths use the full viewport on the landing
+ * page only, drop the max-widths and padding on those ancestors when
+ * any descendant is .dxai-landing OR .dx-hero.
+ * Uses :has() (Safari 15.4+, Chrome 105+, Firefox 121+).
+ * ============================================================ */
+
+main:has(.dx-hero),
+.main-pane:has(.dx-hero),
+.content-panel:has(.dx-hero),
+.sl-container:has(.dx-hero) {
+  max-width: none;
+  width: 100%;
+  padding-inline: 0;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+main:has(.dx-hero) {
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+/* Splash template wraps content in .content-panel + .sl-container which
+ * apply vertical padding too — remove it on the landing. */
+.content-panel:has(.dx-hero),
+.sl-container:has(.dx-hero) {
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+/* The MDX body wrapper that holds .dxai-landing also has padding/margin
+ * from .sl-markdown-content that we want gone on the landing. */
+.sl-markdown-content:has(> .dxai-landing) {
+  margin-top: 0 !important;
+}
+
+/* Starlight's .sl-container adds 1.5rem margin between siblings — kill it on
+ * the landing so the hero butts up directly against the next section. */
+.sl-container:has(.dx-hero) > * + * {
+  margin-top: 0;
+}
+
+/* Push the hero right against the header. */
+.dx-hero {
+  margin-top: 0;
+}
+
+.dxai-landing .dxai-section-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--dx-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--dx-accent);
+  background: color-mix(in srgb, var(--dx-accent) 12%, transparent);
+  border: 1px solid var(--dx-border);
+  border-radius: 999px;
+  padding: 0.35rem 0.75rem;
+}
+
+.dxai-landing .dxai-section-title {
+  font-size: clamp(1.5rem, 2.5vw, 2rem);
+  font-weight: 700;
+  margin: 1rem 0 0.5rem;
+  letter-spacing: -0.02em;
+}
+
+.dxai-landing .dxai-section-subtitle {
+  color: var(--sl-color-text-accent);
+  max-width: 38rem;
+  margin: 0 0 2rem;
+}
+
+/* ----- Feature cards (Starlight 0.37.7 .card) ----- */
+.dxai-landing :global(.card),
+.dxai-landing .card {
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--sl-color-bg) 92%, var(--dx-accent)) 0%,
+    var(--sl-color-bg) 100%
+  );
+  border: 1px solid var(--dx-border);
+  border-radius: 14px;
+  transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+  backdrop-filter: blur(8px);
+}
+
+.dxai-landing :global(.card):hover,
+.dxai-landing .card:hover {
+  transform: translateY(-3px);
+  border-color: var(--dx-border-strong);
+  box-shadow: 0 12px 40px -16px var(--dx-accent-glow);
+}
+
+.dxai-landing :global(.card .icon),
+.dxai-landing .card .icon {
+  color: var(--dx-accent);
+}
+
+/* ----- LinkCards (Starlight 0.37.7 .sl-link-card) ----- */
+.dxai-landing :global(.sl-link-card),
+.dxai-landing .sl-link-card {
+  background: var(--sl-color-bg);
+  border: 1px solid var(--dx-border);
+  border-radius: 12px;
+  position: relative;
+  overflow: hidden;
+  transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.dxai-landing :global(.sl-link-card)::before,
+.dxai-landing .sl-link-card::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: var(--dx-accent);
+  transform: scaleY(0);
+  transform-origin: top;
+  transition: transform 220ms ease;
+}
+
+.dxai-landing :global(.sl-link-card):hover,
+.dxai-landing .sl-link-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--dx-border-strong);
+  box-shadow: 0 10px 32px -18px var(--dx-accent-glow);
+}
+
+.dxai-landing :global(.sl-link-card):hover::before,
+.dxai-landing .sl-link-card:hover::before {
+  transform: scaleY(1);
+}
+
+.dxai-landing :global(.sl-link-card .icon),
+.dxai-landing .sl-link-card .icon {
+  color: var(--dx-accent);
+  transition: transform 220ms ease;
+}
+
+.dxai-landing :global(.sl-link-card):hover .icon,
+.dxai-landing .sl-link-card:hover .icon {
+  transform: translateX(3px);
+}
+
+/* ----- Hide Starlight's default splash hero only on landing.
+ *      Hero.astro renders our own. Starlight wraps the hero in <div class="hero">,
+ *      we keep it visible (we override). This rule is just for safety if a stray
+ *      .hero from Starlight slips through with empty content. ----- */
+
+@media (max-width: 50rem) {
+  .dxai-landing .dxai-section {
+    margin: 3.5rem auto;
+  }
+}
+
+/* ============================================================
+ * Site header — GLOBAL (applies to every page).
+ * Targets Starlight 0.37.7 .header / .site-title / .right-group.
+ * ============================================================ */
+
+:root {
+  --dx-header-accent: #0ea5e9;
+}
+
+/* Starlight nests <header class="header"> inside an outer <header class="header">.
+ * Apply backdrop/border/glow ONLY to the outer one so they don't stack. */
+.page > header.header {
+  background: color-mix(in srgb, var(--sl-color-bg) 78%, transparent);
+  backdrop-filter: saturate(160%) blur(12px);
+  -webkit-backdrop-filter: saturate(160%) blur(12px);
+  border-bottom: 1px solid transparent;
+  /* Do NOT set position: relative here. Starlight's outer header is
+   * `position: fixed` — overriding it makes the header take layout flow
+   * AND .main-frame still reserves --sl-nav-height padding-top, doubling
+   * the gap below the header by 64px. The ::after below uses position:
+   * absolute, which works fine with a fixed-positioned containing block. */
+  transition: border-color 200ms ease, background 200ms ease;
+}
+
+/* Inner header sits on top of the outer — strip its default border / bg. */
+.page > header.header > header.header {
+  background: transparent;
+  border-bottom: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+/* Hairline gradient under the header (outer only) */
+.page > header.header::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in srgb, var(--dx-header-accent) 55%, transparent) 50%,
+    transparent 100%
+  );
+  pointer-events: none;
+}
+
+/* Site title (logo + wordmark) */
+header.header .site-title {
+  gap: 0.6rem;
+  position: relative;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  transition: color 180ms ease;
+}
+
+header.header .site-title img {
+  width: 1.65rem;
+  height: 1.65rem;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--dx-header-accent) 14%, transparent);
+  padding: 2px;
+  border: 1px solid color-mix(in srgb, var(--dx-header-accent) 30%, transparent);
+  box-shadow: 0 6px 20px -10px color-mix(in srgb, var(--dx-header-accent) 70%, transparent);
+  transition: transform 220ms ease, box-shadow 220ms ease;
+}
+
+header.header .site-title:hover img {
+  transform: translateY(-1px) rotate(-2deg);
+  box-shadow: 0 10px 26px -10px color-mix(in srgb, var(--dx-header-accent) 80%, transparent);
+}
+
+/* Wordmark gradient — Starlight renders the title text as a span beside the img */
+header.header .site-title > :last-child {
+  background: linear-gradient(
+    120deg,
+    var(--sl-color-text) 0%,
+    var(--sl-color-text) 30%,
+    #38bdf8 70%,
+    var(--dx-header-accent) 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Right-side actions */
+header.header .right-group {
+  gap: 0.35rem;
+}
+
+header.header .social-icons a {
+  border-radius: 8px;
+  padding: 0.35rem;
+  transition: background 180ms ease, color 180ms ease, transform 180ms ease;
+}
+
+header.header .social-icons a:hover {
+  background: color-mix(in srgb, var(--dx-header-accent) 14%, transparent);
+  color: var(--dx-header-accent);
+  transform: translateY(-1px);
+}
+
+/* Right-align the search button within its header grid column so it sits
+ * adjacent to the right-group (GitHub + theme select). The middle column
+ * is a flex container `<div class="sl-flex print:hidden">` wrapping a
+ * <site-search> custom element. */
+.page > header.header > .header > .sl-flex.print\:hidden {
+  justify-content: flex-end;
+  width: 100%;
+}
+
+/* Search input pill polish — Starlight's button-shaped search.
+ * Force opaque bg + position:relative + z-index so nothing in the header
+ * can visually bleed through (theme select native dropdown, etc.). */
+header.header [data-open-modal] {
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--sl-color-text) 14%, transparent);
+  background-color: color-mix(in srgb, var(--sl-color-bg) 92%, var(--dx-header-accent) 6%);
+  color: color-mix(in srgb, var(--sl-color-text) 70%, transparent);
+  position: relative;
+  z-index: 2;
+  transition: border-color 180ms ease, background-color 180ms ease, color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+header.header [data-open-modal]:hover,
+header.header [data-open-modal]:focus-visible {
+  border-color: color-mix(in srgb, var(--dx-header-accent) 55%, transparent);
+  background-color: color-mix(in srgb, var(--sl-color-bg) 80%, var(--dx-header-accent) 12%);
+  color: var(--sl-color-text);
+  box-shadow: 0 4px 18px -10px color-mix(in srgb, var(--dx-header-accent) 70%, transparent);
+}
+
+header.header [data-open-modal]:focus-visible {
+  outline: 2px solid var(--dx-header-accent);
+  outline-offset: 2px;
+}
+
+/* The ⌘K kbd hint — match the brand */
+header.header [data-open-modal] kbd {
+  background: color-mix(in srgb, var(--dx-header-accent) 14%, transparent);
+  color: color-mix(in srgb, var(--sl-color-text) 85%, transparent);
+  border: 1px solid color-mix(in srgb, var(--dx-header-accent) 28%, transparent);
+  border-radius: 6px;
+  padding: 0.05rem 0.4rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+}
+
+header.header [data-open-modal] kbd kbd {
+  background: transparent;
+  border: none;
+  padding: 0;
+  font-size: inherit;
+}
+
+/* Theme select polish — keep it visually separate from search */
+header.header starlight-theme-select,
+header.header [class*='ThemeSelect'] {
+  position: relative;
+  z-index: 1;
+}
+
+/* Reduced-motion: skip the small transforms */
+@media (prefers-reduced-motion: reduce) {
+  header.header .site-title:hover img,
+  header.header .social-icons a:hover {
+    transform: none;
+  }
+}

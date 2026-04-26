@@ -4,3 +4,12 @@ node_modules/
 npm-debug.log*
 .env
 .env.*
+
+# Astro / Starlight build artifacts
+docs/.astro/
+docs/dist/
+docs/node_modules/
+
+# Playwright MCP session artifacts (snapshots, console logs, ad-hoc screenshots)
+.playwright-mcp/
+/*.png

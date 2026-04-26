@@ -1,0 +1,17 @@
+---
+title: Contributing
+description: Setting up dev, running tests, and proposing changes.
+---
+
+```bash
+git clone https://github.com/Nandha-d3v/d3v-ai-cli.git
+cd d3v-ai-cli
+npm install
+npm test
+```
+
+Tests use `node:test` (no extra framework). 42 tests, runs in ~100ms.
+
+CI runs on every push and PR across **Ubuntu, macOS, Windows × Node 18, 20, 22**.
+
+When you change anything in `src/registry/data/`, `bin/cli.js` flags, or `PROFILE_KEYS`, also run `npm run docs:generate` and commit the regenerated docs. The `docs-check` CI job will fail otherwise.

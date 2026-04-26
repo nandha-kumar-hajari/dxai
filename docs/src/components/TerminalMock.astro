@@ -1,0 +1,130 @@
+---
+// Static terminal mock used in the hero. Pure CSS animation, with a
+// reduced-motion fallback that shows the final state immediately.
+---
+
+<div class="dx-term" role="img" aria-label="Example dxai CLI session">
+  <div class="dx-term-bar" aria-hidden="true">
+    <span class="dx-term-dot dx-term-dot--r"></span>
+    <span class="dx-term-dot dx-term-dot--y"></span>
+    <span class="dx-term-dot dx-term-dot--g"></span>
+    <span class="dx-term-bar-label">~ / dxai</span>
+  </div>
+  <pre class="dx-term-body" aria-hidden="true"><code><span class="dx-line dx-line--cmd"><span class="dx-prompt">$</span> <span class="dx-typed">npx dxai</span><span class="dx-caret">▍</span></span>
+<span class="dx-line dx-line--dim">› Detected: Cursor, Claude Code, VS Code, Codex</span>
+<span class="dx-line"><span class="dx-ok">✓</span> Wrote .cursor/rules/dxai.mdc</span>
+<span class="dx-line"><span class="dx-ok">✓</span> Wrote .claude/settings.json</span>
+<span class="dx-line"><span class="dx-ok">✓</span> Installed 4 MCP servers</span>
+<span class="dx-line"><span class="dx-ok">✓</span> Saved profile to ~/.dxai/profiles/default.json</span>
+<span class="dx-line dx-line--done"><span class="dx-prompt">$</span> <span class="dx-blink">_</span></span></code></pre>
+</div>
+
+<style>
+  .dx-term {
+    background: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--sl-color-bg) 70%, #0ea5e9 6%) 0%,
+      var(--sl-color-bg) 100%
+    );
+    border: 1px solid color-mix(in srgb, #0ea5e9 30%, transparent);
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow:
+      0 24px 60px -28px color-mix(in srgb, #0ea5e9 40%, transparent),
+      0 1px 0 0 color-mix(in srgb, #ffffff 6%, transparent) inset;
+    font-family: ui-monospace, SFMono-Regular, 'JetBrains Mono', Menlo, monospace;
+  }
+
+  .dx-term-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.65rem 0.9rem;
+    background: color-mix(in srgb, var(--sl-color-bg) 60%, #000 40%);
+    border-bottom: 1px solid color-mix(in srgb, #0ea5e9 18%, transparent);
+  }
+
+  .dx-term-dot {
+    width: 0.7rem;
+    height: 0.7rem;
+    border-radius: 50%;
+    display: inline-block;
+  }
+  .dx-term-dot--r { background: #ff5f57; }
+  .dx-term-dot--y { background: #febc2e; }
+  .dx-term-dot--g { background: #28c840; }
+
+  .dx-term-bar-label {
+    margin-left: auto;
+    color: color-mix(in srgb, var(--sl-color-text) 55%, transparent);
+    font-size: 0.78rem;
+    letter-spacing: 0.02em;
+  }
+
+  .dx-term-body {
+    margin: 0;
+    padding: 1rem 1.25rem 1.25rem;
+    font-size: 0.875rem;
+    line-height: 1.6;
+    color: color-mix(in srgb, var(--sl-color-text) 88%, transparent);
+    background: transparent;
+    overflow-x: auto;
+  }
+
+  .dx-term-body code { background: transparent; }
+
+  .dx-line { display: block; }
+  .dx-line--dim { color: color-mix(in srgb, var(--sl-color-text) 55%, transparent); }
+  .dx-line--done { margin-top: 0.25rem; }
+  .dx-prompt { color: #0ea5e9; font-weight: 600; }
+  .dx-ok { color: #22c55e; font-weight: 600; }
+  .dx-caret { color: #0ea5e9; opacity: 0; }
+  .dx-blink { color: #0ea5e9; animation: dx-blink 1s steps(2) infinite; }
+
+  @keyframes dx-blink {
+    0%, 50% { opacity: 1; }
+    50.01%, 100% { opacity: 0; }
+  }
+
+  /* Animations only when motion is welcome. Default is the final static state. */
+  @media (prefers-reduced-motion: no-preference) {
+    .dx-typed {
+      display: inline-block;
+      overflow: hidden;
+      white-space: nowrap;
+      width: 9ch;
+      animation: dx-type 1.1s steps(9, end) 200ms both;
+      vertical-align: bottom;
+    }
+    .dx-caret {
+      animation: dx-caret 1s steps(2) 1.3s 3;
+    }
+    .dx-line--dim,
+    .dx-line:not(.dx-line--cmd):not(.dx-line--done) {
+      opacity: 0;
+      animation: dx-fade 280ms ease forwards;
+    }
+    .dx-line--dim { animation-delay: 1.5s; }
+    .dx-line:nth-of-type(3) { animation-delay: 1.75s; }
+    .dx-line:nth-of-type(4) { animation-delay: 1.95s; }
+    .dx-line:nth-of-type(5) { animation-delay: 2.15s; }
+    .dx-line:nth-of-type(6) { animation-delay: 2.35s; }
+    .dx-line--done {
+      opacity: 0;
+      animation: dx-fade 280ms ease 2.6s forwards;
+    }
+  }
+
+  @keyframes dx-type {
+    from { width: 0; }
+    to { width: 9ch; }
+  }
+  @keyframes dx-caret {
+    0%, 50% { opacity: 1; }
+    50.01%, 100% { opacity: 0; }
+  }
+  @keyframes dx-fade {
+    from { opacity: 0; transform: translateY(2px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+</style>
