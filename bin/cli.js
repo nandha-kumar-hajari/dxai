@@ -3,6 +3,7 @@
 import { Command, Option } from 'commander';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
+import { realpathSync } from 'node:fs';
 import { run, apply, saveProfileCmd, listProfilesCmd } from '../src/index.js';
 import { cleanup } from '../src/cleanup.js';
 import { listCmd, statusCmd, doctorCmd } from '../src/inspect.js';
@@ -29,7 +30,7 @@ export function buildProgram() {
   const sharedSetupOptions = (cmd) =>
     cmd
       .addOption(new Option('-y, --yes', 'skip prompts; use defaults / values from flags'))
-      .addOption(new Option('--agents <list>', 'comma-separated agent IDs (cursor,claude-code,vscode,codex,gemini,windsurf,antigravity)').argParser(csv))
+      .addOption(new Option('--agents <list>', 'comma-separated agent IDs (cursor,claude-code,vscode,codex,gemini,windsurf,antigravity-ide,antigravity-cli)').argParser(csv))
       .addOption(new Option('--mcp <list>', 'comma-separated MCP server IDs').argParser(csv))
       .addOption(new Option('--skills <list>', 'comma-separated skill IDs').argParser(csv))
       .addOption(new Option('--features <list>', 'comma-separated project feature IDs').argParser(csv))
@@ -192,7 +193,10 @@ Environment:
 // Only parse argv when invoked as the entry script (not when imported).
 const invokedDirectly = (() => {
   try {
-    return process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
+    if (!process.argv[1]) return false;
+    const selfPath = realpathSync(fileURLToPath(import.meta.url));
+    const argvPath = realpathSync(process.argv[1]);
+    return selfPath === argvPath;
   } catch {
     return false;
   }

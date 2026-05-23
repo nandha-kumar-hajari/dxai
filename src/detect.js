@@ -32,6 +32,11 @@ function commandExists(cmd) {
   }
 }
 
+function appExists(appName) {
+  if (!appName || os.platform() !== 'darwin') return false;
+  return fs.existsSync(path.join('/Applications', appName));
+}
+
 function getVersion(cmd, flag = '--version') {
   try {
     const out = execSync(`${cmd} ${flag}`, { stdio: 'pipe', timeout: 10000 }).toString().trim();
@@ -94,6 +99,7 @@ export const AGENT_DEFINITIONS = [
     name: 'Cursor',
     description: 'AI-first IDE (VS Code fork)',
     detectCommand: 'cursor',
+    detectApp: 'Cursor.app',
     configDir: (home) => path.join(home, '.cursor'),
     globalMcpPath: (home) => path.join(home, '.cursor', 'mcp.json'),
     projectMcpPath: () => path.join('.cursor', 'mcp.json'),
@@ -115,6 +121,7 @@ export const AGENT_DEFINITIONS = [
     name: 'VS Code / GitHub Copilot',
     description: 'VS Code with Copilot agent mode',
     detectCommand: 'code',
+    detectApp: 'Visual Studio Code.app',
     configDir: (home) => {
       const platform = os.platform();
       if (platform === 'darwin') return path.join(home, 'Library', 'Application Support', 'Code', 'User');
@@ -157,18 +164,30 @@ export const AGENT_DEFINITIONS = [
     name: 'Windsurf',
     description: 'Codeium\'s AI IDE',
     detectCommand: 'windsurf',
+    detectApp: 'Windsurf.app',
     configDir: (home) => path.join(home, '.codeium', 'windsurf'),
     globalMcpPath: (home) => path.join(home, '.codeium', 'windsurf', 'mcp_config.json'),
     configFormat: 'json',
     mcpKey: 'mcpServers',
   },
   {
-    id: 'antigravity',
-    name: 'Google Antigravity',
+    id: 'antigravity-ide',
+    name: 'Antigravity IDE',
     description: 'Google\'s agent-first AI IDE',
+    detectCommand: 'antigravity-ide',
+    detectApp: 'Antigravity IDE.app',
+    configDir: (home) => path.join(home, '.gemini', 'antigravity-ide'),
+    globalMcpPath: (home) => path.join(home, '.gemini', 'config', 'mcp_config.json'),
+    configFormat: 'json',
+    mcpKey: 'mcpServers',
+  },
+  {
+    id: 'antigravity-cli',
+    name: 'Antigravity CLI',
+    description: 'Google\'s terminal AI agent',
     detectCommand: 'agy',
-    configDir: (home) => path.join(home, '.gemini', 'antigravity'),
-    globalMcpPath: (home) => path.join(home, '.gemini', 'antigravity', 'mcp_config.json'),
+    configDir: (home) => path.join(home, '.gemini', 'antigravity-cli'),
+    globalMcpPath: (home) => path.join(home, '.gemini', 'config', 'mcp_config.json'),
     configFormat: 'json',
     mcpKey: 'mcpServers',
   },
@@ -176,9 +195,11 @@ export const AGENT_DEFINITIONS = [
 
 export function detectAgents(home) {
   const agents = AGENT_DEFINITIONS.map((def) => {
-    const installed = commandExists(def.detectCommand);
+    const commandFound = commandExists(def.detectCommand);
+    const appFound = appExists(def.detectApp);
     const configExists = fs.existsSync(def.configDir(home));
-    const version = installed ? getVersion(def.detectCommand) : null;
+    const installed = commandFound || appFound;
+    const version = commandFound ? getVersion(def.detectCommand) : null;
     return {
       ...def,
       installed,
@@ -249,9 +270,14 @@ export const INSTALL_COMMANDS = {
     Linux: 'Download from https://windsurf.com/download',
     Windows: 'winget install Codeium.Windsurf',
   },
-  'antigravity': {
+  'antigravity-ide': {
     macOS: 'Download from https://antigravity.google/download',
     Linux: 'Download from https://antigravity.google/download',
     Windows: 'Download from https://antigravity.google/download',
+  },
+  'antigravity-cli': {
+    macOS: 'curl -fsSL https://antigravity.google/cli/install.sh | bash',
+    Linux: 'curl -fsSL https://antigravity.google/cli/install.sh | bash',
+    Windows: 'curl -fsSL https://antigravity.google/cli/install.sh | bash',
   },
 };
