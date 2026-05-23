@@ -238,6 +238,14 @@ export function printDetectionResults(osInfo, prereqs, agents) {
   }
 }
 
+// ── Automation Tool Detection ──
+export function detectAutomationTools(toolRegistry) {
+  return toolRegistry.map((tool) => ({
+    ...tool,
+    installed: commandExists(tool.detectCommand),
+  }));
+}
+
 // ── Agent Install Commands ──
 export const INSTALL_COMMANDS = {
   'cursor': {
@@ -279,5 +287,15 @@ export const INSTALL_COMMANDS = {
     macOS: 'curl -fsSL https://antigravity.google/cli/install.sh | bash',
     Linux: 'curl -fsSL https://antigravity.google/cli/install.sh | bash',
     Windows: 'curl -fsSL https://antigravity.google/cli/install.sh | bash',
+  },
+  'agent-browser': {
+    macOS: 'npm install -g agent-browser',
+    Linux: 'npm install -g agent-browser',
+    Windows: 'npm install -g agent-browser',
+  },
+  'agent-device': {
+    macOS: 'npm install -g agent-device',
+    Linux: 'npm install -g agent-device',
+    Windows: 'npm install -g agent-device',
   },
 };

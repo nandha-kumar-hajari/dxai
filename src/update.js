@@ -9,6 +9,7 @@ import {
 const REGISTRY_FILES = [
   { name: 'mcp-servers', listKey: 'servers' },
   { name: 'skills', listKey: 'skills' },
+  { name: 'automation-tools', listKey: 'tools' },
 ];
 
 export async function updateCmd(opts = {}) {

@@ -1,0 +1,37 @@
+{
+  "categories": [
+    {
+      "id": "automation",
+      "label": "🤖 Automation",
+      "description": "CLI tools that give AI agents browser & device control"
+    }
+  ],
+  "tools": [
+    {
+      "id": "agent-browser",
+      "name": "Agent Browser",
+      "description": "Browser automation CLI for AI agents",
+      "category": "automation",
+      "recommended": true,
+      "detectCommand": "agent-browser",
+      "installCommand": {
+        "macOS": "npm install -g agent-browser",
+        "Linux": "npm install -g agent-browser",
+        "Windows": "npm install -g agent-browser"
+      }
+    },
+    {
+      "id": "agent-device",
+      "name": "Agent Device",
+      "description": "iOS/Android device automation CLI for AI agents",
+      "category": "automation",
+      "recommended": true,
+      "detectCommand": "agent-device",
+      "installCommand": {
+        "macOS": "npm install -g agent-device",
+        "Linux": "npm install -g agent-device",
+        "Windows": "npm install -g agent-device"
+      }
+    }
+  ]
+}

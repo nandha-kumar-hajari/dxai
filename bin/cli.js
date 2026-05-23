@@ -33,6 +33,7 @@ export function buildProgram() {
       .addOption(new Option('--agents <list>', 'comma-separated agent IDs (cursor,claude-code,vscode,codex,gemini,windsurf,antigravity-ide,antigravity-cli)').argParser(csv))
       .addOption(new Option('--mcp <list>', 'comma-separated MCP server IDs').argParser(csv))
       .addOption(new Option('--skills <list>', 'comma-separated skill IDs').argParser(csv))
+      .addOption(new Option('--tools <list>', 'comma-separated automation tool IDs (agent-browser,agent-device)').argParser(csv))
       .addOption(new Option('--features <list>', 'comma-separated project feature IDs').argParser(csv))
       .addOption(new Option('--stack <list>', 'comma-separated tech stack IDs').argParser(csv))
       .addOption(new Option('--profile <nameOrPath>', 'load a saved profile (name or path)'))

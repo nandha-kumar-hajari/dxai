@@ -1,3 +1,4 @@
+import { execSync } from 'child_process';
 import inquirer from 'inquirer';
 import ora from 'ora';
 import chalk from 'chalk';
@@ -10,9 +11,11 @@ import {
 import {
   detectOS, checkPrerequisites, detectAgents,
   printDetectionResults, AGENT_DEFINITIONS, INSTALL_COMMANDS,
+  detectAutomationTools,
 } from './detect.js';
 import { MCP_SERVERS, MCP_CATEGORIES } from './registry/mcp-servers.js';
 import { SKILLS, SKILL_CATEGORIES } from './registry/skills.js';
+import { AUTOMATION_TOOLS, AUTOMATION_TOOL_CATEGORIES } from './registry/automation-tools.js';
 import { TECH_STACKS, CURSOR_RULES, CURSOR_COMMANDS } from './registry/stacks.js';
 import { detectProject } from './detect-project.js';
 import {
@@ -24,7 +27,7 @@ import {
 import { normalizeOptions, partitionByKnown } from './runtime.js';
 import { resolveProfile, readProfile, mergeWithProfile, saveProfile, listProfiles } from './profile.js';
 import {
-  recordSystemMcp, recordSystemSkills, recordProjectMcp, recordProjectFiles,
+  recordSystemMcp, recordSystemSkills, recordSystemTools, recordProjectMcp, recordProjectFiles,
 } from './manifest.js';
 
 // In --json mode, suppress decorative output.
@@ -241,6 +244,56 @@ async function runSystem(ctx, runtime) {
     selectedMcpIds = picked;
   }
 
+  // ── Suggested Automation Tools ──
+  let selectedToolIds;
+  if (runtime.tools !== undefined) {
+    const knownIds = AUTOMATION_TOOLS.map((t) => t.id);
+    const { valid, invalid } = partitionByKnown(runtime.tools, knownIds);
+    if (invalid.length > 0) {
+      throw new Error(`Unknown automation tool ID(s): ${invalid.join(', ')}`);
+    }
+    selectedToolIds = valid;
+  } else if (runtime.nonInteractive) {
+    selectedToolIds = AUTOMATION_TOOLS.filter((t) => t.recommended).map((t) => t.id);
+  } else {
+    const detectedTools = detectAutomationTools(AUTOMATION_TOOLS);
+
+    quiet(runtime, () => {
+      console.log();
+      sectionHeader('Suggested Automation Tools');
+      console.log();
+      infoMsg('★ = suggested  •  Standalone CLIs that give your AI agents browser & device control');
+      console.log();
+    });
+
+    const toolChoices = [];
+    for (const cat of AUTOMATION_TOOL_CATEGORIES) {
+      const catTools = detectedTools.filter((t) => t.category === cat.id);
+      if (catTools.length === 0) continue;
+      toolChoices.push(new inquirer.Separator(chalk.cyan(`\n  ${cat.label}  `) + chalk.dim(cat.description)));
+      for (const t of catTools) {
+        const rec = t.recommended ? chalk.yellow(' ★') : '';
+        const status = t.installed ? chalk.green(' (detected)') : '';
+        toolChoices.push({
+          name: `${t.name}${rec}${status} — ${chalk.dim(t.description)}`,
+          value: t.id,
+          checked: !!t.recommended,
+        });
+      }
+    }
+
+    const { selectedToolIds: picked } = await inquirer.prompt([
+      {
+        type: 'checkbox',
+        name: 'selectedToolIds',
+        message: 'Select automation tools to install:',
+        choices: toolChoices,
+        loop: false,
+      },
+    ]);
+    selectedToolIds = picked;
+  }
+
   // ── Agent Skills Selection ──
   let selectedSkillIds;
   if (runtime.skills !== undefined) {
@@ -298,6 +351,7 @@ async function runSystem(ctx, runtime) {
     console.log();
     console.log(theme.label('  Tools:     ') + selectedAgents.map((a) => a.name).join(', '));
     console.log(theme.label('  MCP:       ') + (selectedMcpIds.length > 0 ? selectedMcpIds.join(', ') : 'none'));
+    console.log(theme.label('  Automation: ') + (selectedToolIds.length > 0 ? selectedToolIds.join(', ') : 'none'));
     console.log(theme.label('  Skills:    ') + (selectedSkillIds.length > 0 ? selectedSkillIds.join(', ') : 'none'));
     console.log();
   });
@@ -327,6 +381,18 @@ async function runSystem(ctx, runtime) {
         if (p.wouldAdd.length) console.log(`    ${theme.success('+ would add:')} ${p.wouldAdd.join(', ')}`);
         if (p.wouldSkip.length) console.log(`    ${theme.dim('· already present:')} ${p.wouldSkip.join(', ')}`);
       }
+      if (selectedToolIds.length > 0) {
+        const detectedTools = detectAutomationTools(AUTOMATION_TOOLS);
+        console.log();
+        infoMsg('Automation tools:');
+        for (const toolId of selectedToolIds) {
+          const tool = AUTOMATION_TOOLS.find((t) => t.id === toolId);
+          const detected = detectedTools.find((t) => t.id === toolId);
+          const status = detected?.installed ? theme.dim('(already installed)') : theme.success('(will install)');
+          const cmd = tool.installCommand[osInfo.name] || tool.installCommand.macOS;
+          console.log(`    ${tool.name} ${status} — ${theme.dim(cmd)}`);
+        }
+      }
       if (selectedSkillIds.length > 0) {
         console.log();
         infoMsg(`Would install skills: ${selectedSkillIds.join(', ')}`);
@@ -336,10 +402,12 @@ async function runSystem(ctx, runtime) {
     return {
       selectedMcpIds,
       selectedSkillIds,
+      selectedToolIds,
       needsEnv: [],
       mcpResults: null,
       skillResults: null,
-      dryResult: { mode: 'system', dryRun: true, agents: selectedAgentIds, mcp: selectedMcpIds, skills: selectedSkillIds, previews },
+      toolResults: null,
+      dryResult: { mode: 'system', dryRun: true, agents: selectedAgentIds, mcp: selectedMcpIds, skills: selectedSkillIds, tools: selectedToolIds, previews },
     };
   }
 
@@ -349,7 +417,7 @@ async function runSystem(ctx, runtime) {
     sectionHeader('Configuring (System)');
   });
 
-  const result = { mcpResults: null, skillResults: null };
+  const result = { mcpResults: null, skillResults: null, toolResults: null };
 
   if (selectedMcpIds.length > 0) {
     const spinner = runtime.json
@@ -381,6 +449,49 @@ async function runSystem(ctx, runtime) {
     }
   }
 
+  if (selectedToolIds.length > 0) {
+    const detectedTools = detectAutomationTools(AUTOMATION_TOOLS);
+    const toolResults = { installed: [], skipped: [], errors: [] };
+
+    const spinner = runtime.json
+      ? null
+      : ora({ text: 'Installing automation tools...', color: 'cyan' }).start();
+
+    for (const toolId of selectedToolIds) {
+      const tool = AUTOMATION_TOOLS.find((t) => t.id === toolId);
+      const detected = detectedTools.find((t) => t.id === toolId);
+
+      if (detected?.installed) {
+        toolResults.skipped.push(toolId);
+        continue;
+      }
+
+      const installCmd = tool.installCommand[osInfo.name] || tool.installCommand.macOS;
+      try {
+        execSync(installCmd, { stdio: 'pipe', timeout: 60000 });
+        toolResults.installed.push(toolId);
+      } catch (err) {
+        toolResults.errors.push({ id: toolId, name: tool.name, error: err.message, command: installCmd });
+      }
+    }
+
+    spinner?.stop();
+    result.toolResults = toolResults;
+    recordSystemTools(toolResults);
+
+    quiet(runtime, () => {
+      if (toolResults.installed.length > 0) {
+        successMsg(`Automation tools installed: ${toolResults.installed.join(', ')}`);
+      }
+      if (toolResults.skipped.length > 0) {
+        infoMsg(`Already installed: ${toolResults.skipped.join(', ')}`);
+      }
+      for (const err of toolResults.errors) {
+        warnMsg(`${err.name}: install failed. Run manually: ${err.command}`);
+      }
+    });
+  }
+
   if (selectedSkillIds.length > 0) {
     const spinner = runtime.json
       ? null
@@ -410,7 +521,7 @@ async function runSystem(ctx, runtime) {
   const selectedServers = selectedMcpIds.map((id) => MCP_SERVERS.find((s) => s.id === id)).filter(Boolean);
   const needsEnv = selectedServers.filter((s) => s.requiresEnv);
 
-  return { selectedMcpIds, selectedSkillIds, needsEnv, ...result };
+  return { selectedMcpIds, selectedSkillIds, selectedToolIds, needsEnv, ...result };
 }
 
 // ══════════════════════════════════════════════
@@ -799,10 +910,12 @@ export async function run(mode, opts = {}) {
       system: systemResult ? {
         mcp: systemResult.selectedMcpIds || [],
         skills: systemResult.selectedSkillIds || [],
+        tools: systemResult.selectedToolIds || [],
         needsEnv: (systemResult.needsEnv || []).map((s) => s.id),
         results: {
           mcp: systemResult.mcpResults || null,
           skills: systemResult.skillResults || null,
+          tools: systemResult.toolResults || null,
         },
         ...(systemResult.dryResult ? { previews: systemResult.dryResult.previews } : {}),
       } : null,

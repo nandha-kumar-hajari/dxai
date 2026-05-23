@@ -16,6 +16,7 @@ export function emptyManifest() {
     agents: [],
     mcp: {},     // { [agentId]: { [serverId]: { addedAt, configPath } } }
     skills: {},  // { [skillId]: { addedAt, path } }
+    tools: {},   // { [toolId]: { addedAt } }
     files: [],   // [{ relativePath, addedAt }]
   };
 }
@@ -82,6 +83,17 @@ export function recordSystemSkills(skillResults) {
         addedAt: now,
         path: skillResults.directory,
       };
+    }
+  });
+}
+
+export function recordSystemTools(toolResults) {
+  if (!toolResults || toolResults.installed.length === 0) return;
+  updateManifest(SYSTEM_MANIFEST_PATH, (m) => {
+    if (!m.tools) m.tools = {};
+    const now = new Date().toISOString();
+    for (const toolId of toolResults.installed) {
+      m.tools[toolId] = { addedAt: now };
     }
   });
 }

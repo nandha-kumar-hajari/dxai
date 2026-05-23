@@ -17,6 +17,7 @@ export function normalizeOptions(opts = {}) {
     agents: opts.agents,
     mcp: opts.mcp,
     skills: opts.skills,
+    tools: opts.tools,
     features: opts.features,
     stack: opts.stack,
   };
