@@ -8,7 +8,7 @@
 import { execSync } from 'node:child_process';
 import { writePage } from './lib/render.mjs';
 
-const REPO = 'Nandha-d3v/d3v-ai-cli';
+const REPO = 'nandha-kumar-hajari/dxai';
 const TYPES = [
   { key: 'feat', label: 'Features' },
   { key: 'fix', label: 'Bug fixes' },

@@ -13,3 +13,10 @@ docs/node_modules/
 # Playwright MCP session artifacts (snapshots, console logs, ad-hoc screenshots)
 .playwright-mcp/
 /*.png
+
+# Playwright test runner output
+playwright-report/
+test-results/
+blob-report/
+playwright/.cache/
+.last-run.json

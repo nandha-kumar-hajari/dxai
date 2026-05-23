@@ -31,8 +31,8 @@ npm uninstall -g dxai
 ## 3. From source (for contributors)
 
 ```bash
-git clone https://github.com/Nandha-d3v/d3v-ai-cli.git
-cd d3v-ai-cli
+git clone https://github.com/nandha-kumar-hajari/dxai.git
+cd dxai
 npm install
 node bin/cli.js --help
 
@@ -59,7 +59,7 @@ dxai is verified on **macOS, Linux, and Windows** in the GitHub Actions matrix.
 
 dxai writes to two scopes:
 
-- **System** — your home dir: `~/.cursor/mcp.json`, `~/.codex/config.toml`, etc. See [Config files](/d3v-ai-cli/reference/config-files/) for the full per-tool list.
+- **System** — your home dir: `~/.cursor/mcp.json`, `~/.codex/config.toml`, etc. See [Config files](/dxai/reference/config-files/) for the full per-tool list.
 - **Project** — your current working directory: `CLAUDE.md`, `AGENTS.md`, `.cursor/rules/*.mdc`, etc.
 
 Existing files are merged where possible (idempotent) and **always backed up** with a timestamped sibling (`<file>.bak.<timestamp>`) before any modification.

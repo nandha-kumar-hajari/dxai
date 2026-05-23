@@ -56,7 +56,7 @@ export default function generate() {
 
   sections.push('## Environment variables');
   sections.push('');
-  sections.push('See [Environment Variables](/d3v-ai-cli/reference/env-vars/) for the full list.');
+  sections.push('See [Environment Variables](/dxai/reference/env-vars/) for the full list.');
 
   writePage({
     relativePath: 'reference/flags.md',

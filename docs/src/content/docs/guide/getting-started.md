@@ -31,7 +31,7 @@ You'll be prompted to choose what to set up:
   Both    — full system + project setup
 ```
 
-That's it for interactive mode. Continue to [Quick Start](/d3v-ai-cli/guide/quick-start/) for an end-to-end walkthrough, or jump to [Non-interactive / CI](/d3v-ai-cli/guide/non-interactive/) if you want to script it.
+That's it for interactive mode. Continue to [Quick Start](/dxai/guide/quick-start/) for an end-to-end walkthrough, or jump to [Non-interactive / CI](/dxai/guide/non-interactive/) if you want to script it.
 
 ## Where things live
 

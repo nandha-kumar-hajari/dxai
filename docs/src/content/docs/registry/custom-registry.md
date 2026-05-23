@@ -27,7 +27,7 @@ DXAI_REGISTRY_URL=https://my-cdn.example.com/dxai-registry dxai update
 The default base URL is the bundled JSON in this repo's `main` branch:
 
 ```
-https://raw.githubusercontent.com/Nandha-d3v/d3v-ai-cli/main/src/registry/data
+https://raw.githubusercontent.com/nandha-kumar-hajari/dxai/main/src/registry/data
 ```
 
 ## Hosting your own

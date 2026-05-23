@@ -5,8 +5,8 @@ import starlightLlmsTxt from 'starlight-llms-txt';
 import icon from 'astro-icon';
 
 export default defineConfig({
-  site: 'https://nandha-d3v.github.io',
-  base: '/d3v-ai-cli',
+  site: 'https://nandha-kumar-hajari.github.io',
+  base: '/dxai',
   trailingSlash: 'ignore',
   integrations: [
     icon({
@@ -33,10 +33,10 @@ export default defineConfig({
         Hero: './src/components/Hero.astro',
       },
       social: [
-        { icon: 'github', label: 'GitHub', href: 'https://github.com/Nandha-d3v/d3v-ai-cli' },
+        { icon: 'github', label: 'GitHub', href: 'https://github.com/nandha-kumar-hajari/dxai' },
       ],
       editLink: {
-        baseUrl: 'https://github.com/Nandha-d3v/d3v-ai-cli/edit/main/docs/',
+        baseUrl: 'https://github.com/nandha-kumar-hajari/dxai/edit/main/docs/',
       },
       lastUpdated: true,
       plugins: [starlightLlmsTxt()],

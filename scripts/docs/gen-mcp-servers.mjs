@@ -48,8 +48,8 @@ export default function generate() {
   sections.push('');
   sections.push('Three options:');
   sections.push('');
-  sections.push('1. Open a PR adding it to [`src/registry/data/mcp-servers.json`](https://github.com/Nandha-d3v/d3v-ai-cli/main/src/registry/data/mcp-servers.json).');
-  sections.push('2. Host your own catalog and point [`DXAI_REGISTRY_URL`](/d3v-ai-cli/registry/custom-registry/) at it.');
+  sections.push('1. Open a PR adding it to [`src/registry/data/mcp-servers.json`](https://github.com/nandha-kumar-hajari/dxai/main/src/registry/data/mcp-servers.json).');
+  sections.push('2. Host your own catalog and point [`DXAI_REGISTRY_URL`](/dxai/registry/custom-registry/) at it.');
   sections.push('3. Add the entry directly to your tool\'s config; dxai will leave hand-added entries alone.');
 
   writePage({

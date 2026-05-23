@@ -89,6 +89,6 @@ Agent orchestration and specialized tools
 
 Three options:
 
-1. Open a PR adding it to [`src/registry/data/mcp-servers.json`](https://github.com/Nandha-d3v/d3v-ai-cli/main/src/registry/data/mcp-servers.json).
-2. Host your own catalog and point [`DXAI_REGISTRY_URL`](/d3v-ai-cli/registry/custom-registry/) at it.
+1. Open a PR adding it to [`src/registry/data/mcp-servers.json`](https://github.com/nandha-kumar-hajari/dxai/main/src/registry/data/mcp-servers.json).
+2. Host your own catalog and point [`DXAI_REGISTRY_URL`](/dxai/registry/custom-registry/) at it.
 3. Add the entry directly to your tool's config; dxai will leave hand-added entries alone.

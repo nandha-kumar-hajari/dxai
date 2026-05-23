@@ -4,10 +4,10 @@ import { writePage, mdTable } from './lib/render.mjs';
 const KEY_DOCS = {
   mode: { type: '`"system"` | `"project"` | `"both"`', desc: 'Default mode `dxai apply` runs when this profile is active.' },
   agents: { type: '`string[]`', desc: 'Agent IDs to configure (cursor, claude-code, vscode, codex, gemini, windsurf, antigravity).' },
-  mcp: { type: '`string[]`', desc: 'MCP server IDs to install. See [Registry / MCP servers](/d3v-ai-cli/registry/mcp-servers/).' },
-  skills: { type: '`string[]`', desc: 'Skill IDs to install. See [Registry / Skills](/d3v-ai-cli/registry/skills/).' },
+  mcp: { type: '`string[]`', desc: 'MCP server IDs to install. See [Registry / MCP servers](/dxai/registry/mcp-servers/).' },
+  skills: { type: '`string[]`', desc: 'Skill IDs to install. See [Registry / Skills](/dxai/registry/skills/).' },
   features: { type: '`string[]`', desc: 'Project features to generate (cursor-rules, agents-md, editorconfig, etc.).' },
-  stack: { type: '`string[]`', desc: 'Tech stack IDs. See [Registry / Stacks](/d3v-ai-cli/registry/stacks/).' },
+  stack: { type: '`string[]`', desc: 'Tech stack IDs. See [Registry / Stacks](/dxai/registry/stacks/).' },
   mcpInputs: { type: '`object`', desc: 'Per-server input values, keyed by server ID. Example: `{"filesystem": {"allowedPath": "~"}}`.' },
 };
 
@@ -17,7 +17,7 @@ export default function generate() {
   sections.push(
     'A profile is a JSON file capturing what `dxai system` / `dxai project` should install. CLI flags always beat profile values.',
     '',
-    'Auto-discovery: `./.dxai/profile.json` → `~/.dxai/config.json` → `~/.dxairc`. Override with `--profile <nameOrPath>`. See [Guide / Profiles](/d3v-ai-cli/guide/profiles/) for usage.',
+    'Auto-discovery: `./.dxai/profile.json` → `~/.dxai/config.json` → `~/.dxairc`. Override with `--profile <nameOrPath>`. See [Guide / Profiles](/dxai/guide/profiles/) for usage.',
     '',
   );
 
