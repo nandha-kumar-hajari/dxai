@@ -1,0 +1,55 @@
+import { CURSOR_COMMANDS } from '../../src/registry/stacks.js';
+import { writePage, mdTable } from './lib/render.mjs';
+
+// Pull the first heading line ("# Title") and the first numbered step out of
+// each command body for a tabular summary.
+function summarize(body) {
+  const lines = body.split('\n');
+  const title = lines.find((l) => l.startsWith('# '))?.replace(/^#\s+/, '') ?? '';
+  const firstStep =
+    lines.find((l) => /^\s*1\.\s/.test(l))?.replace(/^\s*1\.\s+/, '') ?? '';
+  return { title, firstStep };
+}
+
+export default function generate() {
+  const sections = [];
+
+  sections.push(
+    'Pre-built Cursor custom commands installed by `dxai project` when you enable the `cursor-commands` feature. They land in `.cursor/commands/<name>.md` so Cursor can run them as slash commands (e.g. `/pr`).',
+    '',
+  );
+
+  const rows = Object.entries(CURSOR_COMMANDS).map(([name, body]) => {
+    const { title, firstStep } = summarize(body);
+    return ['`/' + name + '`', '`' + name + '.md`', title, firstStep];
+  });
+
+  sections.push('## Commands');
+  sections.push('');
+  sections.push(mdTable(['Slash command', 'File', 'Title', 'Step 1'], rows));
+  sections.push('');
+
+  sections.push('## Full bodies');
+  sections.push('');
+  sections.push('Each generated file is a Cursor command body. The full text is reproduced below for reference.');
+  sections.push('');
+
+  for (const [name, body] of Object.entries(CURSOR_COMMANDS)) {
+    sections.push(`### \`/${name}\``);
+    sections.push('');
+    sections.push('```markdown');
+    sections.push(body.trimEnd());
+    sections.push('```');
+    sections.push('');
+  }
+
+  writePage({
+    relativePath: 'registry/cursor-commands.md',
+    frontmatter: {
+      title: 'Cursor Commands',
+      description: `${Object.keys(CURSOR_COMMANDS).length} pre-built Cursor slash commands installed by dxai project.`,
+    },
+    sourceLabel: 'src/registry/stacks.js (CURSOR_COMMANDS) — generator: scripts/docs/gen-cursor-commands.mjs',
+    body: sections.join('\n'),
+  });
+}

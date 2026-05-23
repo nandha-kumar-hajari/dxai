@@ -1,0 +1,33 @@
+---
+title: dxai project
+description: "Project-level setup (stack, rules, CLAUDE.md, .editorconfig, etc.)"
+sidebar: {"order":2}
+---
+<!--
+AUTO-GENERATED — do not edit by hand.
+Regenerate via: npm run docs:generate
+Source: bin/cli.js (generator: scripts/docs/gen-commands.mjs)
+-->
+
+Project-level setup (stack, rules, CLAUDE.md, .editorconfig, etc.)
+
+## Synopsis
+
+```bash
+dxai project [options]
+```
+
+## Options
+
+| Flag | Description | Notes |
+| --- | --- | --- |
+| `-y, --yes` | skip prompts; use defaults / values from flags | — |
+| `--agents <list>` | comma-separated agent IDs (cursor,claude-code,vscode,codex,gemini,windsurf,antigravity) | required |
+| `--mcp <list>` | comma-separated MCP server IDs | required |
+| `--skills <list>` | comma-separated skill IDs | required |
+| `--features <list>` | comma-separated project feature IDs | required |
+| `--stack <list>` | comma-separated tech stack IDs | required |
+| `--profile <nameOrPath>` | load a saved profile (name or path) | required |
+| `--no-profile` | skip auto-discovery of project/user profiles | — |
+| `--json` | emit machine-readable JSON output (no colors, no spinners) | — |
+| `--dry-run` | preview changes without writing | — |

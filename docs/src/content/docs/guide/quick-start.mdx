@@ -1,0 +1,77 @@
+---
+title: Quick Start
+description: Zero to a configured AI dev environment in two minutes.
+---
+
+import { Steps } from '@astrojs/starlight/components';
+
+## Interactive (recommended for first run)
+
+<Steps>
+
+1. **Run the wizard.**
+
+   ```bash
+   npx dxai
+   ```
+
+2. **Pick what to set up.** Choose `Both` if you're configuring a brand-new machine and a brand-new project.
+
+3. **Pick your AI tools.** dxai detects what's installed and pre-checks them. You can also include tools you haven't installed yet — it'll show you platform-specific install commands at the end.
+
+4. **Pick MCP servers and skills.** Recommended ones are pre-checked (marked with ★). For project mode you'll also pick your tech stack and which scaffolding files to generate.
+
+5. **Confirm.** dxai writes the configs, creates timestamped backups of any existing files, and prints a summary of what changed.
+
+</Steps>
+
+## Non-interactive (CI / scripted)
+
+```bash
+npx dxai system --yes \
+  --agents cursor,claude-code \
+  --mcp github,playwright,context7
+
+npx dxai project --yes \
+  --stack react,node \
+  --features cursor-rules,agents-md,editorconfig
+```
+
+Pass `--json` to get machine-readable output for piping into other tools. See [Non-interactive / CI](/dxai/guide/non-interactive/) for the full flag list.
+
+## Save a setup for your team
+
+```bash
+# In a project repo:
+dxai save-profile --here \
+  --agents cursor,claude-code \
+  --mcp github,playwright \
+  --features cursor-rules,agents-md
+git add .dxai/profile.json && git commit -m "Add dxai profile"
+```
+
+Anyone who clones the repo can then run `dxai apply` to get the same setup.
+
+## What just happened?
+
+Run `dxai list` to see what was installed:
+
+```bash
+dxai list             # human-readable
+dxai list --json      # machine-readable
+```
+
+Run `dxai doctor` to validate everything's healthy:
+
+```bash
+dxai doctor
+```
+
+If you ever want to back out, `dxai cleanup` walks the manifest and removes only what dxai installed — it won't touch entries you added by hand.
+
+## Next steps
+
+- [Non-interactive / CI](/dxai/guide/non-interactive/) — flags, env vars, JSON output, dry-run.
+- [Profiles](/dxai/guide/profiles/) — save and apply reusable setups.
+- [Introspection](/dxai/guide/introspection/) — `list`, `status`, `doctor` in depth.
+- [CLI Reference](/dxai/reference/commands/) — every subcommand and flag.

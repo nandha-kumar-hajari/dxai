@@ -1,0 +1,66 @@
+---
+title: Profiles
+description: Save and apply reusable setups for yourself or your team.
+---
+
+Profiles are reusable presets — handy for onboarding teammates with one command, locking down CI behavior, or saving your personal defaults.
+
+## Profile shape
+
+```json
+{
+  "mode": "both",
+  "agents": ["cursor", "claude-code"],
+  "mcp": ["github", "playwright", "context7"],
+  "skills": ["frontend-design"],
+  "features": ["cursor-rules", "agents-md", "editorconfig"],
+  "stack": ["react", "node"],
+  "mcpInputs": {
+    "filesystem": { "allowedPath": "~/Code" }
+  }
+}
+```
+
+Unknown keys are silently dropped (forward-compatibility for new fields).
+
+## Auto-discovery
+
+When you run a setup command without `--profile`, dxai checks (in order):
+
+1. `./.dxai/profile.json` (project-local — commit this for your team)
+2. `~/.dxai/config.json` (user-level)
+3. `~/.dxairc` or `~/.dxairc.json`
+
+Pass `--no-profile` to skip auto-discovery.
+
+## Precedence
+
+CLI flags **always beat** profile values. The profile only fills in keys that weren't passed on the command line.
+
+## Common workflows
+
+```bash
+# Save personal defaults to ~/.dxai/profiles/me.json
+dxai save-profile me \
+  --agents cursor,claude-code \
+  --mcp github,playwright \
+  --features cursor-rules,agents-md,editorconfig
+
+# Apply that profile in any project.
+cd ~/some-project
+dxai apply me
+
+# Save a project-local profile (commit ./.dxai/profile.json).
+dxai save-profile --here \
+  --stack react,node \
+  --features cursor-rules,agents-md \
+  --mcp playwright
+
+# A teammate clones the repo and runs:
+dxai apply               # auto-loads ./.dxai/profile.json
+
+# List discoverable profiles.
+dxai profiles
+```
+
+For the live schema see [Reference / Profile schema](/dxai/reference/profile-schema/).

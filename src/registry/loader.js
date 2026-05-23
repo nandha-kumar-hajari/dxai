@@ -24,7 +24,7 @@ export const BUNDLED_DIR = path.join(__dirname, 'data');
 // teams who want to host a fork.
 export const DEFAULT_REGISTRY_BASE =
   process.env.DXAI_REGISTRY_URL ||
-  'https://raw.githubusercontent.com/Nandha-d3v/d3v-ai-cli/main/src/registry/data';
+  'https://raw.githubusercontent.com/nandha-kumar-hajari/dxai/main/src/registry/data';
 
 function readJsonOr(filePath, fallback) {
   if (!fs.existsSync(filePath)) return fallback;

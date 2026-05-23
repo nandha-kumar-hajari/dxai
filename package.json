@@ -23,7 +23,13 @@
   "main": "src/index.js",
   "scripts": {
     "test": "node --test 'test/**/*.test.js'",
-    "smoke": "node bin/cli.js --version && node bin/cli.js --help > /dev/null"
+    "smoke": "node bin/cli.js --version && node bin/cli.js --help > /dev/null",
+    "docs:install": "npm --prefix docs install",
+    "docs:dev": "npm --prefix docs run dev",
+    "docs:build": "npm run docs:generate && npm --prefix docs run build",
+    "docs:preview": "npm --prefix docs run preview",
+    "docs:generate": "node scripts/docs/generate-all.mjs",
+    "docs:check": "node scripts/docs/check-drift.mjs"
   },
   "files": [
     "bin/",

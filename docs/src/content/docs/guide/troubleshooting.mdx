@@ -1,0 +1,36 @@
+---
+title: Troubleshooting
+description: Common issues and how to diagnose them.
+---
+
+## Start here
+
+Run the doctor:
+
+```bash
+dxai doctor
+```
+
+It checks: configs parse, required env vars, `npx` on PATH, and project files referenced in the manifest still exist. Exits non-zero on errors.
+
+## Common issues
+
+### "Profile not found"
+
+Either the named profile doesn't exist in `~/.dxai/profiles/` and `./.dxai/`, or the path you passed doesn't resolve. List with `dxai profiles`.
+
+### MCP server selected but doesn't work
+
+Most likely: the server needs an env var that isn't set. Run `dxai doctor` to see which env vars are missing, or check the [Registry / MCP servers](/dxai/registry/mcp-servers/) page.
+
+### Want to start over
+
+```bash
+dxai cleanup
+```
+
+Removes everything dxai installed (manifest-aware — won't touch entries you added by hand).
+
+### `dxai update` fails
+
+dxai falls back to the bundled registry when the remote is unreachable, so the CLI keeps working offline. To check what URL it's hitting: `echo $DXAI_REGISTRY_URL` (empty means the default GitHub URL).

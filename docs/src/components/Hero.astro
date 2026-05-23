@@ -1,0 +1,264 @@
+---
+import TerminalMock from './TerminalMock.astro';
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const getStartedHref = `${base}/guide/getting-started/`;
+const githubHref = 'https://github.com/nandha-kumar-hajari/dxai';
+---
+
+<section class="dx-hero" aria-labelledby="dx-hero-title">
+  <div class="dx-hero-bg" aria-hidden="true">
+    <div class="dx-hero-glow"></div>
+    <div class="dx-hero-grid"></div>
+  </div>
+
+  <div class="dx-hero-inner">
+    <div class="dx-hero-text">
+      <span class="dx-hero-eyebrow">
+        <span class="dx-hero-pulse" aria-hidden="true"></span>
+        AI dev environment bootstrapper
+      </span>
+      <h1 id="dx-hero-title" class="dx-hero-title">
+        One command to wire up <span class="dx-hero-grad">every AI coding tool</span>.
+      </h1>
+      <p class="dx-hero-tag">
+        dxai installs MCP servers, agent skills, Cursor rules, and AI-friendly project
+        files across Cursor, Claude Code, VS Code, Codex, Gemini, Windsurf, and Antigravity —
+        from a single interactive run.
+      </p>
+      <div class="dx-hero-ctas">
+        <a class="dx-btn dx-btn--primary" href={getStartedHref}>
+          Get started
+          <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+            <path
+              d="M6 3.5L10.5 8L6 12.5"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            ></path>
+          </svg>
+        </a>
+        <a class="dx-btn dx-btn--ghost" href={githubHref} rel="noopener" target="_blank">
+          <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+            <path
+              fill="currentColor"
+              d="M8 0C3.58 0 0 3.58 0 8a8 8 0 0 0 5.47 7.59c.4.07.55-.17.55-.38 0-.19-.01-.69-.01-1.36-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.42 7.42 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"
+            ></path>
+          </svg>
+          View on GitHub
+        </a>
+      </div>
+      <div class="dx-hero-meta">
+        <code>npx dxai</code>
+        <span class="dx-hero-meta-sep" aria-hidden="true">•</span>
+        <span>no install needed</span>
+        <span class="dx-hero-meta-sep" aria-hidden="true">•</span>
+        <span>MIT licensed</span>
+      </div>
+    </div>
+
+    <div class="dx-hero-art">
+      <TerminalMock />
+    </div>
+  </div>
+</section>
+
+<style>
+  .dx-hero {
+    position: relative;
+    isolation: isolate;
+    padding: 1.5rem 1.5rem 2rem;
+    overflow: hidden;
+  }
+
+  .dx-hero-bg {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+  }
+
+  .dx-hero-glow {
+    position: absolute;
+    inset: -20% -10% auto -10%;
+    height: 70%;
+    background: radial-gradient(
+      ellipse at 50% 0%,
+      color-mix(in srgb, #0ea5e9 35%, transparent) 0%,
+      color-mix(in srgb, #0ea5e9 8%, transparent) 35%,
+      transparent 70%
+    );
+    filter: blur(20px);
+  }
+
+  .dx-hero-grid {
+    position: absolute;
+    inset: 0;
+    background-image:
+      radial-gradient(
+        circle at center,
+        color-mix(in srgb, var(--sl-color-text) 8%, transparent) 1px,
+        transparent 1px
+      );
+    background-size: 28px 28px;
+    mask-image: radial-gradient(ellipse at 50% 30%, #000 30%, transparent 70%);
+    -webkit-mask-image: radial-gradient(ellipse at 50% 30%, #000 30%, transparent 70%);
+    opacity: 0.6;
+  }
+
+  .dx-hero-inner {
+    max-width: 78rem;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2.5rem;
+    align-items: start;
+  }
+
+  @media (min-width: 56rem) {
+    .dx-hero {
+      padding: 2.25rem 2rem 2.75rem;
+    }
+    .dx-hero-inner {
+      grid-template-columns: 1.05fr 1fr;
+      gap: 4rem;
+    }
+  }
+
+  .dx-hero-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-family: ui-monospace, SFMono-Regular, 'JetBrains Mono', Menlo, monospace;
+    font-size: 0.78rem;
+    letter-spacing: 0.06em;
+    color: #0ea5e9;
+    background: color-mix(in srgb, #0ea5e9 12%, transparent);
+    border: 1px solid color-mix(in srgb, #0ea5e9 28%, transparent);
+    border-radius: 999px;
+    padding: 0.3rem 0.7rem;
+  }
+
+  .dx-hero-pulse {
+    width: 0.45rem;
+    height: 0.45rem;
+    border-radius: 50%;
+    background: #0ea5e9;
+    box-shadow: 0 0 0 0 color-mix(in srgb, #0ea5e9 70%, transparent);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .dx-hero-pulse {
+      animation: dx-pulse 2s ease-in-out infinite;
+    }
+  }
+
+  @keyframes dx-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, #0ea5e9 70%, transparent); }
+    50% { box-shadow: 0 0 0 6px color-mix(in srgb, #0ea5e9 0%, transparent); }
+  }
+
+  .dx-hero-title {
+    font-size: clamp(2rem, 4.5vw, 3.4rem);
+    line-height: 1.1;
+    letter-spacing: -0.03em;
+    margin: 1.1rem 0 0.9rem;
+    font-weight: 800;
+    max-width: 22ch;
+  }
+
+  .dx-hero-grad {
+    background: linear-gradient(
+      120deg,
+      #38bdf8 0%,
+      #0ea5e9 40%,
+      #6366f1 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .dx-hero-tag {
+    color: color-mix(in srgb, var(--sl-color-text) 75%, transparent);
+    font-size: 1.05rem;
+    line-height: 1.6;
+    max-width: 38rem;
+    margin: 0 0 1.5rem;
+  }
+
+  .dx-hero-ctas {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .dx-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.7rem 1.1rem;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    text-decoration: none;
+    transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease, border-color 160ms ease;
+    border: 1px solid transparent;
+  }
+
+  .dx-btn:focus-visible {
+    outline: 2px solid #0ea5e9;
+    outline-offset: 2px;
+  }
+
+  .dx-btn--primary {
+    background: #0284c7;
+    color: #fff;
+    box-shadow:
+      0 1px 0 0 color-mix(in srgb, #ffffff 25%, transparent) inset,
+      0 12px 30px -12px color-mix(in srgb, #0ea5e9 70%, transparent);
+  }
+  .dx-btn--primary:hover {
+    background: #0369a1;
+    transform: translateY(-1px);
+  }
+
+  .dx-btn--ghost {
+    background: color-mix(in srgb, var(--sl-color-bg) 70%, transparent);
+    color: var(--sl-color-text);
+    border-color: color-mix(in srgb, var(--sl-color-text) 18%, transparent);
+    backdrop-filter: blur(8px);
+  }
+  .dx-btn--ghost:hover {
+    border-color: color-mix(in srgb, #0ea5e9 50%, transparent);
+    transform: translateY(-1px);
+  }
+
+  .dx-hero-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    align-items: center;
+    color: color-mix(in srgb, var(--sl-color-text) 55%, transparent);
+    font-size: 0.85rem;
+  }
+  .dx-hero-meta code {
+    background: color-mix(in srgb, var(--sl-color-bg) 50%, #000 50%);
+    color: #7dd3fc;
+    padding: 0.15rem 0.45rem;
+    border-radius: 6px;
+    border: 1px solid color-mix(in srgb, #0ea5e9 22%, transparent);
+    font-size: 0.8rem;
+  }
+  .dx-hero-meta-sep { opacity: 0.5; }
+
+  .dx-hero-art {
+    width: 100%;
+  }
+  @media (max-width: 56rem) {
+    .dx-hero-art { margin-top: 0.5rem; }
+  }
+</style>

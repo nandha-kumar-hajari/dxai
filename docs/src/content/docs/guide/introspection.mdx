@@ -1,0 +1,21 @@
+---
+title: Introspection
+description: list / status / doctor — see what dxai installed, detect drift, validate your environment.
+---
+
+dxai writes a manifest after each install so it knows exactly what it changed:
+
+- **System manifest** — `~/.dxai/manifest.json`
+- **Project manifest** — `./.dxai/manifest.json`
+
+Three commands consume it:
+
+```bash
+dxai list           # what's installed (system + project)
+dxai status         # drift between manifest and live config
+dxai doctor         # validate install (configs parse, env vars, tools on PATH)
+```
+
+`status` reports both **missing** entries (recorded but no longer in config) and **extra** entries (in config but not added by dxai). All three commands support `--json`. `doctor` exits 1 if any error-severity finding is reported.
+
+The manifest also makes `dxai cleanup` precise — it only removes things dxai actually installed.

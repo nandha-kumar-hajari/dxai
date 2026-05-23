@@ -1,0 +1,33 @@
+---
+title: Architecture
+description: Module map and how the CLI is wired together.
+---
+
+```
+bin/cli.js                # Commander entry; subcommands + flags
+src/
+  index.js                # Setup orchestration: run / apply / saveProfile / listProfiles
+  runtime.js              # Option normalization (CI / yes / json / dry-run)
+  profile.js              # Profile load / merge / save / discovery
+  manifest.js             # ~/.dxai + ./.dxai manifest helpers
+  inspect.js              # list, status, doctor
+  update.js               # update (remote registry refresh)
+  cleanup.js              # cleanup / reset (manifest-aware)
+  config-writer.js        # File writers + dry-run previews (JSON/TOML/Claude CLI)
+  config-remover.js       # Scan + remove helpers
+  detect.js               # OS, prerequisite, agent detection
+  detect-project.js       # Stack / tooling / git inference
+  branding.js             # Banner, colors, message helpers
+  registry/
+    mcp-servers.js        # Re-exports loaded via the loader
+    skills.js             # Same
+    stacks.js             # Tech stacks, Cursor rules, commands, templates
+    loader.js             # cache > bundled JSON resolution; remote fetch
+    data/
+      mcp-servers.json    # Bundled MCP catalog
+      skills.json         # Bundled skills catalog
+test/                     # node:test suite (42 tests)
+.github/workflows/        # ci.yml + docs.yml
+```
+
+Loading is synchronous: registry data is resolved at module import via `loadRegistry(name)` which prefers `~/.dxai/cache/<name>.json` and falls back to the bundled JSON shipped in `src/registry/data/`.

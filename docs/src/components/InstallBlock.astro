@@ -1,0 +1,156 @@
+---
+interface Props {
+  /** Lines to display in the terminal block. Each line shown with a `$` prompt. */
+  commands?: string[];
+  /** The single command copied to the clipboard. */
+  copy?: string;
+}
+
+const {
+  commands = ['npx dxai'],
+  copy = 'npx dxai',
+} = Astro.props;
+---
+
+<section class="dxai-section dx-install" aria-labelledby="dx-install-title">
+  <span class="dxai-section-eyebrow">Quick install</span>
+  <h2 id="dx-install-title" class="dxai-section-title">Run it once</h2>
+  <p class="dxai-section-subtitle">
+    No global install required. The interactive picker walks you through the rest.
+  </p>
+
+  <div class="dx-install-window">
+    <div class="dx-install-bar" aria-hidden="true">
+      <span class="dx-install-dot dx-install-dot--r"></span>
+      <span class="dx-install-dot dx-install-dot--y"></span>
+      <span class="dx-install-dot dx-install-dot--g"></span>
+      <span class="dx-install-bar-label">install.sh</span>
+      <button
+        type="button"
+        class="dx-install-copy"
+        data-copy={copy}
+        aria-label="Copy install command"
+      >
+        <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+          <path
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            d="M5 5V3.5A1.5 1.5 0 0 1 6.5 2h6A1.5 1.5 0 0 1 14 3.5v6A1.5 1.5 0 0 1 12.5 11H11M3.5 5h6A1.5 1.5 0 0 1 11 6.5v6A1.5 1.5 0 0 1 9.5 14h-6A1.5 1.5 0 0 1 2 12.5v-6A1.5 1.5 0 0 1 3.5 5z"
+          ></path>
+        </svg>
+        <span class="dx-install-copy-label">Copy</span>
+      </button>
+    </div>
+    <pre class="dx-install-body"><code>{commands.map((cmd, i) => (
+      <span class="dx-install-line"><span class="dx-install-prompt">$</span> {cmd}{i < commands.length - 1 ? '\n' : ''}</span>
+    ))}</code></pre>
+  </div>
+</section>
+
+<script>
+  const buttons = document.querySelectorAll<HTMLButtonElement>('.dx-install-copy');
+  buttons.forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const text = btn.dataset.copy;
+      if (!text) return;
+      try {
+        await navigator.clipboard.writeText(text);
+        const label = btn.querySelector<HTMLSpanElement>('.dx-install-copy-label');
+        if (!label) return;
+        const original = label.textContent;
+        label.textContent = 'Copied';
+        btn.classList.add('is-copied');
+        setTimeout(() => {
+          label.textContent = original;
+          btn.classList.remove('is-copied');
+        }, 1500);
+      } catch {
+        /* clipboard unavailable; silent */
+      }
+    });
+  });
+</script>
+
+<style>
+  .dx-install-window {
+    border: 1px solid color-mix(in srgb, #0ea5e9 28%, transparent);
+    border-radius: 14px;
+    overflow: hidden;
+    background: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--sl-color-bg) 75%, #0ea5e9 6%) 0%,
+      var(--sl-color-bg) 100%
+    );
+    box-shadow: 0 18px 50px -28px color-mix(in srgb, #0ea5e9 50%, transparent);
+    font-family: ui-monospace, SFMono-Regular, 'JetBrains Mono', Menlo, monospace;
+    max-width: 48rem;
+  }
+
+  .dx-install-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.55rem 0.85rem;
+    background: color-mix(in srgb, var(--sl-color-bg) 60%, #000 40%);
+    border-bottom: 1px solid color-mix(in srgb, #0ea5e9 18%, transparent);
+  }
+
+  .dx-install-dot {
+    width: 0.65rem;
+    height: 0.65rem;
+    border-radius: 50%;
+  }
+  .dx-install-dot--r { background: #ff5f57; }
+  .dx-install-dot--y { background: #febc2e; }
+  .dx-install-dot--g { background: #28c840; }
+
+  .dx-install-bar-label {
+    margin-left: 0.35rem;
+    color: color-mix(in srgb, var(--sl-color-text) 55%, transparent);
+    font-size: 0.78rem;
+  }
+
+  .dx-install-copy {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    background: color-mix(in srgb, var(--sl-color-bg) 50%, transparent);
+    color: color-mix(in srgb, var(--sl-color-text) 80%, transparent);
+    border: 1px solid color-mix(in srgb, var(--sl-color-text) 14%, transparent);
+    padding: 0.25rem 0.55rem;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-family: inherit;
+    cursor: pointer;
+    transition: color 160ms, border-color 160ms, background 160ms;
+  }
+  .dx-install-copy:hover {
+    color: #0ea5e9;
+    border-color: color-mix(in srgb, #0ea5e9 50%, transparent);
+  }
+  .dx-install-copy:focus-visible {
+    outline: 2px solid #0ea5e9;
+    outline-offset: 2px;
+  }
+  .dx-install-copy.is-copied {
+    color: #22c55e;
+    border-color: color-mix(in srgb, #22c55e 50%, transparent);
+  }
+
+  .dx-install-body {
+    margin: 0;
+    padding: 1rem 1.25rem 1.15rem;
+    font-size: 0.9rem;
+    line-height: 1.7;
+    color: color-mix(in srgb, var(--sl-color-text) 88%, transparent);
+    background: transparent;
+    overflow-x: auto;
+  }
+  .dx-install-body code { background: transparent; }
+  .dx-install-line { display: block; }
+  .dx-install-prompt { color: #0ea5e9; font-weight: 600; user-select: none; }
+</style>

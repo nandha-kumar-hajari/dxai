@@ -8,7 +8,7 @@ export const SYSTEM_MANIFEST_PATH = path.join(HOME, '.dxai', 'manifest.json');
 export const PROJECT_MANIFEST_PATH = path.join('.dxai', 'manifest.json');
 export const MANIFEST_VERSION = 1;
 
-function emptyManifest() {
+export function emptyManifest() {
   return {
     version: MANIFEST_VERSION,
     createdAt: null,

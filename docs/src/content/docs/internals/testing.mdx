@@ -1,0 +1,36 @@
+---
+title: Testing
+description: How dxai is tested.
+---
+
+dxai uses Node's built-in test runner — no extra test framework.
+
+```bash
+npm test                                    # 42 tests, ~100ms
+npm test -- 'test/runtime.test.js'          # single file
+npm run smoke                               # quick --version + --help check
+```
+
+## Coverage
+
+| File | Covers |
+|---|---|
+| `test/runtime.test.js` | Option normalization, ID partitioning |
+| `test/profile.test.js` | Resolve / read / merge / save |
+| `test/manifest.test.js` | Read / write / round-trip |
+| `test/config-writer.test.js` | JSON / TOML merge, placeholders, backups, malformed JSON refusal |
+| `test/config-remover.test.js` | Scan + remove + project file discovery |
+| `test/detect-project.test.js` | Stack / monorepo / pkg-manager / linter detection |
+| `test/registry-loader.test.js` | Bundled registry shape + diffRegistry |
+
+## CI matrix
+
+`.github/workflows/ci.yml`:
+
+- **OS:** Ubuntu, macOS, Windows
+- **Node:** 18, 20, 22
+
+Each job runs:
+1. `node --check` against every `.js` in `src/` and `bin/`
+2. `npm test`
+3. Smoke run of `dxai --version` and `dxai --help`

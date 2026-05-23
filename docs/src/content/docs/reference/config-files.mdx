@@ -1,0 +1,38 @@
+---
+title: Config Files
+description: Where dxai reads from and writes to on your filesystem.
+---
+
+## dxai's own state
+
+| Path | Contents |
+|---|---|
+| `~/.dxai/profiles/<name>.json` | Saved user profiles |
+| `~/.dxai/config.json` | User-level default profile (auto-loaded) |
+| `~/.dxairc` / `~/.dxairc.json` | Alternate user-level default profile |
+| `~/.dxai/manifest.json` | Record of system-level installs |
+| `~/.dxai/cache/<name>.json` | Cached registry from `dxai update` |
+| `./.dxai/profile.json` | Project-local profile (commit this) |
+| `./.dxai/manifest.json` | Record of project-level installs |
+
+## Per-tool config files dxai writes
+
+| Tool | Format | Global path | Project path |
+|---|---|---|---|
+| Cursor | JSON | `~/.cursor/mcp.json` | `./.cursor/mcp.json` |
+| Claude Code | CLI (`claude mcp add`) | n/a | n/a |
+| VS Code / Copilot | JSON | `~/Library/Application Support/Code/User/mcp.json` (macOS) · `~/.config/Code/User/mcp.json` (Linux) · `%APPDATA%\Code\User\mcp.json` (Windows) | `./.vscode/mcp.json` |
+| OpenAI Codex CLI | TOML | `~/.codex/config.toml` | n/a |
+| Gemini CLI | JSON | `~/.gemini/settings.json` | `./.gemini/settings.json` |
+| Windsurf | JSON | `~/.codeium/windsurf/mcp_config.json` | n/a |
+| Google Antigravity | JSON | `~/.gemini/antigravity/mcp_config.json` | n/a |
+
+## Backups
+
+Any time dxai modifies an existing config file, it creates a timestamped backup sibling first:
+
+```
+~/.cursor/mcp.json.bak.2026-04-26T10-15-30
+```
+
+Use `dxai cleanup` to remove backups and managed entries.

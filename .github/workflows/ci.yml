@@ -46,3 +46,23 @@ jobs:
         run: |
           node bin/cli.js --version
           node bin/cli.js --help
+
+  docs-check:
+    name: docs drift check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # gen-changelog.mjs needs full history
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Verify generated docs match committed
+        run: npm run docs:check
