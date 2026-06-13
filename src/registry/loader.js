@@ -26,6 +26,15 @@ export const DEFAULT_REGISTRY_BASE =
   process.env.DXAI_REGISTRY_URL ||
   'https://raw.githubusercontent.com/nandha-kumar-hajari/dxai/main/src/registry/data';
 
+// Resolve the registry base URL for a fetch. Precedence:
+//   explicit url  >  version ref (swaps the branch segment of the default)  >  default.
+// When DXAI_REGISTRY_URL is set but carries no `/main/` segment, a version ref is a no-op.
+export function registryBaseFor({ version, url } = {}) {
+  if (url) return url;
+  if (version) return DEFAULT_REGISTRY_BASE.replace(/\/main\//, `/${version}/`);
+  return DEFAULT_REGISTRY_BASE;
+}
+
 function readJsonOr(filePath, fallback) {
   if (!fs.existsSync(filePath)) return fallback;
   try {
@@ -50,9 +59,12 @@ export function loadRegistry(name) {
 }
 
 // Remote fetch — used by `dxai update`. Async, since we hit the network.
-export async function fetchRegistry(name, baseUrl = DEFAULT_REGISTRY_BASE) {
+// timeoutMs (optional) aborts a slow fetch; used by the background auto-refresh
+// so a stale network never blocks an interactive run for long.
+export async function fetchRegistry(name, baseUrl = DEFAULT_REGISTRY_BASE, { timeoutMs } = {}) {
   const url = `${baseUrl.replace(/\/$/, '')}/${name}.json`;
-  const res = await fetch(url, { redirect: 'follow' });
+  const signal = timeoutMs ? AbortSignal.timeout(timeoutMs) : undefined;
+  const res = await fetch(url, { redirect: 'follow', signal });
   if (!res.ok) {
     throw new Error(`Failed to fetch ${url}: HTTP ${res.status}`);
   }

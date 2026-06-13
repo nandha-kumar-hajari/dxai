@@ -25,9 +25,10 @@ import {
   previewMcpConfigs,
 } from './config-writer.js';
 import { normalizeOptions, partitionByKnown } from './runtime.js';
+import { maybeRefreshCatalog } from './auto-update.js';
 import { resolveProfile, readProfile, mergeWithProfile, saveProfile, listProfiles } from './profile.js';
 import {
-  recordSystemMcp, recordSystemSkills, recordSystemTools, recordProjectMcp, recordProjectFiles,
+  recordSystemMcp, recordSystemSkills, recordSystemTools, recordProjectMcp, recordProjectSkills, recordProjectFiles,
 } from './manifest.js';
 
 // In --json mode, suppress decorative output.
@@ -185,6 +186,91 @@ async function sharedSetup(runtime) {
 }
 
 // ══════════════════════════════════════════════
+// Skills — shared selection + install (used by system and project modes)
+// ══════════════════════════════════════════════
+// Skills are downloaded into a project-level directory (.agents/skills, which
+// Codex reads natively, or .cursor/skills), so they're meaningful in both the
+// system and project flows. These helpers keep the two call sites consistent.
+async function selectSkills(runtime, headerLabel, { recommendByDefault = true } = {}) {
+  if (runtime.skills !== undefined) {
+    const knownIds = SKILLS.map((s) => s.id);
+    const { valid, invalid } = partitionByKnown(runtime.skills, knownIds);
+    if (invalid.length > 0) {
+      throw new Error(`Unknown skill ID(s): ${invalid.join(', ')}`);
+    }
+    return valid;
+  }
+  if (runtime.nonInteractive) {
+    // No explicit --skills: system mode seeds the recommended set; project mode
+    // stays empty so `dxai project --yes` doesn't trigger unexpected downloads.
+    return recommendByDefault ? SKILLS.filter((s) => s.recommended).map((s) => s.id) : [];
+  }
+
+  quiet(runtime, () => {
+    console.log();
+    sectionHeader(headerLabel);
+    console.log();
+  });
+
+  const skillChoices = [];
+  for (const cat of SKILL_CATEGORIES) {
+    const catSkills = SKILLS.filter((s) => s.category === cat.id);
+    if (catSkills.length === 0) continue;
+
+    skillChoices.push(new inquirer.Separator(chalk.cyan(`\n  ${cat.label}`)));
+    for (const s of catSkills) {
+      const rec = s.recommended ? chalk.yellow(' ★') : '';
+      skillChoices.push({
+        name: `${s.name}${rec} — ${chalk.dim(s.description)}`,
+        value: s.id,
+        checked: !!s.recommended,
+      });
+    }
+  }
+
+  const { selectedSkillIds: picked } = await inquirer.prompt([
+    {
+      type: 'checkbox',
+      name: 'selectedSkillIds',
+      message: 'Select agent skills to install:',
+      choices: skillChoices,
+      pageSize: 20,
+      loop: false,
+    },
+  ]);
+  return picked;
+}
+
+// Install the chosen skills and report results. `record` persists them to the
+// appropriate manifest (system vs project). Mutates `result.skillResults`.
+function installAndReportSkills(selectedSkillIds, selectedAgents, runtime, result, record) {
+  if (selectedSkillIds.length === 0) return;
+  const spinner = runtime.json
+    ? null
+    : ora({ text: 'Installing agent skills...', color: 'cyan' }).start();
+  try {
+    const skillResults = installSkills(selectedSkillIds, SKILLS, selectedAgents);
+    spinner?.stop();
+    result.skillResults = skillResults;
+    record(skillResults);
+
+    quiet(runtime, () => {
+      if (skillResults.installed.length > 0) {
+        successMsg(`Skills installed: ${skillResults.installed.join(', ')}`);
+        infoMsg(`Skills directory: ${skillResults.directory}`);
+      }
+      for (const err of skillResults.errors) {
+        warnMsg(`Skill "${err.name}": ${err.error}`);
+      }
+    });
+  } catch (err) {
+    spinner?.stop();
+    if (runtime.json) throw err;
+    errorMsg(`Skills installation failed: ${err.message}`);
+  }
+}
+
+// ══════════════════════════════════════════════
 // System Mode — global/user-level configs
 // ══════════════════════════════════════════════
 async function runSystem(ctx, runtime) {
@@ -295,51 +381,7 @@ async function runSystem(ctx, runtime) {
   }
 
   // ── Agent Skills Selection ──
-  let selectedSkillIds;
-  if (runtime.skills !== undefined) {
-    const knownIds = SKILLS.map((s) => s.id);
-    const { valid, invalid } = partitionByKnown(runtime.skills, knownIds);
-    if (invalid.length > 0) {
-      throw new Error(`Unknown skill ID(s): ${invalid.join(', ')}`);
-    }
-    selectedSkillIds = valid;
-  } else if (runtime.nonInteractive) {
-    selectedSkillIds = SKILLS.filter((s) => s.recommended).map((s) => s.id);
-  } else {
-    quiet(runtime, () => {
-      console.log();
-      sectionHeader('Select Agent Skills (Global)');
-      console.log();
-    });
-
-    const skillChoices = [];
-    for (const cat of SKILL_CATEGORIES) {
-      const catSkills = SKILLS.filter((s) => s.category === cat.id);
-      if (catSkills.length === 0) continue;
-
-      skillChoices.push(new inquirer.Separator(chalk.cyan(`\n  ${cat.label}`)));
-      for (const s of catSkills) {
-        const rec = s.recommended ? chalk.yellow(' ★') : '';
-        skillChoices.push({
-          name: `${s.name}${rec} — ${chalk.dim(s.description)}`,
-          value: s.id,
-          checked: !!s.recommended,
-        });
-      }
-    }
-
-    const { selectedSkillIds: picked } = await inquirer.prompt([
-      {
-        type: 'checkbox',
-        name: 'selectedSkillIds',
-        message: 'Select agent skills to install:',
-        choices: skillChoices,
-        pageSize: 20,
-        loop: false,
-      },
-    ]);
-    selectedSkillIds = picked;
-  }
+  const selectedSkillIds = await selectSkills(runtime, 'Select Agent Skills (Global)');
 
   // Collect required inputs.
   const mcpInputs = await collectMcpInputs(selectedMcpIds, MCP_SERVERS, runtime);
@@ -492,31 +534,7 @@ async function runSystem(ctx, runtime) {
     });
   }
 
-  if (selectedSkillIds.length > 0) {
-    const spinner = runtime.json
-      ? null
-      : ora({ text: 'Installing agent skills...', color: 'cyan' }).start();
-    try {
-      const skillResults = installSkills(selectedSkillIds, SKILLS, selectedAgents);
-      spinner?.stop();
-      result.skillResults = skillResults;
-      recordSystemSkills(skillResults);
-
-      quiet(runtime, () => {
-        if (skillResults.installed.length > 0) {
-          successMsg(`Skills installed: ${skillResults.installed.join(', ')}`);
-          infoMsg(`Skills directory: ${skillResults.directory}`);
-        }
-        for (const err of skillResults.errors) {
-          warnMsg(`Skill "${err.name}": ${err.error}`);
-        }
-      });
-    } catch (err) {
-      spinner?.stop();
-      if (runtime.json) throw err;
-      errorMsg(`Skills installation failed: ${err.message}`);
-    }
-  }
+  installAndReportSkills(selectedSkillIds, selectedAgents, runtime, result, recordSystemSkills);
 
   const selectedServers = selectedMcpIds.map((id) => MCP_SERVERS.find((s) => s.id === id)).filter(Boolean);
   const needsEnv = selectedServers.filter((s) => s.requiresEnv);
@@ -527,7 +545,7 @@ async function runSystem(ctx, runtime) {
 // ══════════════════════════════════════════════
 // Project Mode — cwd project configs
 // ══════════════════════════════════════════════
-async function runProject(ctx, runtime) {
+async function runProject(ctx, runtime, { handleSkills = false } = {}) {
   const { selectedAgents, selectedAgentIds } = ctx;
   const hasCursor = selectedAgentIds.includes('cursor');
 
@@ -636,7 +654,7 @@ async function runProject(ctx, runtime) {
     }
     featureChoices.push(
       { name: 'CLAUDE.md / GEMINI.md — agent instruction files', value: 'agent-instructions', checked: true },
-      { name: 'AGENTS.md — AI-context project overview', value: 'agents-md', checked: true },
+      { name: 'AGENTS.md — agent rules + project context (Codex CLI & other AGENTS.md-aware agents)', value: 'agents-md', checked: true },
       { name: '.gitattributes — AI-friendly git config', value: 'gitattributes', checked: true },
       { name: '.editorconfig — consistent formatting', value: 'editorconfig', checked: true },
     );
@@ -705,6 +723,16 @@ async function runProject(ctx, runtime) {
 
   const projectMcpInputs = await collectMcpInputs(projectMcpIds, MCP_SERVERS, runtime);
 
+  // ── Agent Skills Selection ──
+  // Skills install into a project-level directory (.agents/skills, read natively
+  // by Codex), so they belong to project setup. When running in "both" mode the
+  // system flow already handles skills, so we only prompt/install here when this
+  // flow owns them (project-only mode).
+  let selectedSkillIds = [];
+  if (handleSkills) {
+    selectedSkillIds = await selectSkills(runtime, 'Select Agent Skills (Project)', { recommendByDefault: false });
+  }
+
   // ── Summary & Confirmation ──
   quiet(runtime, () => {
     console.log();
@@ -715,6 +743,9 @@ async function runProject(ctx, runtime) {
     console.log(theme.label('  Features:  ') + (selectedFeatures.length > 0 ? selectedFeatures.join(', ') : 'none'));
     if (projectMcpIds.length > 0) {
       console.log(theme.label('  Proj MCP:  ') + projectMcpIds.join(', '));
+    }
+    if (handleSkills) {
+      console.log(theme.label('  Skills:    ') + (selectedSkillIds.length > 0 ? selectedSkillIds.join(', ') : 'none'));
     }
     console.log();
   });
@@ -735,11 +766,13 @@ async function runProject(ctx, runtime) {
       sectionHeader('Dry run — no changes written');
       infoMsg(`Would generate features: ${selectedFeatures.join(', ') || 'none'}`);
       if (projectMcpIds.length > 0) infoMsg(`Would write project MCP: ${projectMcpIds.join(', ')}`);
+      if (handleSkills && selectedSkillIds.length > 0) infoMsg(`Would install skills: ${selectedSkillIds.join(', ')}`);
     });
     return {
       selectedStackIds,
       selectedFeatures,
       projectMcpIds,
+      selectedSkillIds,
       dryRun: true,
     };
   }
@@ -835,7 +868,12 @@ async function runProject(ctx, runtime) {
 
   if (writtenFiles.length > 0) recordProjectFiles(writtenFiles);
 
-  return { selectedStackIds, selectedFeatures, projectMcpIds };
+  const projectResult = { selectedStackIds, selectedFeatures, projectMcpIds, selectedSkillIds };
+  if (handleSkills) {
+    installAndReportSkills(selectedSkillIds, selectedAgents, runtime, projectResult, recordProjectSkills);
+  }
+
+  return projectResult;
 }
 
 // ══════════════════════════════════════════════
@@ -866,6 +904,10 @@ export async function run(mode, opts = {}) {
   quiet(runtime, () => printBanner());
   if (profilePath) quiet(runtime, () => infoMsg(`Loaded profile: ${profilePath}`));
 
+  // Periodically refresh the catalog cache (opt-out; skips in --json/CI). Updates the
+  // on-disk cache for the next run — see src/auto-update.js.
+  await maybeRefreshCatalog(runtime);
+
   if (!mode) {
     if (runtime.nonInteractive) {
       // Default to "both" in non-interactive mode.
@@ -879,7 +921,7 @@ export async function run(mode, opts = {}) {
           message: 'What would you like to set up?',
           choices: [
             { name: 'System  — global IDE configs, MCP servers, agent skills', value: 'system' },
-            { name: 'Project — AI-friendly project config (rules, CLAUDE.md, etc.)', value: 'project' },
+            { name: 'Project — AI-friendly project config (rules, CLAUDE.md, skills, etc.)', value: 'project' },
             { name: 'Both    — full system + project setup', value: 'both' },
           ],
         },
@@ -898,7 +940,9 @@ export async function run(mode, opts = {}) {
 
   let projectResult = null;
   if (mode === 'project' || runBoth) {
-    projectResult = await runProject(ctx, runtime);
+    // In "both" mode the system flow already installs skills; let the project
+    // flow own them only when running project-only, to avoid double installs.
+    projectResult = await runProject(ctx, runtime, { handleSkills: mode === 'project' });
   }
 
   if (runtime.json) {
@@ -923,6 +967,10 @@ export async function run(mode, opts = {}) {
         stack: projectResult.selectedStackIds || [],
         features: projectResult.selectedFeatures || [],
         projectMcp: projectResult.projectMcpIds || [],
+        skills: projectResult.selectedSkillIds || [],
+        results: {
+          skills: projectResult.skillResults || null,
+        },
       } : null,
     };
     process.stdout.write(JSON.stringify(out, null, 2) + '\n');

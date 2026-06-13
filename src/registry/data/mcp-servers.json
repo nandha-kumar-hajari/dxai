@@ -48,36 +48,9 @@
       "description": "Live, version-specific library documentation",
       "category": "essential",
       "recommended": true,
-      "configs": {
-        "cursor": {
-          "url": "https://mcp.context7.com/mcp"
-        },
-        "claude-code": {
-          "command": "claude",
-          "args": [
-            "mcp",
-            "add",
-            "context7",
-            "--transport",
-            "http",
-            "https://mcp.context7.com/mcp"
-          ]
-        },
-        "codex": {
-          "toml": "[mcp_servers.context7]\nurl = \"https://mcp.context7.com/mcp\""
-        },
-        "gemini": {
-          "httpUrl": "https://mcp.context7.com/mcp"
-        },
-        "vscode": {
-          "url": "https://mcp.context7.com/mcp"
-        },
-        "windsurf": {
-          "serverUrl": "https://mcp.context7.com/mcp"
-        },
-        "antigravity": {
-          "serverUrl": "https://mcp.context7.com/mcp"
-        }
+      "transport": {
+        "type": "http",
+        "url": "https://mcp.context7.com/mcp"
       }
     },
     {
@@ -86,78 +59,25 @@
       "description": "Multi-step structured reasoning for complex problems",
       "category": "essential",
       "recommended": true,
-      "configs": {
-        "cursor": {
-          "command": "npx",
-          "args": [
-            "-y",
-            "@modelcontextprotocol/server-sequential-thinking"
-          ]
-        },
-        "claude-code": {
-          "command": "claude",
-          "args": [
-            "mcp",
-            "add",
-            "sequential-thinking",
-            "--",
-            "npx",
-            "-y",
-            "@modelcontextprotocol/server-sequential-thinking"
-          ]
-        },
-        "codex": {
-          "toml": "[mcp_servers.sequential-thinking]\ncommand = \"npx\"\nargs = [\"-y\", \"@modelcontextprotocol/server-sequential-thinking\"]"
-        },
-        "gemini": {
-          "command": "npx",
-          "args": [
-            "-y",
-            "@modelcontextprotocol/server-sequential-thinking"
-          ]
-        },
-        "vscode": {
-          "command": "npx",
-          "args": [
-            "-y",
-            "@modelcontextprotocol/server-sequential-thinking"
-          ]
-        },
-        "windsurf": {
-          "command": "npx",
-          "args": [
-            "-y",
-            "@modelcontextprotocol/server-sequential-thinking"
-          ]
-        },
-        "antigravity": {
-          "command": "npx",
-          "args": [
-            "-y",
-            "@modelcontextprotocol/server-sequential-thinking"
-          ]
-        }
+      "version": "2025.12.18",
+      "transport": {
+        "type": "stdio",
+        "command": "npx",
+        "args": [
+          "-y",
+          "@modelcontextprotocol/server-sequential-thinking"
+        ]
       }
     },
     {
       "id": "github",
       "name": "GitHub",
-      "description": "PRs, issues, repos, code search",
+      "description": "PRs, issues, repos, code search (official remote MCP, OAuth)",
       "category": "code-git",
       "recommended": true,
-      "requiresEnv": {
-        "GITHUB_PERSONAL_ACCESS_TOKEN": "GitHub Personal Access Token"
-      },
       "configs": {
         "cursor": {
-          "command": "npx",
-          "args": [
-            "-y",
-            "@modelcontextprotocol/server-github"
-          ],
-          "env": {
-            "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_PERSONAL_ACCESS_TOKEN}"
-          }
+          "url": "https://api.githubcopilot.com/mcp/"
         },
         "claude-code": {
           "command": "claude",
@@ -165,57 +85,25 @@
             "mcp",
             "add",
             "github",
-            "--",
-            "npx",
-            "-y",
-            "@modelcontextprotocol/server-github"
-          ],
-          "env": {
-            "GITHUB_PERSONAL_ACCESS_TOKEN": true
-          }
+            "--transport",
+            "http",
+            "https://api.githubcopilot.com/mcp/"
+          ]
         },
         "codex": {
-          "toml": "[mcp_servers.github]\ncommand = \"npx\"\nargs = [\"-y\", \"@modelcontextprotocol/server-github\"]\n\n[mcp_servers.github.env]\nGITHUB_PERSONAL_ACCESS_TOKEN = \"$GITHUB_PERSONAL_ACCESS_TOKEN\""
+          "toml": "[mcp_servers.github]\nurl = \"https://api.githubcopilot.com/mcp/\""
         },
         "gemini": {
-          "command": "npx",
-          "args": [
-            "-y",
-            "@modelcontextprotocol/server-github"
-          ],
-          "env": {
-            "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_PERSONAL_ACCESS_TOKEN}"
-          }
+          "httpUrl": "https://api.githubcopilot.com/mcp/"
         },
         "vscode": {
-          "command": "npx",
-          "args": [
-            "-y",
-            "@modelcontextprotocol/server-github"
-          ],
-          "env": {
-            "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_PERSONAL_ACCESS_TOKEN}"
-          }
+          "url": "https://api.githubcopilot.com/mcp/"
         },
         "windsurf": {
-          "command": "npx",
-          "args": [
-            "-y",
-            "@modelcontextprotocol/server-github"
-          ],
-          "env": {
-            "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_PERSONAL_ACCESS_TOKEN}"
-          }
+          "serverUrl": "https://api.githubcopilot.com/mcp/"
         },
         "antigravity": {
-          "command": "npx",
-          "args": [
-            "-y",
-            "@modelcontextprotocol/server-github"
-          ],
-          "env": {
-            "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_PERSONAL_ACCESS_TOKEN}"
-          }
+          "serverUrl": "https://api.githubcopilot.com/mcp/"
         }
       }
     },
@@ -224,6 +112,8 @@
       "name": "GitLab",
       "description": "Merge requests, issues, pipelines",
       "category": "code-git",
+      "stale": true,
+      "staleReason": "Upstream @modelcontextprotocol/server-gitlab is archived; no official remote MCP yet. Kept working for now.",
       "requiresEnv": {
         "GITLAB_TOKEN": "GitLab Personal Access Token"
       },
@@ -417,6 +307,8 @@
       "name": "Slack",
       "description": "Search messages, channels, send notifications",
       "category": "productivity",
+      "stale": true,
+      "staleReason": "Upstream @modelcontextprotocol/server-slack is archived; no official remote MCP yet. Kept working for now.",
       "requiresEnv": {
         "SLACK_BOT_TOKEN": "Slack Bot OAuth Token"
       },
@@ -491,21 +383,11 @@
     {
       "id": "linear",
       "name": "Linear",
-      "description": "Issues, projects, cycles management",
+      "description": "Issues, projects, cycles management (official remote MCP, OAuth)",
       "category": "productivity",
-      "requiresEnv": {
-        "LINEAR_API_KEY": "Linear API Key"
-      },
       "configs": {
         "cursor": {
-          "command": "npx",
-          "args": [
-            "-y",
-            "@modelcontextprotocol/server-linear"
-          ],
-          "env": {
-            "LINEAR_API_KEY": "${LINEAR_API_KEY}"
-          }
+          "url": "https://mcp.linear.app/mcp"
         },
         "claude-code": {
           "command": "claude",
@@ -513,54 +395,25 @@
             "mcp",
             "add",
             "linear",
-            "--",
-            "npx",
-            "-y",
-            "@modelcontextprotocol/server-linear"
+            "--transport",
+            "http",
+            "https://mcp.linear.app/mcp"
           ]
         },
         "codex": {
-          "toml": "[mcp_servers.linear]\ncommand = \"npx\"\nargs = [\"-y\", \"@modelcontextprotocol/server-linear\"]\n\n[mcp_servers.linear.env]\nLINEAR_API_KEY = \"$LINEAR_API_KEY\""
+          "toml": "[mcp_servers.linear]\nurl = \"https://mcp.linear.app/mcp\""
         },
         "gemini": {
-          "command": "npx",
-          "args": [
-            "-y",
-            "@modelcontextprotocol/server-linear"
-          ],
-          "env": {
-            "LINEAR_API_KEY": "${LINEAR_API_KEY}"
-          }
+          "httpUrl": "https://mcp.linear.app/mcp"
         },
         "vscode": {
-          "command": "npx",
-          "args": [
-            "-y",
-            "@modelcontextprotocol/server-linear"
-          ],
-          "env": {
-            "LINEAR_API_KEY": "${LINEAR_API_KEY}"
-          }
+          "url": "https://mcp.linear.app/mcp"
         },
         "windsurf": {
-          "command": "npx",
-          "args": [
-            "-y",
-            "@modelcontextprotocol/server-linear"
-          ],
-          "env": {
-            "LINEAR_API_KEY": "${LINEAR_API_KEY}"
-          }
+          "serverUrl": "https://mcp.linear.app/mcp"
         },
         "antigravity": {
-          "command": "npx",
-          "args": [
-            "-y",
-            "@modelcontextprotocol/server-linear"
-          ],
-          "env": {
-            "LINEAR_API_KEY": "${LINEAR_API_KEY}"
-          }
+          "serverUrl": "https://mcp.linear.app/mcp"
         }
       }
     },
@@ -987,6 +840,7 @@
       "name": "Filesystem",
       "description": "Secure file access outside project root",
       "category": "advanced",
+      "version": "2026.1.14",
       "requiresInput": {
         "allowedPath": {
           "prompt": "Path the filesystem MCP is allowed to access",
@@ -1058,6 +912,7 @@
       "name": "Memory",
       "description": "Persistent memory across agent sessions",
       "category": "advanced",
+      "version": "2026.1.26",
       "configs": {
         "cursor": {
           "command": "npx",

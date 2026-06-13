@@ -14,6 +14,7 @@ import {
 import {
   scanJsonMcpConfig, scanTomlMcpConfig, scanClaudeCodeMcpServers,
 } from './config-remover.js';
+import { handshakeServer, resolveSpawnSpec } from './handshake.js';
 
 const HOME = os.homedir();
 
@@ -175,6 +176,7 @@ export async function doctorCmd(opts = {}) {
   const ok = (msg) => findings.push({ severity: 'ok', msg });
   const warn = (msg) => findings.push({ severity: 'warn', msg });
   const fail = (msg) => findings.push({ severity: 'error', msg });
+  const info = (msg) => findings.push({ severity: 'info', msg });
 
   // 1. Config files parse.
   for (const agent of AGENT_DEFINITIONS) {
@@ -231,6 +233,26 @@ export async function doctorCmd(opts = {}) {
     else warn(`project file missing: ${f.relativePath} (recorded in manifest)`);
   }
 
+  // 5. Handshake (opt-in) — spawn each installed MCP server and verify JSON-RPC.
+  if (opts.handshake) {
+    for (const id of installedIds) {
+      const meta = MCP_SERVERS.find((s) => s.id === id);
+      if (!meta) continue;
+      const spec = resolveSpawnSpec(meta);
+      if (!spec) {
+        info(`handshake: ${meta.name} is a remote/URL server — skipped`);
+        continue;
+      }
+      if (meta.requiresEnv && Object.keys(meta.requiresEnv).some((v) => !process.env[v])) {
+        warn(`handshake: ${meta.name} skipped — required env not set`);
+        continue;
+      }
+      const res = await handshakeServer(spec, { timeoutMs: 10000 });
+      if (res.ok) ok(`handshake: ${meta.name} responded to initialize`);
+      else fail(`handshake: ${meta.name} failed — ${res.error}`);
+    }
+  }
+
   const summary = {
     ok: findings.filter((f) => f.severity === 'ok').length,
     warn: findings.filter((f) => f.severity === 'warn').length,
@@ -249,6 +271,7 @@ export async function doctorCmd(opts = {}) {
   for (const f of findings) {
     if (f.severity === 'ok') successMsg(f.msg);
     else if (f.severity === 'warn') warnMsg(f.msg);
+    else if (f.severity === 'info') infoMsg(f.msg);
     else errorMsg(f.msg);
   }
   console.log();

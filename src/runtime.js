@@ -14,6 +14,8 @@ export function normalizeOptions(opts = {}) {
     dryRun,
     json: json || ci,
     nonInteractive,
+    // --no-update sets opts.update === false (commander negation).
+    update: opts.update !== false,
     agents: opts.agents,
     mcp: opts.mcp,
     skills: opts.skills,

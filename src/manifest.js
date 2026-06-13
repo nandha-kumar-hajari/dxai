@@ -117,6 +117,20 @@ export function recordProjectMcp(mcpResults, addedServerIds, cwd = process.cwd()
   });
 }
 
+export function recordProjectSkills(skillResults, cwd = process.cwd()) {
+  if (!skillResults || skillResults.installed.length === 0) return;
+  const filePath = path.join(cwd, PROJECT_MANIFEST_PATH);
+  updateManifest(filePath, (m) => {
+    const now = new Date().toISOString();
+    for (const skillName of skillResults.installed) {
+      m.skills[skillName] = {
+        addedAt: now,
+        path: skillResults.directory,
+      };
+    }
+  });
+}
+
 export function recordProjectFiles(filePaths, cwd = process.cwd()) {
   if (!filePaths || filePaths.length === 0) return;
   const filePath = path.join(cwd, PROJECT_MANIFEST_PATH);

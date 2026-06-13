@@ -1,7 +1,7 @@
 import fs from 'fs-extra';
 import path from 'path';
 import os from 'os';
-import { execSync } from 'child_process';
+import { execSync, execFileSync } from 'child_process';
 import { successMsg, warnMsg, errorMsg, infoMsg, theme } from './branding.js';
 import { buildAgentsMd, buildClaudeMd, buildGeminiMd, buildCursorRule } from './registry/stacks.js';
 
@@ -55,6 +55,69 @@ function buildReplacements(server, inputs) {
     out[def.placeholder] = resolveInputPath(raw);
   }
   return out;
+}
+
+// ══════════════════════════════════════════════
+// Version pinning
+// ══════════════════════════════════════════════
+// True for an npm package specifier (optionally scoped); false for paths, URLs, flags.
+function isPackageSpec(tok) {
+  return /^(@[a-z0-9][\w.-]*\/)?[a-z0-9][\w.-]*$/i.test(tok);
+}
+
+// Append `@<version>` to a package specifier unless it already carries a version.
+// For scoped names (`@scope/name`) the leading `@` is not a version marker.
+function applyVersion(spec, version) {
+  const at = spec.lastIndexOf('@');
+  const hasVersion = spec.startsWith('@') ? at > 0 : at !== -1;
+  return hasVersion ? spec : `${spec}@${version}`;
+}
+
+// Pin the package token within an args array. Only tokens after the `npx` anchor
+// are considered, so `mcp`/`add`/<id> in a `claude mcp add` command are never touched.
+function pinArgs(args, version) {
+  const out = [...args];
+  const npxIdx = out.indexOf('npx');
+  const start = npxIdx === -1 ? 0 : npxIdx + 1;
+  for (let i = start; i < out.length; i++) {
+    const tok = out[i];
+    if (typeof tok !== 'string' || tok.startsWith('-')) continue;
+    if (!isPackageSpec(tok)) continue;
+    out[i] = applyVersion(tok, version);
+    break;
+  }
+  return out;
+}
+
+// Pin the package inside a TOML `args = [...]` block.
+function pinTomlPackage(toml, version) {
+  return toml.replace(/args\s*=\s*\[([^\]]*)\]/, (_m, inner) => {
+    const parts = inner.split(',').map((s) => s.trim());
+    for (let i = 0; i < parts.length; i++) {
+      const mm = parts[i].match(/^"(.*)"$/);
+      if (!mm) continue;
+      const tok = mm[1];
+      if (tok.startsWith('-') || tok === 'npx' || !isPackageSpec(tok)) continue;
+      parts[i] = `"${applyVersion(tok, version)}"`;
+      break;
+    }
+    return `args = [${parts.join(', ')}]`;
+  });
+}
+
+// Apply a server's pinned `version` to a per-agent config. Handles command/args
+// (npx-based stdio servers, incl. `claude mcp add` CLI) and the Codex TOML string.
+// No-op for URL/remote configs or when `version` is absent → existing entries unchanged.
+export function pinPackageVersion(config, version) {
+  if (!version || !config || typeof config !== 'object') return config;
+  if (Array.isArray(config.args)) {
+    const isNpx = config.command === 'npx' || config.args.includes('npx');
+    return isNpx ? { ...config, args: pinArgs(config.args, version) } : config;
+  }
+  if (typeof config.toml === 'string' && config.toml.includes('npx')) {
+    return { ...config, toml: pinTomlPackage(config.toml, version) };
+  }
+  return config;
 }
 
 // ══════════════════════════════════════════════
@@ -166,8 +229,9 @@ function configureClaudeCodeMcp(servers) {
         continue;
       }
 
-      const args = config.args.join(' ');
-      execSync(`claude ${args}`, {
+      // Pass argv directly (no shell) so registry-derived args can never be
+      // interpreted as shell metacharacters. config.args is already ['mcp','add',…].
+      execFileSync('claude', config.args, {
         stdio: 'pipe',
         timeout: 15000,
         env: { ...process.env },
@@ -267,7 +331,8 @@ export function writeMcpConfigs(selectedAgents, selectedServers, mcpRegistry, in
         const server = mcpRegistry.find((s) => s.id === serverId);
         if (!server || !server.configs[agent.id]) return null;
         const replacements = buildReplacements(server, inputs);
-        const config = substitutePlaceholders(server.configs[agent.id], replacements);
+        let config = substitutePlaceholders(server.configs[agent.id], replacements);
+        if (server.version) config = pinPackageVersion(config, server.version);
         return { id: serverId, config, meta: server };
       })
       .filter(Boolean);
@@ -466,7 +531,8 @@ export function writeProjectMcpConfigs(agentsWithProjectMcp, selectedServers, mc
         const server = mcpRegistry.find((s) => s.id === serverId);
         if (!server || !server.configs[agent.id]) return null;
         const replacements = buildReplacements(server, inputs);
-        const config = substitutePlaceholders(server.configs[agent.id], replacements);
+        let config = substitutePlaceholders(server.configs[agent.id], replacements);
+        if (server.version) config = pinPackageVersion(config, server.version);
         return { id: serverId, config, meta: server };
       })
       .filter(Boolean);
@@ -605,38 +671,55 @@ export function installSkills(selectedSkills, skillRegistry, selectedAgents) {
   const installed = [];
   const errors = [];
 
-  // Determine target directory
-  // Use .cursor/skills if Cursor selected, else .agents/skills
+  // Determine target directory.
+  // `.agents/skills` is OpenAI Codex CLI's native repository-level skills path
+  // (Codex scans it from cwd up to the repo root) and is the cross-tool
+  // convention, so we prefer it whenever Codex is among the selected agents —
+  // even alongside Cursor — so Codex discovers the skills without extra config.
+  // Cursor's own location (`.cursor/skills`) is used only when Cursor is
+  // selected and Codex is not.
+  const hasCodex = selectedAgents.some((a) => a.id === 'codex');
   const hasCursor = selectedAgents.some((a) => a.id === 'cursor');
-  const skillsBaseDir = hasCursor
+  const skillsBaseDir = (hasCursor && !hasCodex)
     ? path.join(process.cwd(), '.cursor', 'skills')
     : path.join(process.cwd(), '.agents', 'skills');
 
   fs.ensureDirSync(skillsBaseDir);
+
+  // A skill counts as installed only once its SKILL.md is actually on disk —
+  // never trust an installer's exit code alone.
+  const hasSkillContent = (dir) => fs.existsSync(path.join(dir, 'SKILL.md'));
 
   for (const skillId of selectedSkills) {
     const skill = skillRegistry.find((s) => s.id === skillId);
     if (!skill) continue;
 
     const targetDir = path.join(skillsBaseDir, skillId);
-    if (fs.existsSync(targetDir)) {
+    if (hasSkillContent(targetDir)) {
       infoMsg(`Skill "${skill.name}" already installed, skipping`);
       continue;
     }
+    // A leftover empty dir from a previous failed run would otherwise block a
+    // retry — clear it so we can reinstall cleanly.
+    if (fs.existsSync(targetDir)) fs.removeSync(targetDir);
 
     try {
       // Use npx skills or git clone
       const repoUrl = `https://github.com/${skill.repo}`;
       const clonePath = skill.path === '.' ? '' : `/${skill.path}`;
 
-      // Try npx skills first
+      // Try npx skills first. It clones the (often large) source repo, so allow
+      // a generous timeout, and verify SKILL.md landed before claiming success —
+      // a 0 exit code with no files written must NOT be reported as installed.
       try {
         execSync(
           `npx -y skills install ${repoUrl}/tree/main${clonePath} --dir "${skillsBaseDir}" 2>/dev/null`,
-          { stdio: 'pipe', timeout: 30000 }
+          { stdio: 'pipe', timeout: 180000 }
         );
-        installed.push(skill.name);
-        continue;
+        if (hasSkillContent(targetDir)) {
+          installed.push(skill.name);
+          continue;
+        }
       } catch {
         // Fall back to manual download
       }

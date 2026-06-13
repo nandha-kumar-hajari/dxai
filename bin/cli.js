@@ -39,7 +39,8 @@ export function buildProgram() {
       .addOption(new Option('--profile <nameOrPath>', 'load a saved profile (name or path)'))
       .addOption(new Option('--no-profile', 'skip auto-discovery of project/user profiles'))
       .addOption(new Option('--json', 'emit machine-readable JSON output (no colors, no spinners)'))
-      .addOption(new Option('--dry-run', 'preview changes without writing'));
+      .addOption(new Option('--dry-run', 'preview changes without writing'))
+      .addOption(new Option('--no-update', 'skip the periodic catalog refresh check'));
 
   sharedSetupOptions(
     program
@@ -135,6 +136,7 @@ export function buildProgram() {
     .command('doctor')
     .description('Validate dxai installation: configs parse, env vars set, tools on PATH')
     .addOption(new Option('--json', 'emit machine-readable JSON output'))
+    .addOption(new Option('--handshake', 'spawn each installed MCP server and verify it speaks JSON-RPC over stdio'))
     .action(async (opts) => {
       await doctorCmd(opts);
     });
@@ -144,6 +146,8 @@ export function buildProgram() {
     .command('update')
     .description('Fetch the latest registry (MCP servers, skills) and cache it locally')
     .addOption(new Option('--json', 'emit machine-readable JSON output'))
+    .addOption(new Option('--registry-version <ref>', 'registry tag/branch to fetch (default: main)'))
+    .addOption(new Option('--registry-url <url>', 'registry base URL (overrides DXAI_REGISTRY_URL)'))
     .action(async (opts) => {
       await updateCmd(opts);
     });
@@ -182,9 +186,13 @@ Profiles are auto-loaded from (in order):
 Pass --no-profile to skip auto-discovery, or --profile <nameOrPath> to override.
 
 Environment:
-  CI=true        Force non-interactive output (plain text, no spinners)
-  NO_COLOR=1     Disable colored output
-  DXAI_DRY_RUN=1 Equivalent to --dry-run
+  CI=true                  Force non-interactive output (plain text, no spinners)
+  NO_COLOR=1               Disable colored output
+  DXAI_DRY_RUN=1           Equivalent to --dry-run
+  DXAI_NO_AUTO_UPDATE=1    Disable the periodic catalog refresh (same as --no-update)
+  DXAI_UPDATE_TTL_DAYS=N   Days between catalog refresh checks (default 7)
+  DXAI_UPDATE_TIMEOUT_MS=N Network timeout for the background refresh (default 4000)
+  DXAI_REGISTRY_URL=<url>  Override the registry base URL (host a fork)
 `
   );
 

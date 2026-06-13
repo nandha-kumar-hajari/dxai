@@ -93,6 +93,14 @@ export function checkPrerequisites() {
 }
 
 // ── Agent Detection ──
+//
+// `mcpDialect` describes how an agent expresses an MCP server, so a server can
+// declare its `transport` once and have its per-agent config blocks derived
+// (see renderAgentConfig + src/registry/mcp-servers.js#deriveConfigs). Adding a
+// new agent here is enough to make every transport-based server support it.
+//   - { kind: 'json', urlKey }  → JSON config; HTTP servers use urlKey, stdio uses command/args/env
+//   - { kind: 'toml' }          → Codex-style TOML string block
+//   - { kind: 'claude-cli' }    → `claude mcp add ...` argv
 export const AGENT_DEFINITIONS = [
   {
     id: 'cursor',
@@ -105,6 +113,7 @@ export const AGENT_DEFINITIONS = [
     projectMcpPath: () => path.join('.cursor', 'mcp.json'),
     configFormat: 'json',
     mcpKey: 'mcpServers',
+    mcpDialect: { kind: 'json', urlKey: 'url' },
   },
   {
     id: 'claude-code',
@@ -115,6 +124,7 @@ export const AGENT_DEFINITIONS = [
     globalMcpPath: (home) => path.join(home, '.claude.json'),
     configFormat: 'cli',  // uses `claude mcp add`
     mcpKey: 'mcpServers',
+    mcpDialect: { kind: 'claude-cli' },
   },
   {
     id: 'vscode',
@@ -137,6 +147,7 @@ export const AGENT_DEFINITIONS = [
     projectMcpPath: () => path.join('.vscode', 'mcp.json'),
     configFormat: 'json',
     mcpKey: 'servers',
+    mcpDialect: { kind: 'json', urlKey: 'url' },
   },
   {
     id: 'codex',
@@ -147,6 +158,7 @@ export const AGENT_DEFINITIONS = [
     globalMcpPath: (home) => path.join(home, '.codex', 'config.toml'),
     configFormat: 'toml',
     mcpKey: 'mcp_servers',
+    mcpDialect: { kind: 'toml' },
   },
   {
     id: 'gemini',
@@ -158,6 +170,7 @@ export const AGENT_DEFINITIONS = [
     projectMcpPath: () => path.join('.gemini', 'settings.json'),
     configFormat: 'json',
     mcpKey: 'mcpServers',
+    mcpDialect: { kind: 'json', urlKey: 'httpUrl' },
   },
   {
     id: 'windsurf',
@@ -169,6 +182,7 @@ export const AGENT_DEFINITIONS = [
     globalMcpPath: (home) => path.join(home, '.codeium', 'windsurf', 'mcp_config.json'),
     configFormat: 'json',
     mcpKey: 'mcpServers',
+    mcpDialect: { kind: 'json', urlKey: 'serverUrl' },
   },
   {
     id: 'antigravity-ide',
@@ -180,6 +194,7 @@ export const AGENT_DEFINITIONS = [
     globalMcpPath: (home) => path.join(home, '.gemini', 'config', 'mcp_config.json'),
     configFormat: 'json',
     mcpKey: 'mcpServers',
+    mcpDialect: { kind: 'json', urlKey: 'serverUrl' },
   },
   {
     id: 'antigravity-cli',
@@ -190,8 +205,73 @@ export const AGENT_DEFINITIONS = [
     globalMcpPath: (home) => path.join(home, '.gemini', 'config', 'mcp_config.json'),
     configFormat: 'json',
     mcpKey: 'mcpServers',
+    mcpDialect: { kind: 'json', urlKey: 'serverUrl' },
   },
 ];
+
+// Legacy config-key aliases. Some catalogue entries were authored with a single
+// `antigravity` key before the IDE and CLI were split into two agents that share
+// one config file (~/.gemini/config/mcp_config.json). Derivation expands the alias
+// to both real agent ids so those servers reach Antigravity users.
+export const MCP_CONFIG_ALIASES = {
+  antigravity: ['antigravity-ide', 'antigravity-cli'],
+};
+
+// Derive an agent's MCP config block from a server's canonical `transport`.
+// Returns the config object (or, for Codex, a { toml } wrapper), or null when
+// the server has no transport / the agent has no dialect. Env vars come from the
+// server's `requiresEnv` keys, rendered per dialect (`${VAR}` for JSON, `$VAR`
+// for TOML; the claude-cli dialect inherits them from the parent process).
+export function renderAgentConfig(agent, server) {
+  const transport = server?.transport;
+  const dialect = agent?.mcpDialect;
+  if (!transport || !dialect) return null;
+
+  const { id } = server;
+  const envVars = server.requiresEnv ? Object.keys(server.requiresEnv) : [];
+
+  switch (dialect.kind) {
+    case 'json': {
+      if (transport.type === 'http') {
+        return transport.url ? { [dialect.urlKey]: transport.url } : null;
+      }
+      if (transport.type === 'stdio') {
+        const cfg = { command: transport.command, args: [...(transport.args || [])] };
+        if (envVars.length) {
+          cfg.env = {};
+          for (const v of envVars) cfg.env[v] = `\${${v}}`;
+        }
+        return cfg;
+      }
+      return null;
+    }
+    case 'claude-cli': {
+      if (transport.type === 'http') {
+        return { command: 'claude', args: ['mcp', 'add', id, '--transport', 'http', transport.url] };
+      }
+      if (transport.type === 'stdio') {
+        return { command: 'claude', args: ['mcp', 'add', id, '--', transport.command, ...(transport.args || [])] };
+      }
+      return null;
+    }
+    case 'toml': {
+      if (transport.type === 'http') {
+        return { toml: `[mcp_servers.${id}]\nurl = "${transport.url}"` };
+      }
+      if (transport.type === 'stdio') {
+        const argsList = (transport.args || []).map((a) => `"${a}"`).join(', ');
+        let toml = `[mcp_servers.${id}]\ncommand = "${transport.command}"\nargs = [${argsList}]`;
+        if (envVars.length) {
+          toml += `\n\n[mcp_servers.${id}.env]\n` + envVars.map((v) => `${v} = "$${v}"`).join('\n');
+        }
+        return { toml };
+      }
+      return null;
+    }
+    default:
+      return null;
+  }
+}
 
 export function detectAgents(home) {
   const agents = AGENT_DEFINITIONS.map((def) => {

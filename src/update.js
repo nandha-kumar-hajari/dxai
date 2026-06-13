@@ -1,49 +1,64 @@
 import {
   fetchRegistry, writeRegistryCache, loadRegistry,
-  diffRegistry, DEFAULT_REGISTRY_BASE,
+  diffRegistry, registryBaseFor,
 } from './registry/loader.js';
 import {
   printBanner, sectionHeader, successMsg, warnMsg, errorMsg, infoMsg, theme,
 } from './branding.js';
 
-const REGISTRY_FILES = [
+export const REGISTRY_FILES = [
   { name: 'mcp-servers', listKey: 'servers' },
   { name: 'skills', listKey: 'skills' },
   { name: 'automation-tools', listKey: 'tools' },
 ];
 
-export async function updateCmd(opts = {}) {
-  const json = !!opts.json;
-  if (!json) {
-    printBanner();
-    sectionHeader('Update — refreshing registry');
-    infoMsg(`Source: ${DEFAULT_REGISTRY_BASE}`);
-    console.log();
-  }
-
+// Fetch every registry file from `base`, validate shape, write the cache, and diff
+// against the previously-resolved registry. Returns a results array (one per file);
+// a per-file fetch/validation failure is captured as { ok: false, error } rather than
+// thrown, so one bad file doesn't sink the rest. Pure of any output — callers print.
+export async function refreshRegistry({ base = registryBaseFor({}), timeoutMs } = {}) {
   const results = [];
-
   for (const { name, listKey } of REGISTRY_FILES) {
     const before = (() => {
       try { return loadRegistry(name); } catch { return null; }
     })();
     try {
-      const { url, data } = await fetchRegistry(name);
+      const { url, data } = await fetchRegistry(name, base, { timeoutMs });
       // Basic shape check — must have an array under listKey.
       if (!Array.isArray(data?.[listKey])) {
         throw new Error(`Registry payload missing "${listKey}" array`);
       }
       const cachePath = writeRegistryCache(name, data);
       const diff = diffRegistry(before, data, listKey);
-      results.push({ name, url, cachePath, ok: true, ...diff });
-      if (!json) {
-        successMsg(`${name}: cached (${data[listKey].length} entries) → ${cachePath}`);
-        if (diff.added.length) console.log(`  ${theme.label('+ added:')} ${diff.added.join(', ')}`);
-        if (diff.removed.length) console.log(`  ${theme.label('- removed:')} ${diff.removed.join(', ')}`);
-      }
+      results.push({ name, url, cachePath, ok: true, count: data[listKey].length, ...diff });
     } catch (err) {
       results.push({ name, ok: false, error: err.message });
-      if (!json) errorMsg(`${name}: ${err.message}`);
+    }
+  }
+  return results;
+}
+
+export async function updateCmd(opts = {}) {
+  const json = !!opts.json;
+  const base = registryBaseFor({ version: opts.registryVersion, url: opts.registryUrl });
+  if (!json) {
+    printBanner();
+    sectionHeader('Update — refreshing registry');
+    infoMsg(`Source: ${base}`);
+    console.log();
+  }
+
+  const results = await refreshRegistry({ base });
+
+  if (!json) {
+    for (const r of results) {
+      if (r.ok) {
+        successMsg(`${r.name}: cached (${r.count} entries) → ${r.cachePath}`);
+        if (r.added.length) console.log(`  ${theme.label('+ added:')} ${r.added.join(', ')}`);
+        if (r.removed.length) console.log(`  ${theme.label('- removed:')} ${r.removed.join(', ')}`);
+      } else {
+        errorMsg(`${r.name}: ${r.error}`);
+      }
     }
   }
 

@@ -1,4 +1,5 @@
 import { MCP_SERVERS, MCP_CATEGORIES } from '../../src/registry/mcp-servers.js';
+import { AGENT_DEFINITIONS } from '../../src/detect.js';
 import { writePage, mdTable } from './lib/render.mjs';
 
 export default function generate() {
@@ -11,7 +12,8 @@ export default function generate() {
     '',
   );
 
-  const knownAgents = ['cursor', 'claude-code', 'vscode', 'codex', 'gemini', 'windsurf', 'antigravity'];
+  // Source of truth — stays correct as agents are added/split (see AGENT_DEFINITIONS).
+  const knownAgents = AGENT_DEFINITIONS.map((a) => a.id);
 
   for (const cat of MCP_CATEGORIES) {
     const servers = MCP_SERVERS.filter((s) => s.category === cat.id);

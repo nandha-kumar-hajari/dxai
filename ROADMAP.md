@@ -11,7 +11,7 @@ Tracking gaps and missing features for a modern AI dev-environment CLI. Items ar
 - [x] **Wrong Gemini install command on macOS** — fixed to `npm install -g @google/gemini-cli` (`src/detect.js`).
 - [x] **Filesystem MCP ships literal `/path/to/allowed`** — added `requiresInput` schema, prompt collects `allowedPath`, placeholders substituted at write time. `~` and `$HOME` are expanded.
 - [x] **Claude Code `globalMcpPath` causing $HOME backup-scan noise** — backup scan now restricted to file-based agents and to siblings of the actual config file (`scanBackupFiles` rewritten in `src/config-remover.js`).
-- [ ] **Stale MCP packages** — deferred. Audit `@modelcontextprotocol/server-{github,slack,linear,...}` and replace with vendor-owned MCPs. Best done as part of Top 5 #5 (remote registry).
+- [x] **Stale MCP packages** — `github` → official remote MCP `https://api.githubcopilot.com/mcp/`, `linear` → official remote MCP `https://mcp.linear.app/mcp` (both now URL/OAuth, env requirements dropped). `slack` and `gitlab` have no clean vendor remote yet, so they keep working but are marked `"stale": true` with a `staleReason`. `filesystem`/`memory`/`sequential-thinking` are still the official reference servers and were left as-is.
 - [x] **Dead `globExists` helper** — removed from `src/detect-project.js`.
 - [x] **Silent `catch {}` blocks (high-impact ones)** — JSON merge now refuses to overwrite malformed input; `scanJsonMcpConfig` warns on parse failure. Many remaining catches are intentional (file absence, missing git history); leaving them.
 
@@ -40,18 +40,27 @@ Tracking gaps and missing features for a modern AI dev-environment CLI. Items ar
 - [x] `dxai status` — diffs manifest vs live config and reports both *missing* (removed by user) and *extra* (added outside dxai) entries, plus deleted project files. Exits clean when in sync.
 - [x] `dxai doctor` — checks: configs parse, env vars set for installed servers, `npx` on PATH, project files still present. Exits 1 on errors.
 - [x] `dxai cleanup` now consults the manifest first; falls back to scanning the full known-id set when no manifest exists (legacy installs). Won't blow away user-added entries when manifest is present.
-- [ ] **Future** — handshake test that actually spawns each MCP server in `doctor` (deferred; spawn+stdio is per-server and adds complexity).
+- [x] **Handshake test** — `dxai doctor --handshake` (opt-in) spawns each installed stdio MCP server (`src/handshake.js`, via `child_process.spawn`), sends a JSON-RPC `initialize`, and verifies the reply within a per-server timeout. Remote/URL servers are reported as skipped; servers with unset `requiresEnv` are skipped with a warning. Plain `dxai doctor` stays fast and static.
 
 ### 5. Remote registry + tests/CI ✅
 - [x] Registry data extracted to `src/registry/data/{mcp-servers,skills}.json`. JS modules now load from JSON via `src/registry/loader.js`.
 - [x] Cache lookup at `~/.dxai/cache/<name>.json`; bundled JSON is the offline fallback. Reads stay synchronous so consumers don't need top-level await.
 - [x] `dxai update` (`src/update.js`) — fetches remote registry, validates shape, writes cache, surfaces added/removed entries.
 - [x] `DXAI_REGISTRY_URL` env var overrides the default remote base URL.
-- [x] Unit tests via `node:test` covering: JSON/TOML merge, placeholder substitution, malformed-JSON refusal, backup-scan specificity, project detection (react/python/monorepo/scripts/eslint), profile resolve+merge+save+keys, manifest read/write/round-trip, runtime normalization, registry shape, `diffRegistry`. **42 tests, all passing.**
+- [x] Unit tests via `node:test` covering: JSON/TOML merge, placeholder substitution, malformed-JSON refusal, backup-scan specificity, project detection (react/python/monorepo/scripts/eslint), profile resolve+merge+save+keys, manifest read/write/round-trip, runtime normalization, registry shape, `diffRegistry`, version pinning, `registryBaseFor`, the stdio handshake, and a CLI end-to-end spawn suite, and the catalog auto-refresh. **81 tests, all passing.**
 - [x] GitHub Actions CI (`.github/workflows/ci.yml`): syntax check + tests + smoke run across **Ubuntu/macOS/Windows × Node 18/20/22**.
 - [x] `--dry-run` now reports concrete previews (`previewMcpConfigs`): for each agent, the target file path, server IDs that would be added, and IDs already present. JSON output includes `previews`.
-- [ ] **Future** — pinned MCP package versions + `--registry-version` flag (small follow-up; need to define a version field in the JSON schema first).
-- [ ] **Future** — handshake-style integration test that actually spawns one of each agent's config types and reads back. The current writer tests cover format correctness; a spawn test would validate end-to-end runtime.
+- [x] **Pinned MCP package versions + `--registry-version` flag.** Servers may carry an optional `version` field; `pinPackageVersion` (`src/config-writer.js`) appends `@<version>` to the npm specifier at write time across JSON/CLI/TOML configs (no-op when absent, so existing entries are unchanged). `filesystem`/`memory`/`sequential-thinking` are pinned. `dxai update` gained `--registry-version <ref>` (swaps the branch segment of the registry URL) and `--registry-url <url>` (overrides `DXAI_REGISTRY_URL`), resolved by `registryBaseFor` in `src/registry/loader.js`.
+- [x] **End-to-end spawn integration test.** `test/cli.e2e.test.js` spawns `bin/cli.js` as a subprocess (`--version`, `--help`, `list --json`, `doctor --json`) in an isolated HOME/cwd; `test/handshake.test.js` exercises the JSON-RPC handshake against a fake stdio MCP fixture (ok / garbage / timeout / missing-binary paths). **81 tests, all passing** (was 42).
+
+> **Top 5 complete.** All five workstreams (and their deferred sub-items) are now shipped.
+
+---
+
+## Recently shipped (outside the original Top 5)
+
+- [x] **Automation tools** — `agent-browser` and `agent-device` are detected and installable. New `--tools` flag, an `automation-tools` registry catalog (`src/registry/data/automation-tools.json` + `src/registry/automation-tools.js`), and install logic in the runtime. `dxai update` refreshes the `automation-tools` registry alongside MCP servers and skills.
+- [x] **Periodic catalog auto-refresh** (`src/auto-update.js`) — setup runs lazily refresh the registry cache on a TTL (default 7 days) so catalog improvements and pinned-version bumps reach users who never run `dxai update` manually. Because the catalog loads at import time, the refresh updates the on-disk cache for the *next* run and emits a dim one-line nudge now; offline failures degrade gracefully. Opt out with `--no-update` / `DXAI_NO_AUTO_UPDATE=1`; tune with `DXAI_UPDATE_TTL_DAYS` / `DXAI_UPDATE_TIMEOUT_MS`. Skipped automatically under `--json` and CI. `refreshRegistry` was extracted from `updateCmd` so both paths share one fetch/validate/cache loop.
 
 ---
 
@@ -67,7 +76,7 @@ Tracking gaps and missing features for a modern AI dev-environment CLI. Items ar
 - [ ] Replace `execSync('curl ...')` in `installSkills` (`config-writer.js:522`) with native `fetch` (Node 18+).
 - [ ] Verify MCP packages: pin versions, surface npm provenance/audit info, warn on unsigned packages.
 - [ ] Add timeouts + retry/backoff for network calls.
-- [ ] Idempotent updates — let `mergeJsonMcpConfig` upgrade an existing entry to a new version instead of always skipping.
+- [ ] Idempotent updates — let `mergeJsonMcpConfig` upgrade an existing entry to a new version instead of always skipping. (The per-server `version` field now exists; this is the missing "detect drift and upgrade" half.)
 - [ ] Add `dxai rollback` to restore from the most recent `.bak.<ts>` (or pick one).
 
 ### Generators

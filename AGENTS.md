@@ -13,7 +13,7 @@
 - **Language**: JavaScript (no TypeScript, but JSDoc is welcome)
 - **CLI framework**: Commander.js v14
 - **Interactive prompts**: Inquirer.js
-- **Tests**: `node:test` + `node:assert/strict` (42+ tests)
+- **Tests**: `node:test` + `node:assert/strict` (81+ tests)
 - **CI**: GitHub Actions (Ubuntu/macOS/Windows x Node 18/20/22)
 
 ## Architecture
@@ -28,7 +28,8 @@ src/detect-project.js   → Stack, tooling, git, maturity inference
 src/profile.js          → Profile load/merge/save/discovery
 src/manifest.js         → Install manifest tracking (.dxai/manifest.json)
 src/inspect.js          → list / status / doctor commands
-src/update.js           → Remote registry refresh
+src/update.js           → Remote registry refresh (refreshRegistry + dxai update)
+src/auto-update.js      → Periodic TTL-based catalog auto-refresh on setup runs
 src/cleanup.js          → Manifest-aware cleanup
 src/runtime.js          → Option normalization
 src/branding.js         → Banner, colors, message helpers
@@ -62,6 +63,33 @@ dxai list / status / doctor   # Manifest inspection and drift detection
 dxai cleanup / reset    # Remove dxai-managed configs
 dxai update             # Refresh registry cache from remote
 ```
+
+## Release & Versioning
+
+The catalogue and the CLI code ship on **two independent tracks**. Most upstream
+churn (a new MCP, a renamed package, a better description) touches only the data
+track and needs no npm release.
+
+- **Data track — catalogue JSON** (`src/registry/data/*.json`). Push to `main`.
+  It reaches every user automatically within the auto-update TTL (7 days, see
+  `src/auto-update.js`), or instantly via `dxai update`. **No `package.json`
+  version bump.** Use for: new/changed servers, skills, automation tools;
+  description edits; marking entries `stale`; pin bumps.
+- **Code track — npm package**. Bump `package.json` version + publish. **Only**
+  when CLI *logic* changes: new commands, new agent support, schema/derivation
+  changes, bug fixes. Cadence: semver, per feature — not per upstream release.
+
+**Why you rarely "go back" per upstream release:** skills resolve by `repo` +
+`path` (always latest source); URL-based MCPs self-update; `npx`-based MCPs float
+to latest **unless** pinned via a server's `version` field.
+
+### Version-pinning policy
+
+Pin minimally. Set a server's `version` **only** when reproducibility genuinely
+matters; otherwise omit it so `npx` floats to latest and upstream fixes flow with
+no maintainer action. The `catalog-health` GitHub Action flags pins that have
+drifted from npm `latest` and dead URLs, opening an issue — so the few pins that
+exist surface themselves rather than rotting silently.
 
 ## Coding Conventions
 
@@ -102,7 +130,28 @@ This file contains `buildAgentsMd()`, `buildClaudeMd()`, `buildGeminiMd()`, and 
 
 ### Registry Data (src/registry/data/)
 
-JSON catalogs for MCP servers and skills. Each server entry includes per-agent config formats (`configs.cursor`, `configs.claude-code`, etc.). Validate new entries against the existing shape — a typo in a config key silently breaks that agent's setup.
+JSON catalogs for MCP servers, skills, and automation tools.
+
+**Adding an MCP server — prefer `transport`.** Declare the server's transport
+once and let the per-agent config blocks be *derived* from `AGENT_DEFINITIONS`
+(`src/detect.js#renderAgentConfig`, applied by `deriveConfigs` in
+`src/registry/mcp-servers.js`):
+
+```jsonc
+{ "id": "context7", "transport": { "type": "http", "url": "https://…/mcp" } }
+{ "id": "foo",      "transport": { "type": "stdio", "command": "npx", "args": ["-y", "@scope/pkg"] } }
+```
+
+Env vars are wired automatically from the server's `requiresEnv` keys. A new
+agent added to `AGENT_DEFINITIONS` (with an `mcpDialect`) instantly supports every
+transport-based server. Explicit `configs.<agent>` blocks still work and override
+derivation per agent — an escape hatch for servers that don't fit the common
+shapes. Migrate legacy explicit entries to `transport` opportunistically.
+
+**Validation is enforced.** `test/registry-schema.test.js` validates every entry
+(ids, category refs, `requires*` shapes) and locks the derivation output via a
+golden table. A typo in a config key or an unknown agent target now fails CI
+instead of silently breaking a user's setup.
 
 ### Profile System (src/profile.js)
 

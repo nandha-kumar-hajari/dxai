@@ -1,0 +1,85 @@
+name: Catalog Health
+
+# Self-running guardrail for the catalogue (see AGENTS.md → Release & Versioning).
+# Validates entry shape on every change, and weekly checks pinned versions vs npm
+# `latest` and that server URLs resolve — opening an issue when something drifts,
+# so the maintainer acts on a notification rather than babysitting upstream.
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'  # Mondays 06:00 UTC
+  pull_request:
+    paths:
+      - 'src/registry/data/**'
+      - 'src/registry/**'
+      - 'src/detect.js'
+      - 'test/registry-schema.test.js'
+      - 'scripts/catalog-health.mjs'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  validate:
+    name: validate catalogue entries
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Validate registry schema + derivation
+        run: node --test test/registry-schema.test.js
+
+  health:
+    name: pin + URL drift
+    # Schedule/manual only — no need to hit npm and remote URLs on every PR.
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+
+      - name: Run catalogue health check
+        id: health
+        run: node scripts/catalog-health.mjs
+
+      - name: Open issue on drift
+        if: steps.health.outputs.has_findings == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const body = fs.readFileSync('catalog-health-report.md', 'utf8');
+            const title = 'Catalogue health: pinned versions or URLs need attention';
+            const existing = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'catalog-health',
+            });
+            const found = existing.data.find((i) => i.title === title);
+            if (found) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: found.number,
+                body,
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body,
+                labels: ['catalog-health'],
+              });
+            }

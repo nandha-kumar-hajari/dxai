@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'fs-extra';
 import path from 'path';
 import os from 'os';
-import { writeMcpConfigs } from '../src/config-writer.js';
+import { writeMcpConfigs, pinPackageVersion, installSkills } from '../src/config-writer.js';
 import { MCP_SERVERS } from '../src/registry/mcp-servers.js';
 
 let tmp;
@@ -93,4 +93,95 @@ test('writeMcpConfigs: backup file written when target existed', () => {
   const siblings = fs.readdirSync(tmp);
   const backups = siblings.filter((f) => f.startsWith('mcp.json.bak.'));
   assert.equal(backups.length, 1);
+});
+
+test('writeMcpConfigs: pins package version for a server carrying a version field', () => {
+  const p = path.join(tmp, 'mcp.json');
+  // `memory` carries a pinned version in the bundled registry.
+  writeMcpConfigs([fakeJsonAgent(p)], ['memory'], MCP_SERVERS);
+  const args = fs.readJsonSync(p).mcpServers.memory.args;
+  assert.ok(
+    args.some((a) => /@modelcontextprotocol\/server-memory@\d/.test(a)),
+    'memory package should be version-pinned'
+  );
+});
+
+// ── pinPackageVersion (unit) ──────────────────
+test('pinPackageVersion: appends version to a scoped package', () => {
+  const c = pinPackageVersion({ command: 'npx', args: ['-y', '@scope/pkg'] }, '1.2.3');
+  assert.deepEqual(c.args, ['-y', '@scope/pkg@1.2.3']);
+});
+
+test('pinPackageVersion: appends version to a bare package', () => {
+  const c = pinPackageVersion({ command: 'npx', args: ['-y', 'pkg'] }, '1.2.3');
+  assert.deepEqual(c.args, ['-y', 'pkg@1.2.3']);
+});
+
+test('pinPackageVersion: leaves an already-pinned package untouched', () => {
+  const c = pinPackageVersion({ command: 'npx', args: ['-y', '@scope/pkg@9.9.9'] }, '1.2.3');
+  assert.deepEqual(c.args, ['-y', '@scope/pkg@9.9.9']);
+});
+
+test('pinPackageVersion: does not touch path args', () => {
+  const c = pinPackageVersion({ command: 'npx', args: ['-y', '@scope/pkg', '/some/path'] }, '1.0.0');
+  assert.deepEqual(c.args, ['-y', '@scope/pkg@1.0.0', '/some/path']);
+});
+
+test('pinPackageVersion: pins the package after npx in a `claude mcp add` command', () => {
+  const c = pinPackageVersion(
+    { command: 'claude', args: ['mcp', 'add', 'x', '--', 'npx', '-y', '@scope/pkg'] },
+    '2.0.0'
+  );
+  assert.deepEqual(c.args, ['mcp', 'add', 'x', '--', 'npx', '-y', '@scope/pkg@2.0.0']);
+});
+
+test('pinPackageVersion: pins inside a TOML args block', () => {
+  const c = pinPackageVersion(
+    { toml: '[mcp_servers.x]\ncommand = "npx"\nargs = ["-y", "@scope/pkg"]' },
+    '3.0.0'
+  );
+  assert.match(c.toml, /"@scope\/pkg@3\.0\.0"/);
+});
+
+test('pinPackageVersion: no-op for a url-only config', () => {
+  const c = pinPackageVersion({ url: 'https://example.com/mcp' }, '1.0.0');
+  assert.deepEqual(c, { url: 'https://example.com/mcp' });
+});
+
+test('pinPackageVersion: no-op when version is absent', () => {
+  const cfg = { command: 'npx', args: ['-y', 'pkg'] };
+  assert.equal(pinPackageVersion(cfg, undefined), cfg);
+});
+
+// ── installSkills target directory (Codex reads .agents/skills natively) ──
+// An empty skill list does no network work but still resolves the target dir,
+// so we can assert the directory selection in isolation.
+const agent = (id) => ({ id, name: id });
+// process.cwd() may resolve macOS /var → /private/var symlinks, so compare the
+// trailing path segments rather than the absolute path.
+const tail = (p) => p.split(path.sep).slice(-2).join(path.sep);
+const dirFor = (agents) => {
+  const cwd = process.cwd();
+  try {
+    process.chdir(tmp);
+    return installSkills([], [], agents).directory;
+  } finally {
+    process.chdir(cwd);
+  }
+};
+
+test('installSkills: Codex selected → .agents/skills (Codex native path)', () => {
+  assert.equal(tail(dirFor([agent('codex')])), path.join('.agents', 'skills'));
+});
+
+test('installSkills: Cursor + Codex → .agents/skills so Codex still finds them', () => {
+  assert.equal(tail(dirFor([agent('cursor'), agent('codex')])), path.join('.agents', 'skills'));
+});
+
+test('installSkills: Cursor only (no Codex) → .cursor/skills', () => {
+  assert.equal(tail(dirFor([agent('cursor')])), path.join('.cursor', 'skills'));
+});
+
+test('installSkills: neither Cursor nor Codex → .agents/skills fallback', () => {
+  assert.equal(tail(dirFor([agent('claude-code')])), path.join('.agents', 'skills'));
 });

@@ -4,7 +4,7 @@ import fs from 'fs-extra';
 import path from 'path';
 import os from 'os';
 import {
-  readManifest, writeManifest, MANIFEST_VERSION,
+  readManifest, writeManifest, MANIFEST_VERSION, recordProjectSkills, PROJECT_MANIFEST_PATH,
 } from '../src/manifest.js';
 
 let tmp;
@@ -47,4 +47,18 @@ test('readManifest tolerates malformed JSON (returns empty shape)', () => {
   fs.writeFileSync(p, '{ broken');
   const m = readManifest(p);
   assert.equal(m.version, MANIFEST_VERSION);
+});
+
+test('recordProjectSkills writes installed skills to the project manifest', () => {
+  recordProjectSkills({ installed: ['PDF', 'Frontend Design'], directory: path.join(tmp, '.agents', 'skills') }, tmp);
+  const m = readManifest(path.join(tmp, PROJECT_MANIFEST_PATH));
+  assert.ok(m.skills['PDF']);
+  assert.ok(m.skills['Frontend Design']);
+  assert.ok(m.skills['PDF'].addedAt);
+  assert.match(m.skills['PDF'].path, /\.agents[\\/]skills$/);
+});
+
+test('recordProjectSkills is a no-op when nothing was installed', () => {
+  recordProjectSkills({ installed: [], directory: path.join(tmp, '.agents', 'skills') }, tmp);
+  assert.ok(!fs.existsSync(path.join(tmp, PROJECT_MANIFEST_PATH)));
 });
