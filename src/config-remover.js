@@ -1,7 +1,18 @@
 import fs from 'fs-extra';
 import path from 'path';
-import { execSync } from 'child_process';
-import { infoMsg, warnMsg } from './branding.js';
+import { execSync, execFileSync } from 'child_process';
+import { warnMsg } from './branding.js';
+import { writeJsonAtomic, writeFileAtomic } from './fs-atomic.js';
+
+function escapeRegExp(s) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// Line-anchored [mcp_servers.<id>] header matcher — avoids matching a
+// commented-out header or an id that is a prefix of another.
+function tomlHeaderRe(id) {
+  return new RegExp(`^\\s*\\[mcp_servers\\.${escapeRegExp(id)}\\]`, 'm');
+}
 
 // ══════════════════════════════════════════════
 // JSON Config Scanning & Removal
@@ -35,8 +46,9 @@ export function removeJsonMcpServers(filePath, mcpKey, idsToRemove) {
   let config;
   try {
     config = fs.readJsonSync(filePath);
-  } catch {
-    return { removed: 0 };
+  } catch (err) {
+    // Surface rather than silently report "removed 0" on a file we couldn't read.
+    throw new Error(`Could not parse ${filePath} as JSON: ${err.message}`);
   }
 
   if (!config[mcpKey] || typeof config[mcpKey] !== 'object') return { removed: 0 };
@@ -54,7 +66,7 @@ export function removeJsonMcpServers(filePath, mcpKey, idsToRemove) {
     delete config[mcpKey];
   }
 
-  fs.writeJsonSync(filePath, config, { spaces: 2 });
+  writeJsonAtomic(filePath, config, { spaces: 2 });
   return { removed };
 }
 
@@ -71,7 +83,7 @@ export function scanTomlMcpConfig(filePath, knownIds) {
 
   try {
     const content = fs.readFileSync(filePath, 'utf-8');
-    return knownIds.filter((id) => content.includes(`[mcp_servers.${id}]`));
+    return knownIds.filter((id) => tomlHeaderRe(id).test(content));
   } catch {
     return [];
   }
@@ -93,9 +105,11 @@ export function removeTomlMcpServers(filePath, idsToRemove) {
 
   let removed = 0;
   for (const id of idsToRemove) {
-    const sectionHeader = `[mcp_servers.${id}]`;
-    const idx = content.indexOf(sectionHeader);
-    if (idx === -1) continue;
+    // Locate the header at the start of a line so a commented-out or
+    // prefix-colliding header isn't matched.
+    const headerMatch = tomlHeaderRe(id).exec(content);
+    if (!headerMatch) continue;
+    const idx = headerMatch.index;
 
     // Find the end: next section header (line starting with [) or end of file
     const afterHeader = content.indexOf('\n', idx);
@@ -125,7 +139,7 @@ export function removeTomlMcpServers(filePath, idsToRemove) {
   }
 
   content = content.trimEnd() + '\n';
-  fs.writeFileSync(filePath, content, 'utf-8');
+  writeFileAtomic(filePath, content);
   return { removed };
 }
 
@@ -142,7 +156,8 @@ export function removeClaudeCodeMcpServers(serverIds) {
 
   for (const id of serverIds) {
     try {
-      execSync(`claude mcp remove ${id}`, {
+      // argv form (no shell) so an id can never be interpreted as a command.
+      execFileSync('claude', ['mcp', 'remove', id], {
         stdio: 'pipe',
         timeout: 10000,
       });

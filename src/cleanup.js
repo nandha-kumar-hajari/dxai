@@ -286,6 +286,36 @@ async function runSystemCleanup(home) {
     }
     successMsg(`Deleted ${foundBackups.length} backup file(s)`);
   }
+
+  // Prune the manifest so `list`/`status` reflect what was just removed —
+  // otherwise removed servers/skills linger forever as phantom drift.
+  pruneSystemManifest(mcpToRemove, skillsToRemove);
+}
+
+// Remove cleaned-up entries from the system manifest. `mcpToRemove` is
+// { [agentId]: [serverId] }; `skillPaths` are the removed skill directories.
+function pruneSystemManifest(mcpToRemove, skillPaths) {
+  const m = readManifest(SYSTEM_MANIFEST_PATH);
+  let changed = false;
+
+  for (const [agentId, serverIds] of Object.entries(mcpToRemove)) {
+    if (!m.mcp[agentId]) continue;
+    for (const id of serverIds) {
+      if (m.mcp[agentId][id]) { delete m.mcp[agentId][id]; changed = true; }
+    }
+    if (Object.keys(m.mcp[agentId]).length === 0) delete m.mcp[agentId];
+  }
+
+  for (const skillPath of skillPaths) {
+    const skillId = path.basename(skillPath);
+    const skill = SKILLS.find((s) => s.id === skillId);
+    // Skills are recorded by name (recordSystemSkills); also try the id defensively.
+    for (const key of [skillId, skill?.name].filter(Boolean)) {
+      if (m.skills[key]) { delete m.skills[key]; changed = true; }
+    }
+  }
+
+  if (changed) writeManifest(SYSTEM_MANIFEST_PATH, m);
 }
 
 // ══════════════════════════════════════════════
@@ -462,6 +492,33 @@ async function runProjectCleanup() {
       }
     }
   }
+
+  // Prune the project manifest for the files and MCP servers we removed.
+  pruneProjectManifest(cwd, filesToRemove, projectMcpToRemove);
+}
+
+function pruneProjectManifest(cwd, filePaths, projectMcpToRemove) {
+  const manifestPath = path.join(cwd, PROJECT_MANIFEST_PATH);
+  if (!fs.existsSync(manifestPath)) return;
+  const m = readManifest(manifestPath);
+  let changed = false;
+
+  if (filePaths.length) {
+    const removedRel = new Set(filePaths.map((f) => path.relative(cwd, f)));
+    const before = m.files.length;
+    m.files = m.files.filter((f) => !removedRel.has(f.relativePath));
+    if (m.files.length !== before) changed = true;
+  }
+
+  for (const [agentId, serverIds] of Object.entries(projectMcpToRemove)) {
+    if (!m.mcp[agentId]) continue;
+    for (const id of serverIds) {
+      if (m.mcp[agentId][id]) { delete m.mcp[agentId][id]; changed = true; }
+    }
+    if (Object.keys(m.mcp[agentId]).length === 0) delete m.mcp[agentId];
+  }
+
+  if (changed) writeManifest(manifestPath, m);
 }
 
 // ══════════════════════════════════════════════

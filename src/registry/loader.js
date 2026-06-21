@@ -11,6 +11,12 @@ import fs from 'fs-extra';
 import path from 'path';
 import os from 'os';
 import { fileURLToPath } from 'node:url';
+import { isSafeVersionRef } from './validate.js';
+import { writeJsonAtomic } from '../fs-atomic.js';
+
+// Default timeout for a registry fetch, so `dxai update` can't hang forever on a
+// stalled connection.
+const DEFAULT_FETCH_TIMEOUT_MS = 15000;
 
 const HOME = os.homedir();
 const __filename = fileURLToPath(import.meta.url);
@@ -31,7 +37,14 @@ export const DEFAULT_REGISTRY_BASE =
 // When DXAI_REGISTRY_URL is set but carries no `/main/` segment, a version ref is a no-op.
 export function registryBaseFor({ version, url } = {}) {
   if (url) return url;
-  if (version) return DEFAULT_REGISTRY_BASE.replace(/\/main\//, `/${version}/`);
+  if (version) {
+    // `version` is substituted into the fetch URL path; a "../.." here could
+    // repoint the fetch at a different repo. Only allow a clean branch/tag ref.
+    if (!isSafeVersionRef(version)) {
+      throw new Error(`Invalid registry version ref: ${version}`);
+    }
+    return DEFAULT_REGISTRY_BASE.replace(/\/main\//, `/${version}/`);
+  }
   return DEFAULT_REGISTRY_BASE;
 }
 
@@ -61,9 +74,9 @@ export function loadRegistry(name) {
 // Remote fetch — used by `dxai update`. Async, since we hit the network.
 // timeoutMs (optional) aborts a slow fetch; used by the background auto-refresh
 // so a stale network never blocks an interactive run for long.
-export async function fetchRegistry(name, baseUrl = DEFAULT_REGISTRY_BASE, { timeoutMs } = {}) {
+export async function fetchRegistry(name, baseUrl = DEFAULT_REGISTRY_BASE, { timeoutMs = DEFAULT_FETCH_TIMEOUT_MS } = {}) {
   const url = `${baseUrl.replace(/\/$/, '')}/${name}.json`;
-  const signal = timeoutMs ? AbortSignal.timeout(timeoutMs) : undefined;
+  const signal = AbortSignal.timeout(timeoutMs);
   const res = await fetch(url, { redirect: 'follow', signal });
   if (!res.ok) {
     throw new Error(`Failed to fetch ${url}: HTTP ${res.status}`);
@@ -73,9 +86,8 @@ export async function fetchRegistry(name, baseUrl = DEFAULT_REGISTRY_BASE, { tim
 }
 
 export function writeRegistryCache(name, data) {
-  fs.ensureDirSync(CACHE_DIR);
   const cachePath = path.join(CACHE_DIR, `${name}.json`);
-  fs.writeJsonSync(cachePath, data, { spaces: 2 });
+  writeJsonAtomic(cachePath, data, { spaces: 2 });
   return cachePath;
 }
 

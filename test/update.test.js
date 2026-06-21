@@ -21,3 +21,8 @@ test('registryBaseFor: default when nothing is provided', () => {
   assert.equal(registryBaseFor({}), DEFAULT_REGISTRY_BASE);
   assert.equal(registryBaseFor(), DEFAULT_REGISTRY_BASE);
 });
+
+test('registryBaseFor: rejects a traversal version ref', () => {
+  assert.throws(() => registryBaseFor({ version: '../../other-repo' }), /Invalid registry version/);
+  assert.throws(() => registryBaseFor({ version: 'a/b' }), /Invalid registry version/);
+});

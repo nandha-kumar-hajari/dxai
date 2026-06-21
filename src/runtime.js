@@ -37,10 +37,3 @@ export function partitionByKnown(ids, knownIds) {
   }
   return { valid, invalid };
 }
-
-// In non-interactive mode, abort with a clear message instead of hanging on a prompt.
-export function requireValue(value, name, runtime) {
-  if (runtime.nonInteractive && (value === undefined || value === null)) {
-    throw new Error(`Non-interactive mode requires --${name} (or remove --yes/CI=true)`);
-  }
-}

@@ -5,6 +5,15 @@
 // which execSync can't give us.
 
 import { spawn } from 'child_process';
+import { AGENT_DEFINITIONS } from './detect.js';
+import { isSafeSpawnSpec } from './registry/validate.js';
+
+// The agent config keys that carry a spawnable stdio command/args block, derived
+// from the agent definitions rather than hardcoded — so a newly added JSON-dialect
+// agent (e.g. the antigravity-ide / antigravity-cli split) is covered automatically.
+const STDIO_CONFIG_KEYS = AGENT_DEFINITIONS
+  .filter((a) => a.configFormat === 'json')
+  .map((a) => a.id);
 
 const PROTOCOL_VERSION = '2025-06-18';
 
@@ -100,10 +109,14 @@ function resolveEnv(env) {
 // which can't be stdio-handshaked.
 export function resolveSpawnSpec(server) {
   const configs = server.configs || {};
-  for (const key of ['cursor', 'vscode', 'gemini', 'windsurf', 'antigravity']) {
+  for (const key of STDIO_CONFIG_KEYS) {
     const c = configs[key];
     if (c && c.command && Array.isArray(c.args)) {
-      return { command: c.command, args: c.args, env: resolveEnv(c.env) };
+      const spec = { command: c.command, args: c.args, env: resolveEnv(c.env) };
+      // Registry data is untrusted and this spec is about to be spawned — only
+      // hand back specs whose command is allowlisted and whose npx-style package
+      // argument is a clean spec. Unsafe specs are treated as un-handshakeable.
+      return isSafeSpawnSpec(spec) ? spec : null;
     }
   }
   return null;

@@ -1,4 +1,4 @@
-import { execSync } from 'child_process';
+import { execFileSync } from 'child_process';
 import inquirer from 'inquirer';
 import ora from 'ora';
 import chalk from 'chalk';
@@ -25,6 +25,7 @@ import {
   previewMcpConfigs,
 } from './config-writer.js';
 import { normalizeOptions, partitionByKnown } from './runtime.js';
+import { parseSafeCommand } from './registry/validate.js';
 import { maybeRefreshCatalog } from './auto-update.js';
 import { resolveProfile, readProfile, mergeWithProfile, saveProfile, listProfiles } from './profile.js';
 import {
@@ -469,7 +470,7 @@ async function runSystem(ctx, runtime) {
       const mcpResults = writeMcpConfigs(selectedAgents, selectedMcpIds, MCP_SERVERS, mcpInputs);
       spinner?.stop();
       result.mcpResults = mcpResults;
-      recordSystemMcp(mcpResults, selectedMcpIds);
+      recordSystemMcp(mcpResults);
 
       quiet(runtime, () => {
         for (const [agentId, r] of Object.entries(mcpResults)) {
@@ -510,7 +511,11 @@ async function runSystem(ctx, runtime) {
 
       const installCmd = tool.installCommand[osInfo.name] || tool.installCommand.macOS;
       try {
-        execSync(installCmd, { stdio: 'pipe', timeout: 60000 });
+        // installCmd is registry data (untrusted). Parse it to argv and run
+        // without a shell so it can never be more than an allowlisted binary
+        // plus plain arguments — no metacharacter injection.
+        const { command, args } = parseSafeCommand(installCmd);
+        execFileSync(command, args, { stdio: 'pipe', timeout: 60000 });
         toolResults.installed.push(toolId);
       } catch (err) {
         toolResults.errors.push({ id: toolId, name: tool.name, error: err.message, command: installCmd });
@@ -788,7 +793,7 @@ async function runProject(ctx, runtime, { handleSkills = false } = {}) {
     try {
       const mcpResults = writeProjectMcpConfigs(agentsWithProjectMcp, projectMcpIds, MCP_SERVERS, projectMcpInputs);
       spinner?.stop();
-      recordProjectMcp(mcpResults, projectMcpIds);
+      recordProjectMcp(mcpResults);
       quiet(runtime, () => {
         for (const [_, r] of Object.entries(mcpResults)) {
           if (r.added > 0) successMsg(`${r.agent}: ${r.added} project MCP server(s) added → ${r.path}`);
@@ -905,8 +910,11 @@ export async function run(mode, opts = {}) {
   if (profilePath) quiet(runtime, () => infoMsg(`Loaded profile: ${profilePath}`));
 
   // Periodically refresh the catalog cache (opt-out; skips in --json/CI). Updates the
-  // on-disk cache for the next run — see src/auto-update.js.
-  await maybeRefreshCatalog(runtime);
+  // on-disk cache for the next run — see src/auto-update.js. Best-effort: a failure
+  // here (e.g. an unwritable cache dir) must never abort the user's setup.
+  try {
+    await maybeRefreshCatalog(runtime);
+  } catch { /* non-fatal background refresh */ }
 
   if (!mode) {
     if (runtime.nonInteractive) {

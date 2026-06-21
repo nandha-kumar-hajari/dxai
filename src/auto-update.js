@@ -14,6 +14,7 @@ import path from 'path';
 import { CACHE_DIR, registryBaseFor } from './registry/loader.js';
 import { refreshRegistry } from './update.js';
 import { infoMsg } from './branding.js';
+import { writeJsonAtomic } from './fs-atomic.js';
 
 export const LAST_CHECK_PATH = path.join(CACHE_DIR, '.last-check.json');
 const DEFAULT_TTL_DAYS = 7;
@@ -51,8 +52,11 @@ export function readLastCheck(file = LAST_CHECK_PATH) {
 }
 
 export function recordCheck(now, file = LAST_CHECK_PATH) {
-  fs.ensureDirSync(path.dirname(file));
-  fs.writeJsonSync(file, { checkedAt: new Date(now).toISOString() }, { spaces: 2 });
+  // Best-effort: an unwritable cache dir must not propagate out of the
+  // background refresh and abort the user's setup.
+  try {
+    writeJsonAtomic(file, { checkedAt: new Date(now).toISOString() }, { spaces: 2 });
+  } catch { /* ignore — we'll just re-check next run */ }
 }
 
 // Orchestrator. Dependencies are injectable so the whole flow is testable without a network.

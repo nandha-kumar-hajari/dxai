@@ -60,3 +60,15 @@ test('resolveSpawnSpec: expands ${VAR} env references from the environment', () 
     delete process.env.DXAI_TEST_TOKEN;
   }
 });
+
+test('resolveSpawnSpec: finds antigravity-ide/-cli stdio configs (post-alias-split)', () => {
+  const spec = resolveSpawnSpec({
+    configs: { 'antigravity-ide': { command: 'npx', args: ['-y', 'pkg'] } },
+  });
+  assert.ok(spec, 'expected a spawnable spec for an antigravity-only server');
+  assert.equal(spec.command, 'npx');
+});
+
+test('resolveSpawnSpec: returns null for a non-allowlisted command', () => {
+  assert.equal(resolveSpawnSpec({ configs: { cursor: { command: 'sh', args: ['-c', 'evil'] } } }), null);
+});

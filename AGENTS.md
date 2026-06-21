@@ -30,10 +30,12 @@ src/manifest.js         → Install manifest tracking (.dxai/manifest.json)
 src/inspect.js          → list / status / doctor commands
 src/update.js           → Remote registry refresh (refreshRegistry + dxai update)
 src/auto-update.js      → Periodic TTL-based catalog auto-refresh on setup runs
-src/cleanup.js          → Manifest-aware cleanup
+src/cleanup.js          → Manifest-aware cleanup (prunes manifest on removal)
 src/runtime.js          → Option normalization
 src/branding.js         → Banner, colors, message helpers
+src/fs-atomic.js        → Atomic file writes (temp + rename), optional 0600 mode
 src/registry/
+  validate.js           → Validation for untrusted registry data (commands, repo/path, ids)
   loader.js             → Cache > bundled JSON resolution
   mcp-servers.js        → MCP server catalog re-export
   skills.js             → Skills catalog re-export
@@ -152,6 +154,16 @@ shapes. Migrate legacy explicit entries to `transport` opportunistically.
 (ids, category refs, `requires*` shapes) and locks the derivation output via a
 golden table. A typo in a config key or an unknown agent target now fails CI
 instead of silently breaking a user's setup.
+
+**Registry data is untrusted.** The catalog is fetched over the network
+(cache-over-bundled) and only shape-checked on fetch, so any field that reaches a
+shell/exec/URL sink must be validated via `src/registry/validate.js` first:
+package/install commands run through `parseSafeCommand`/`isSafeSpawnSpec`
+(allowlisted binary + clean package spec, no shell), skill `repo`/`path` through
+`isValidRepo`/`isValidSkillPath`, version refs through `isSafeVersionRef`, and map
+keys through `isSafeId`. `dxai update` rejects a payload that fails
+`validateRegistryPayload` and falls back to the bundled snapshot. Never interpolate
+registry values into an `execSync` shell string — use `execFileSync` (argv form).
 
 ### Profile System (src/profile.js)
 

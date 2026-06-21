@@ -2,17 +2,13 @@ import chalk from 'chalk';
 
 // ── Cyan/Teal color palette ──
 export const theme = {
-  primary: chalk.cyan,
   accent: chalk.cyanBright,
   success: chalk.green,
   warn: chalk.yellow,
   error: chalk.red,
   dim: chalk.gray,
-  bold: chalk.bold.white,
   highlight: chalk.bold.cyanBright,
-  muted: chalk.dim,
   label: chalk.bold.cyan,
-  value: chalk.white,
 };
 
 export const BANNER = `
@@ -58,8 +54,4 @@ export function errorMsg(msg) {
 
 export function infoMsg(msg) {
   console.log(theme.dim(`  ℹ ${msg}`));
-}
-
-export function stepMsg(msg) {
-  console.log(theme.primary(`  → ${msg}`));
 }

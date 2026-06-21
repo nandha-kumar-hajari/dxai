@@ -2,6 +2,7 @@ import {
   fetchRegistry, writeRegistryCache, loadRegistry,
   diffRegistry, registryBaseFor,
 } from './registry/loader.js';
+import { validateRegistryPayload } from './registry/validate.js';
 import {
   printBanner, sectionHeader, successMsg, warnMsg, errorMsg, infoMsg, theme,
 } from './branding.js';
@@ -27,6 +28,13 @@ export async function refreshRegistry({ base = registryBaseFor({}), timeoutMs } 
       // Basic shape check — must have an array under listKey.
       if (!Array.isArray(data?.[listKey])) {
         throw new Error(`Registry payload missing "${listKey}" array`);
+      }
+      // Security: vet untrusted fields (ids, commands, repo/path) before caching,
+      // so a poisoned/redirected registry can't seed a malicious entry that later
+      // drives command execution. A bad file is rejected; bundled fallback stands.
+      const problems = validateRegistryPayload(listKey, data[listKey]);
+      if (problems.length) {
+        throw new Error(`Registry payload failed validation: ${problems.slice(0, 3).join('; ')}${problems.length > 3 ? ` (+${problems.length - 3} more)` : ''}`);
       }
       const cachePath = writeRegistryCache(name, data);
       const diff = diffRegistry(before, data, listKey);

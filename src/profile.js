@@ -1,6 +1,7 @@
 import fs from 'fs-extra';
 import path from 'path';
 import os from 'os';
+import { writeJsonAtomic } from './fs-atomic.js';
 
 const HOME = os.homedir();
 
@@ -42,7 +43,10 @@ export function findDefaultProfile(cwd = process.cwd()) {
 export function resolveProfile(nameOrPath, cwd = process.cwd()) {
   if (!nameOrPath) return findDefaultProfile(cwd);
 
-  if (nameOrPath.includes(path.sep) || nameOrPath.endsWith('.json')) {
+  // Treat as a path if it carries any separator. Check both `/` and `\` so a
+  // forward-slash path (e.g. `./team/dev`) is still recognized on Windows, where
+  // path.sep is `\`.
+  if (nameOrPath.includes('/') || nameOrPath.includes('\\') || nameOrPath.endsWith('.json')) {
     const abs = path.isAbsolute(nameOrPath) ? nameOrPath : path.join(cwd, nameOrPath);
     return fs.existsSync(abs) ? abs : null;
   }
@@ -108,8 +112,7 @@ export function saveProfile(data, target = { user: true, name: 'default' }) {
     outPath = path.join(USER_PROFILE_DIR, `${target.name}.json`);
   }
 
-  fs.ensureDirSync(path.dirname(outPath));
-  fs.writeJsonSync(outPath, filtered, { spaces: 2 });
+  writeJsonAtomic(outPath, filtered, { spaces: 2 });
   return outPath;
 }
 
