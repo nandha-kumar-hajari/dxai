@@ -131,6 +131,8 @@ function scanPresent(agent, ids, home, project) {
       return { path: p, present: scanJsonMcpConfig(p, agent.mcpKey, ids) };
     }
     case 'toml': {
+      // TOML agents (Codex) have no project-level MCP path, so they're filtered
+      // out of --project mode upstream — this branch only ever runs for global.
       const p = agent.globalMcpPath(home);
       return { path: p, present: scanTomlMcpConfig(p, ids) };
     }

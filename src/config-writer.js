@@ -693,6 +693,20 @@ export function writeAgentsMd(selectedStacks, profile = null) {
 // ══════════════════════════════════════════════
 // Skills Installer
 // ══════════════════════════════════════════════
+// Download a skill's SKILL.md from its raw GitHub URL. Returns the markdown text.
+// A non-2xx (e.g. a missing file → 404) rejects inside fetchText, and an empty
+// body is treated as "not found" — so a failed download never writes a bogus
+// SKILL.md to disk. `fetchImpl` is injectable so the fetch path is testable
+// without a network. `skill.repo`/`skill.path` must be validated by the caller.
+export async function downloadSkillMarkdown(skill, { fetchImpl = fetchText, timeoutMs = 15000 } = {}) {
+  const rawUrl = `https://raw.githubusercontent.com/${skill.repo}/main/${skill.path === '.' ? '' : skill.path + '/'}SKILL.md`;
+  const content = await fetchImpl(rawUrl, { timeoutMs });
+  if (!content || content.trim().length === 0) {
+    throw new Error('SKILL.md not found at source');
+  }
+  return content;
+}
+
 export async function installSkills(selectedSkills, skillRegistry, selectedAgents) {
   const installed = [];
   const errors = [];
@@ -760,21 +774,15 @@ export async function installSkills(selectedSkills, skillRegistry, selectedAgent
         // Fall back to manual download
       }
 
-      // Manual: create skill dir and fetch SKILL.md with native fetch (no shell,
-      // no curl dependency). `rawUrl` is a fixed https raw.githubusercontent.com
-      // URL; repo/path were validated above. A 404 (or other non-2xx) rejects,
-      // so it lands in the catch rather than writing an error page to disk.
+      // Manual fallback: create the skill dir and fetch SKILL.md with native
+      // fetch (no shell, no curl dependency). A 404/empty body throws, so it
+      // lands in the catch and the dir is cleaned up rather than left holding a
+      // bogus file. repo/path were validated above.
       fs.ensureDirSync(targetDir);
-      const rawUrl = `https://raw.githubusercontent.com/${skill.repo}/main/${skill.path === '.' ? '' : skill.path + '/'}SKILL.md`;
       try {
-        const content = await fetchText(rawUrl, { timeoutMs: 15000 });
-        if (content && content.length > 50) {
-          fs.writeFileSync(path.join(targetDir, 'SKILL.md'), content, 'utf-8');
-          installed.push(skill.name);
-        } else {
-          fs.removeSync(targetDir);
-          errors.push({ name: skill.name, error: 'SKILL.md not found at source' });
-        }
+        const content = await downloadSkillMarkdown(skill);
+        fs.writeFileSync(path.join(targetDir, 'SKILL.md'), content, 'utf-8');
+        installed.push(skill.name);
       } catch (err) {
         fs.removeSync(targetDir);
         errors.push({ name: skill.name, error: err.message });

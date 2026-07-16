@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'fs-extra';
 import path from 'path';
 import os from 'os';
-import { writeMcpConfigs, pinPackageVersion, installSkills } from '../src/config-writer.js';
+import { writeMcpConfigs, pinPackageVersion, installSkills, downloadSkillMarkdown } from '../src/config-writer.js';
 import { MCP_SERVERS } from '../src/registry/mcp-servers.js';
 
 let tmp;
@@ -184,4 +184,37 @@ test('installSkills: Cursor only (no Codex) → .cursor/skills', async () => {
 
 test('installSkills: neither Cursor nor Codex → .agents/skills fallback', async () => {
   assert.equal(tail(await dirFor([agent('claude-code')])), path.join('.agents', 'skills'));
+});
+
+// ── downloadSkillMarkdown (the native-fetch SKILL.md fallback) ──
+// fetchImpl is injected so the fetch path is covered without a network.
+test('downloadSkillMarkdown: returns content and builds the raw URL for a subpath', async () => {
+  let seenUrl;
+  const fetchImpl = async (url) => { seenUrl = url; return '# My Skill\n\nBody text.'; };
+  const content = await downloadSkillMarkdown({ repo: 'owner/repo', path: 'skills/pdf' }, { fetchImpl });
+  assert.equal(content, '# My Skill\n\nBody text.');
+  assert.equal(seenUrl, 'https://raw.githubusercontent.com/owner/repo/main/skills/pdf/SKILL.md');
+});
+
+test('downloadSkillMarkdown: root path "." omits the subpath segment', async () => {
+  let seenUrl;
+  const fetchImpl = async (url) => { seenUrl = url; return 'x'; };
+  await downloadSkillMarkdown({ repo: 'owner/repo', path: '.' }, { fetchImpl });
+  assert.equal(seenUrl, 'https://raw.githubusercontent.com/owner/repo/main/SKILL.md');
+});
+
+test('downloadSkillMarkdown: an empty/whitespace body is treated as not found', async () => {
+  const fetchImpl = async () => '   \n  ';
+  await assert.rejects(
+    downloadSkillMarkdown({ repo: 'owner/repo', path: '.' }, { fetchImpl }),
+    /not found at source/
+  );
+});
+
+test('downloadSkillMarkdown: a 404 (fetch rejection) propagates as an error', async () => {
+  const fetchImpl = async () => { const e = new Error('HTTP 404 for url'); e.status = 404; throw e; };
+  await assert.rejects(
+    downloadSkillMarkdown({ repo: 'owner/repo', path: '.' }, { fetchImpl }),
+    /HTTP 404/
+  );
 });
