@@ -14,9 +14,11 @@ Every dxai subcommand. Each command page includes its full options table and syn
 | Command | What it does |
 | --- | --- |
 | `dxai system` | System-level setup (global IDE configs, MCP servers, skills) |
-| `dxai project` | Project-level setup (stack, rules, CLAUDE.md, .editorconfig, etc.) |
+| `dxai project` | Project-level setup (stack, rules, CLAUDE.md, .editorconfig, etc.) (alias: `init`) |
 | `dxai both` | Run system + project setup in one go |
 | `dxai cleanup` | Remove dxai-managed configs, files, and skills (alias: `reset`) |
+| `dxai add` | Add MCP server(s) to detected agents (fast path, no wizard) |
+| `dxai remove` | Remove MCP server(s) from detected agents (fast path, no wizard) (alias: `rm`) |
 | `dxai rollback` | Restore dxai-managed files from their most recent .bak.<ts> backup |
 | `dxai apply` | Run setup using a saved profile (auto-loads ./.dxai/profile.json if no name given) |
 | `dxai save-profile` | Save selections as a profile. Defaults to ~/.dxai/profiles/<name>.json |

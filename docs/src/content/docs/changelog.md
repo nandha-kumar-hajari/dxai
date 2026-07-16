@@ -14,12 +14,17 @@ Auto-generated from git history. Conventional-commit prefixes (`feat:`, `fix:`, 
 
 ### Features
 
+- add fast-path `dxai add`/`remove` commands and `init` alias ([`7ae3f2e`](https://github.com/nandha-kumar-hajari/dxai/commit/7ae3f2e032e846b0355219aea33e579f6628050d))
 - add dxai rollback to restore config backups ([`16d2978`](https://github.com/nandha-kumar-hajari/dxai/commit/16d29786b42876b51672a2dd390081dbce942139))
 - centralize network timeout + retry/backoff in src/net.js ([`0a89340`](https://github.com/nandha-kumar-hajari/dxai/commit/0a893403039d10ba295ec46a82fe73806072b8c5))
 
 ### Refactor
 
 - replace curl shell-out with native fetch in installSkills ([`539411e`](https://github.com/nandha-kumar-hajari/dxai/commit/539411e8dbc2d5ef7ef5edabcf91fb3dd2ca20d8))
+
+### Documentation
+
+- mark security & robustness items shipped; add rollback docs ([`81231ec`](https://github.com/nandha-kumar-hajari/dxai/commit/81231ec23b147d8b5a29f318e450b5038042e759))
 
 ### Other changes
 

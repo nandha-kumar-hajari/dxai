@@ -1,7 +1,7 @@
 ---
 title: dxai update
 description: "Fetch the latest registry (MCP servers, skills) and cache it locally"
-sidebar: {"order":12}
+sidebar: {"order":14}
 ---
 <!--
 AUTO-GENERATED — do not edit by hand.

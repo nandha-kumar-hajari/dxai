@@ -45,6 +45,9 @@ npx dxai --help     # full usage
 | `dxai system` | Global IDE configs, MCP servers, agent skills |
 | `dxai project` | Repo-local AI scaffolding (rules, CLAUDE.md, AGENTS.md, etc.) |
 | `dxai both` | System + project setup in one go |
+| `dxai init` | Alias for `dxai project` (first-time project setup) |
+| `dxai add <mcp...>` | Add MCP server(s) to detected agents — fast path, no wizard |
+| `dxai remove <mcp...>` (alias `rm`) | Remove MCP server(s) from detected agents |
 | `dxai apply [name]` | Run setup using a saved profile |
 | `dxai save-profile [name]` | Save selections as a reusable profile |
 | `dxai profiles` | List discoverable profiles |
@@ -89,7 +92,7 @@ dxai is verified on **macOS, Linux, and Windows** in the GitHub Actions matrix.
 git clone https://github.com/nandha-kumar-hajari/dxai.git
 cd dxai
 npm install
-npm test                          # 134 tests, ~0.5s (node:test, no extra framework)
+npm test                          # 143 tests, ~0.5s (node:test, no extra framework)
 npm run smoke                     # quick --version + --help check
 npm link                          # optional: simulate `npx dxai`
 ```
@@ -144,6 +147,7 @@ src/
   auto-update.js                    # periodic TTL-based catalog refresh
   cleanup.js                        # cleanup / reset (manifest-aware)
   rollback.js                       # restore files from .bak.<ts> snapshots
+  mcp-cmd.js                        # fast-path add / remove MCP commands
   config-writer.js                  # file writers + dry-run previews
   config-remover.js                 # scan + remove helpers
   net.js                            # fetch with timeout + retry/backoff
@@ -158,7 +162,7 @@ src/
     loader.js                       # cache > bundled JSON resolution; remote fetch
     data/{mcp-servers,skills}.json  # bundled catalogs
 
-test/                               # node:test suite (134 tests)
+test/                               # node:test suite (143 tests)
 docs/                               # Astro + Starlight site
 scripts/docs/                       # doc generators (gen-*.mjs + lib/render.mjs)
 .github/workflows/                  # ci.yml + docs.yml

@@ -31,6 +31,7 @@ src/inspect.js          → list / status / doctor commands
 src/update.js           → Remote registry refresh (refreshRegistry + dxai update)
 src/auto-update.js      → Periodic TTL-based catalog auto-refresh on setup runs
 src/cleanup.js          → Manifest-aware cleanup (prunes manifest on removal)
+src/mcp-cmd.js          → Fast-path `dxai add` / `dxai remove` MCP commands
 src/rollback.js         → dxai rollback — restore files from .bak.<ts> snapshots
 src/runtime.js          → Option normalization
 src/branding.js         → Banner, colors, message helpers
@@ -61,6 +62,9 @@ src/registry/
 dxai system             # Global IDE configs, MCP servers, skills
 dxai project            # Repo-local rules, CLAUDE.md, AGENTS.md, stack detection
 dxai both               # System + project in one go
+dxai init               # Alias for `dxai project`
+dxai add <mcp...>       # Fast-path: add MCP server(s) to detected agents
+dxai remove <mcp...>    # Fast-path: remove MCP server(s) (alias: rm)
 dxai apply [profile]    # Non-interactive from a saved profile
 dxai save-profile       # Persist selections as reusable profile
 dxai list / status / doctor   # Manifest inspection and drift detection

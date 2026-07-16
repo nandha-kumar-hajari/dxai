@@ -1,7 +1,7 @@
 ---
 title: dxai rollback
 description: "Restore dxai-managed files from their most recent .bak.<ts> backup"
-sidebar: {"order":5}
+sidebar: {"order":7}
 ---
 <!--
 AUTO-GENERATED — do not edit by hand.

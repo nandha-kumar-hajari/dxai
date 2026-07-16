@@ -1,7 +1,7 @@
 ---
 title: dxai doctor
 description: "Validate dxai installation: configs parse, env vars set, tools on PATH"
-sidebar: {"order":11}
+sidebar: {"order":13}
 ---
 <!--
 AUTO-GENERATED — do not edit by hand.

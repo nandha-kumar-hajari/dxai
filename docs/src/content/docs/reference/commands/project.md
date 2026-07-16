@@ -17,6 +17,10 @@ Project-level setup (stack, rules, CLAUDE.md, .editorconfig, etc.)
 dxai project [options]
 ```
 
+## Aliases
+
+`dxai init`
+
 ## Options
 
 | Flag | Description | Notes |
