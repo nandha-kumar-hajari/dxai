@@ -39,7 +39,8 @@ function quiet(runtime, fn) {
 }
 
 // In non-interactive mode, fall back to defaults instead of prompting.
-async function collectMcpInputs(selectedMcpIds, mcpRegistry, runtime) {
+// Exported so the fast-path `dxai add` command can reuse the same input flow.
+export async function collectMcpInputs(selectedMcpIds, mcpRegistry, runtime) {
   const inputs = {};
   for (const id of selectedMcpIds) {
     const server = mcpRegistry.find((s) => s.id === id);

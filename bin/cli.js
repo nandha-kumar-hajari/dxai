@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { realpathSync } from 'node:fs';
 import { run, apply, saveProfileCmd, listProfilesCmd } from '../src/index.js';
 import { cleanup } from '../src/cleanup.js';
+import { addMcp, removeMcp } from '../src/mcp-cmd.js';
 import { rollbackCmd } from '../src/rollback.js';
 import { listCmd, statusCmd, doctorCmd } from '../src/inspect.js';
 import { updateCmd } from '../src/update.js';
@@ -55,6 +56,7 @@ export function buildProgram() {
   sharedSetupOptions(
     program
       .command('project')
+      .alias('init')
       .description('Project-level setup (stack, rules, CLAUDE.md, .editorconfig, etc.)')
       .action(async (opts) => {
         await run('project', opts);
@@ -76,6 +78,32 @@ export function buildProgram() {
     .description('Remove dxai-managed configs, files, and skills')
     .action(async () => {
       await cleanup();
+    });
+
+  // dxai add <id...> — fast path: add MCP server(s) without the wizard
+  program
+    .command('add <mcp...>')
+    .description('Add MCP server(s) to detected agents (fast path, no wizard)')
+    .addOption(new Option('--agents <list>', 'comma-separated agent IDs to target (default: detected)').argParser(csv))
+    .addOption(new Option('--project', 'write to project-level config instead of global'))
+    .addOption(new Option('-y, --yes', 'non-interactive; use defaults for any required inputs'))
+    .addOption(new Option('--json', 'emit machine-readable JSON output'))
+    .addOption(new Option('--dry-run', 'preview what would be added without writing'))
+    .action(async (mcp, opts) => {
+      await addMcp(mcp, opts);
+    });
+
+  // dxai remove <id...> — fast path: remove MCP server(s) without the wizard
+  program
+    .command('remove <mcp...>')
+    .alias('rm')
+    .description('Remove MCP server(s) from detected agents (fast path, no wizard)')
+    .addOption(new Option('--agents <list>', 'comma-separated agent IDs to target (default: detected)').argParser(csv))
+    .addOption(new Option('--project', 'remove from project-level config instead of global'))
+    .addOption(new Option('--json', 'emit machine-readable JSON output'))
+    .addOption(new Option('--dry-run', 'preview what would be removed without writing'))
+    .action(async (mcp, opts) => {
+      await removeMcp(mcp, opts);
     });
 
   // dxai rollback — restore config/project files from their latest .bak.<ts>
@@ -187,6 +215,9 @@ Examples:
   $ dxai project -y --stack react,node --features cursor-rules,agents-md
   $ CI=true dxai system --agents cursor       # non-interactive (CI mode)
   $ dxai save-profile myteam --agents cursor --mcp github,playwright
+  $ dxai add github playwright                # add MCP servers to detected agents
+  $ dxai add context7 --agents cursor,codex   # target specific agents
+  $ dxai remove github --dry-run              # preview an MCP removal
   $ dxai apply myteam                         # run setup from a saved profile
   $ dxai apply --dry-run                      # auto-load ./.dxai/profile.json
   $ dxai profiles                             # list saved profiles

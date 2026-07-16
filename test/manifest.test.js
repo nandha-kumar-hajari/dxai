@@ -5,6 +5,7 @@ import path from 'path';
 import os from 'os';
 import {
   readManifest, writeManifest, MANIFEST_VERSION, recordProjectSkills, PROJECT_MANIFEST_PATH,
+  unrecordMcp,
 } from '../src/manifest.js';
 
 let tmp;
@@ -61,4 +62,28 @@ test('recordProjectSkills writes installed skills to the project manifest', () =
 test('recordProjectSkills is a no-op when nothing was installed', () => {
   recordProjectSkills({ installed: [], directory: path.join(tmp, '.agents', 'skills') }, tmp);
   assert.ok(!fs.existsSync(path.join(tmp, PROJECT_MANIFEST_PATH)));
+});
+
+test('unrecordMcp removes ids and cleans up an emptied agent bucket', () => {
+  const p = path.join(tmp, 'm.json');
+  const m = readManifest(p);
+  m.mcp = { cursor: { context7: { addedAt: 'x' }, github: { addedAt: 'x' } } };
+  writeManifest(p, m);
+
+  const removed = unrecordMcp(p, 'cursor', ['context7']);
+  assert.equal(removed, 1);
+  let reread = readManifest(p);
+  assert.ok(!reread.mcp.cursor.context7);
+  assert.ok(reread.mcp.cursor.github);
+
+  // Removing the last id drops the whole agent bucket.
+  unrecordMcp(p, 'cursor', ['github']);
+  reread = readManifest(p);
+  assert.ok(!reread.mcp.cursor);
+});
+
+test('unrecordMcp never creates a missing manifest file', () => {
+  const p = path.join(tmp, 'absent.json');
+  assert.equal(unrecordMcp(p, 'cursor', ['context7']), 0);
+  assert.ok(!fs.existsSync(p));
 });

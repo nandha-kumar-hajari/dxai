@@ -142,6 +142,30 @@ export function recordProjectSkills(skillResults, cwd = process.cwd()) {
   });
 }
 
+// Remove specific MCP server IDs for one agent from a manifest file, cleaning up
+// an emptied agent bucket. No-op (and never creates the file) when the manifest
+// doesn't exist. Returns the count actually removed.
+export function unrecordMcp(filePath, agentId, ids) {
+  if (!fs.existsSync(filePath)) return 0;
+  let removed = 0;
+  updateManifest(filePath, (m) => {
+    if (!m.mcp[agentId]) return;
+    for (const id of ids) {
+      if (m.mcp[agentId][id]) { delete m.mcp[agentId][id]; removed++; }
+    }
+    if (Object.keys(m.mcp[agentId]).length === 0) delete m.mcp[agentId];
+  });
+  return removed;
+}
+
+export function unrecordSystemMcp(agentId, ids) {
+  return unrecordMcp(SYSTEM_MANIFEST_PATH, agentId, ids);
+}
+
+export function unrecordProjectMcp(agentId, ids, cwd = process.cwd()) {
+  return unrecordMcp(path.join(cwd, PROJECT_MANIFEST_PATH), agentId, ids);
+}
+
 export function recordProjectFiles(filePaths, cwd = process.cwd()) {
   if (!filePaths || filePaths.length === 0) return;
   const filePath = path.join(cwd, PROJECT_MANIFEST_PATH);
