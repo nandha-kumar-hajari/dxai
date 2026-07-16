@@ -13,6 +13,7 @@ import os from 'os';
 import { fileURLToPath } from 'node:url';
 import { isSafeVersionRef } from './validate.js';
 import { writeJsonAtomic } from '../fs-atomic.js';
+import { fetchJson } from '../net.js';
 
 // Default timeout for a registry fetch, so `dxai update` can't hang forever on a
 // stalled connection.
@@ -74,14 +75,9 @@ export function loadRegistry(name) {
 // Remote fetch — used by `dxai update`. Async, since we hit the network.
 // timeoutMs (optional) aborts a slow fetch; used by the background auto-refresh
 // so a stale network never blocks an interactive run for long.
-export async function fetchRegistry(name, baseUrl = DEFAULT_REGISTRY_BASE, { timeoutMs = DEFAULT_FETCH_TIMEOUT_MS } = {}) {
+export async function fetchRegistry(name, baseUrl = DEFAULT_REGISTRY_BASE, { timeoutMs = DEFAULT_FETCH_TIMEOUT_MS, retries } = {}) {
   const url = `${baseUrl.replace(/\/$/, '')}/${name}.json`;
-  const signal = AbortSignal.timeout(timeoutMs);
-  const res = await fetch(url, { redirect: 'follow', signal });
-  if (!res.ok) {
-    throw new Error(`Failed to fetch ${url}: HTTP ${res.status}`);
-  }
-  const data = await res.json();
+  const data = await fetchJson(url, { timeoutMs, retries });
   return { url, data };
 }
 

@@ -82,7 +82,9 @@ export async function maybeRefreshCatalog(runtime = {}, deps = {}) {
   if (!record) return { firstRun: true };
 
   try {
-    const results = await refresh({ base: registryBaseFor({}), timeoutMs: timeoutMs(env) });
+    // Background check: fail fast. Retrying an offline host would stall the
+    // user's run for seconds; the interactive `dxai update` still gets retries.
+    const results = await refresh({ base: registryBaseFor({}), timeoutMs: timeoutMs(env), retries: 0 });
     // refreshRegistry captures per-file failures rather than throwing; if every file
     // failed (offline / registry down) treat the whole refresh as a miss.
     if (results.length && results.every((r) => !r.ok)) {

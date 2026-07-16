@@ -17,14 +17,14 @@ export const REGISTRY_FILES = [
 // against the previously-resolved registry. Returns a results array (one per file);
 // a per-file fetch/validation failure is captured as { ok: false, error } rather than
 // thrown, so one bad file doesn't sink the rest. Pure of any output — callers print.
-export async function refreshRegistry({ base = registryBaseFor({}), timeoutMs } = {}) {
+export async function refreshRegistry({ base = registryBaseFor({}), timeoutMs, retries } = {}) {
   const results = [];
   for (const { name, listKey } of REGISTRY_FILES) {
     const before = (() => {
       try { return loadRegistry(name); } catch { return null; }
     })();
     try {
-      const { url, data } = await fetchRegistry(name, base, { timeoutMs });
+      const { url, data } = await fetchRegistry(name, base, { timeoutMs, retries });
       // Basic shape check — must have an array under listKey.
       if (!Array.isArray(data?.[listKey])) {
         throw new Error(`Registry payload missing "${listKey}" array`);
