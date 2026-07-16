@@ -31,8 +31,10 @@ src/inspect.js          → list / status / doctor commands
 src/update.js           → Remote registry refresh (refreshRegistry + dxai update)
 src/auto-update.js      → Periodic TTL-based catalog auto-refresh on setup runs
 src/cleanup.js          → Manifest-aware cleanup (prunes manifest on removal)
+src/rollback.js         → dxai rollback — restore files from .bak.<ts> snapshots
 src/runtime.js          → Option normalization
 src/branding.js         → Banner, colors, message helpers
+src/net.js              → fetch with per-attempt timeout + retry/backoff (shared)
 src/fs-atomic.js        → Atomic file writes (temp + rename), optional 0600 mode
 src/registry/
   validate.js           → Validation for untrusted registry data (commands, repo/path, ids)
@@ -63,6 +65,7 @@ dxai apply [profile]    # Non-interactive from a saved profile
 dxai save-profile       # Persist selections as reusable profile
 dxai list / status / doctor   # Manifest inspection and drift detection
 dxai cleanup / reset    # Remove dxai-managed configs
+dxai rollback           # Restore files from their most recent .bak.<ts> backup
 dxai update             # Refresh registry cache from remote
 ```
 

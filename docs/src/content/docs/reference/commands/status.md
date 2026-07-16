@@ -1,7 +1,7 @@
 ---
 title: dxai status
 description: Compare manifest with live config files; surface drift
-sidebar: {"order":9}
+sidebar: {"order":10}
 ---
 <!--
 AUTO-GENERATED — do not edit by hand.

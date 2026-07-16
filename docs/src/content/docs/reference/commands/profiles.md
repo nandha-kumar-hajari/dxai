@@ -1,7 +1,7 @@
 ---
 title: dxai profiles
 description: List discoverable profiles (~/.dxai/profiles + ./.dxai)
-sidebar: {"order":7}
+sidebar: {"order":8}
 ---
 <!--
 AUTO-GENERATED — do not edit by hand.

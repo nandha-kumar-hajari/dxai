@@ -1,7 +1,7 @@
 ---
 title: "dxai save-profile"
 description: "Save selections as a profile. Defaults to ~/.dxai/profiles/<name>.json"
-sidebar: {"order":6}
+sidebar: {"order":7}
 ---
 <!--
 AUTO-GENERATED — do not edit by hand.

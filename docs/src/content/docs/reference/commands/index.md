@@ -17,6 +17,7 @@ Every dxai subcommand. Each command page includes its full options table and syn
 | `dxai project` | Project-level setup (stack, rules, CLAUDE.md, .editorconfig, etc.) |
 | `dxai both` | Run system + project setup in one go |
 | `dxai cleanup` | Remove dxai-managed configs, files, and skills (alias: `reset`) |
+| `dxai rollback` | Restore dxai-managed files from their most recent .bak.<ts> backup |
 | `dxai apply` | Run setup using a saved profile (auto-loads ./.dxai/profile.json if no name given) |
 | `dxai save-profile` | Save selections as a profile. Defaults to ~/.dxai/profiles/<name>.json |
 | `dxai profiles` | List discoverable profiles (~/.dxai/profiles + ./.dxai) |

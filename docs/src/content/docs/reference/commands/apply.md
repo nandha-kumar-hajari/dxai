@@ -1,7 +1,7 @@
 ---
 title: dxai apply
 description: "Run setup using a saved profile (auto-loads ./.dxai/profile.json if no name given)"
-sidebar: {"order":5}
+sidebar: {"order":6}
 ---
 <!--
 AUTO-GENERATED — do not edit by hand.
