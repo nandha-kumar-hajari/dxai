@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { realpathSync } from 'node:fs';
 import { run, apply, saveProfileCmd, listProfilesCmd } from '../src/index.js';
 import { cleanup } from '../src/cleanup.js';
+import { rollbackCmd } from '../src/rollback.js';
 import { listCmd, statusCmd, doctorCmd } from '../src/inspect.js';
 import { updateCmd } from '../src/update.js';
 
@@ -75,6 +76,18 @@ export function buildProgram() {
     .description('Remove dxai-managed configs, files, and skills')
     .action(async () => {
       await cleanup();
+    });
+
+  // dxai rollback — restore config/project files from their latest .bak.<ts>
+  program
+    .command('rollback')
+    .description('Restore dxai-managed files from their most recent .bak.<ts> backup')
+    .addOption(new Option('--list', 'list restorable backups without changing anything'))
+    .addOption(new Option('-y, --yes', 'restore the latest backup for every file without prompting'))
+    .addOption(new Option('--json', 'emit machine-readable JSON output'))
+    .addOption(new Option('--dry-run', 'preview what would be restored without writing'))
+    .action(async (opts) => {
+      await rollbackCmd(opts);
     });
 
   // dxai apply [name|path] — non-interactive run from a saved profile
@@ -178,6 +191,8 @@ Examples:
   $ dxai apply --dry-run                      # auto-load ./.dxai/profile.json
   $ dxai profiles                             # list saved profiles
   $ dxai cleanup                              # remove dxai-managed configs
+  $ dxai rollback --list                      # show restorable .bak backups
+  $ dxai rollback --dry-run                   # preview a restore, write nothing
 
 Profiles are auto-loaded from (in order):
   ./.dxai/profile.json   (project-local)
