@@ -6,6 +6,7 @@ import { warnMsg, infoMsg } from './branding.js';
 import { buildAgentsMd, buildClaudeMd, buildGeminiMd, buildCursorRule } from './registry/stacks.js';
 import { isValidRepo, isValidSkillPath, isSafeId } from './registry/validate.js';
 import { writeFileAtomic, writeJsonAtomic } from './fs-atomic.js';
+import { fetchText } from './net.js';
 
 const HOME = os.homedir();
 
@@ -692,7 +693,7 @@ export function writeAgentsMd(selectedStacks, profile = null) {
 // ══════════════════════════════════════════════
 // Skills Installer
 // ══════════════════════════════════════════════
-export function installSkills(selectedSkills, skillRegistry, selectedAgents) {
+export async function installSkills(selectedSkills, skillRegistry, selectedAgents) {
   const installed = [];
   const errors = [];
 
@@ -759,12 +760,15 @@ export function installSkills(selectedSkills, skillRegistry, selectedAgents) {
         // Fall back to manual download
       }
 
-      // Manual: create skill dir and fetch SKILL.md (argv form — no shell).
+      // Manual: create skill dir and fetch SKILL.md with native fetch (no shell,
+      // no curl dependency). `rawUrl` is a fixed https raw.githubusercontent.com
+      // URL; repo/path were validated above. A 404 (or other non-2xx) rejects,
+      // so it lands in the catch rather than writing an error page to disk.
       fs.ensureDirSync(targetDir);
       const rawUrl = `https://raw.githubusercontent.com/${skill.repo}/main/${skill.path === '.' ? '' : skill.path + '/'}SKILL.md`;
       try {
-        const content = execFileSync('curl', ['-sL', rawUrl], { stdio: 'pipe', timeout: 15000 }).toString();
-        if (content && content.length > 50 && !content.includes('404')) {
+        const content = await fetchText(rawUrl, { timeoutMs: 15000 });
+        if (content && content.length > 50) {
           fs.writeFileSync(path.join(targetDir, 'SKILL.md'), content, 'utf-8');
           installed.push(skill.name);
         } else {

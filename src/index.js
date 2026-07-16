@@ -244,13 +244,13 @@ async function selectSkills(runtime, headerLabel, { recommendByDefault = true } 
 
 // Install the chosen skills and report results. `record` persists them to the
 // appropriate manifest (system vs project). Mutates `result.skillResults`.
-function installAndReportSkills(selectedSkillIds, selectedAgents, runtime, result, record) {
+async function installAndReportSkills(selectedSkillIds, selectedAgents, runtime, result, record) {
   if (selectedSkillIds.length === 0) return;
   const spinner = runtime.json
     ? null
     : ora({ text: 'Installing agent skills...', color: 'cyan' }).start();
   try {
-    const skillResults = installSkills(selectedSkillIds, SKILLS, selectedAgents);
+    const skillResults = await installSkills(selectedSkillIds, SKILLS, selectedAgents);
     spinner?.stop();
     result.skillResults = skillResults;
     record(skillResults);
@@ -539,7 +539,7 @@ async function runSystem(ctx, runtime) {
     });
   }
 
-  installAndReportSkills(selectedSkillIds, selectedAgents, runtime, result, recordSystemSkills);
+  await installAndReportSkills(selectedSkillIds, selectedAgents, runtime, result, recordSystemSkills);
 
   const selectedServers = selectedMcpIds.map((id) => MCP_SERVERS.find((s) => s.id === id)).filter(Boolean);
   const needsEnv = selectedServers.filter((s) => s.requiresEnv);
@@ -875,7 +875,7 @@ async function runProject(ctx, runtime, { handleSkills = false } = {}) {
 
   const projectResult = { selectedStackIds, selectedFeatures, projectMcpIds, selectedSkillIds };
   if (handleSkills) {
-    installAndReportSkills(selectedSkillIds, selectedAgents, runtime, projectResult, recordProjectSkills);
+    await installAndReportSkills(selectedSkillIds, selectedAgents, runtime, projectResult, recordProjectSkills);
   }
 
   return projectResult;

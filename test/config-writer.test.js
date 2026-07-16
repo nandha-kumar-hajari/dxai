@@ -160,28 +160,28 @@ const agent = (id) => ({ id, name: id });
 // process.cwd() may resolve macOS /var → /private/var symlinks, so compare the
 // trailing path segments rather than the absolute path.
 const tail = (p) => p.split(path.sep).slice(-2).join(path.sep);
-const dirFor = (agents) => {
+const dirFor = async (agents) => {
   const cwd = process.cwd();
   try {
     process.chdir(tmp);
-    return installSkills([], [], agents).directory;
+    return (await installSkills([], [], agents)).directory;
   } finally {
     process.chdir(cwd);
   }
 };
 
-test('installSkills: Codex selected → .agents/skills (Codex native path)', () => {
-  assert.equal(tail(dirFor([agent('codex')])), path.join('.agents', 'skills'));
+test('installSkills: Codex selected → .agents/skills (Codex native path)', async () => {
+  assert.equal(tail(await dirFor([agent('codex')])), path.join('.agents', 'skills'));
 });
 
-test('installSkills: Cursor + Codex → .agents/skills so Codex still finds them', () => {
-  assert.equal(tail(dirFor([agent('cursor'), agent('codex')])), path.join('.agents', 'skills'));
+test('installSkills: Cursor + Codex → .agents/skills so Codex still finds them', async () => {
+  assert.equal(tail(await dirFor([agent('cursor'), agent('codex')])), path.join('.agents', 'skills'));
 });
 
-test('installSkills: Cursor only (no Codex) → .cursor/skills', () => {
-  assert.equal(tail(dirFor([agent('cursor')])), path.join('.cursor', 'skills'));
+test('installSkills: Cursor only (no Codex) → .cursor/skills', async () => {
+  assert.equal(tail(await dirFor([agent('cursor')])), path.join('.cursor', 'skills'));
 });
 
-test('installSkills: neither Cursor nor Codex → .agents/skills fallback', () => {
-  assert.equal(tail(dirFor([agent('claude-code')])), path.join('.agents', 'skills'));
+test('installSkills: neither Cursor nor Codex → .agents/skills fallback', async () => {
+  assert.equal(tail(await dirFor([agent('claude-code')])), path.join('.agents', 'skills'));
 });
