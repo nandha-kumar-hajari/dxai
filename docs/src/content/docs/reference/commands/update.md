@@ -1,7 +1,7 @@
 ---
 title: dxai update
 description: "Fetch the latest registry (MCP servers, skills) and cache it locally"
-sidebar: {"order":11}
+sidebar: {"order":14}
 ---
 <!--
 AUTO-GENERATED — do not edit by hand.
@@ -22,3 +22,5 @@ dxai update [options]
 | Flag | Description | Notes |
 | --- | --- | --- |
 | `--json` | emit machine-readable JSON output | — |
+| `--registry-version <ref>` | registry tag/branch to fetch (default: main) | required |
+| `--registry-url <url>` | registry base URL (overrides DXAI_REGISTRY_URL) | required |

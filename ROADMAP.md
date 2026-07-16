@@ -67,17 +67,17 @@ Tracking gaps and missing features for a modern AI dev-environment CLI. Items ar
 ## High-value follow-ups
 
 ### Argument parsing & UX
-- [ ] `dxai add <mcp-id>` / `dxai remove <mcp-id>` — fast path, no wizard.
-- [ ] `dxai init` alias for first-time project setup.
+- [x] **`dxai add <mcp-id...>` / `dxai remove <mcp-id...>`** (`src/mcp-cmd.js`) — fast path, no wizard. Resolve target agents from `--agents` (validated) or detection, validate server IDs with a "Known: ..." hint, then write/remove directly. Honour `--project`, `--dry-run`, `--json`, and (add) `--yes`; reuse the setup writers, config-remover, and manifest (new `unrecordMcp` helpers prune on remove).
+- [x] **`dxai init` alias** for first-time project setup (registered as an alias of `dxai project` in `bin/cli.js`).
 - [ ] Surface env-var requirements interactively (offer to write a `.env`, integrate with macOS Keychain / 1Password CLI / `direnv`).
-- [ ] Better `--help`: examples block, env var documentation, exit codes.
+- [ ] Better `--help`: examples block, env var documentation, exit codes. (Examples block + env-var docs already shipped in the Top 5; exit-code documentation remains.)
 
 ### Security & robustness
-- [ ] Replace `execSync('curl ...')` in `installSkills` (`config-writer.js:522`) with native `fetch` (Node 18+).
+- [x] **Replace `execSync('curl ...')` in `installSkills` with native `fetch`.** The manual SKILL.md fallback now uses `fetchText` (`src/net.js`) instead of shelling out to `curl` — no external binary, and a non-2xx response rejects instead of writing an error page to disk. `installSkills` is async; callers updated.
+- [x] **Add timeouts + retry/backoff for network calls.** New `src/net.js` (`fetchWithRetry`/`fetchJson`/`fetchText`): per-attempt `AbortSignal.timeout`, bounded retries (default 2), exponential backoff. Retriable = timeout/abort/network-throw/5xx/429; other 4xx fail fast. The registry refresh routes through it; interactive `dxai update` gets the default retries, the background auto-refresh passes `retries: 0` so an offline host never stalls a run.
+- [x] **`dxai rollback`** (`src/rollback.js`) — restores dxai-managed files (agent global configs + generated project files) from their most recent `.bak.<ts>` snapshot, snapshotting the current file first so the rollback is reversible. Supports `--list`, `--dry-run`, `--json`, `--yes`; interactive checkbox otherwise.
 - [ ] Verify MCP packages: pin versions, surface npm provenance/audit info, warn on unsigned packages.
-- [ ] Add timeouts + retry/backoff for network calls.
-- [ ] Idempotent updates — let `mergeJsonMcpConfig` upgrade an existing entry to a new version instead of always skipping. (The per-server `version` field now exists; this is the missing "detect drift and upgrade" half.)
-- [ ] Add `dxai rollback` to restore from the most recent `.bak.<ts>` (or pick one).
+- [ ] Idempotent updates — let `mergeJsonMcpConfig` upgrade an existing entry to a new version instead of always skipping. (The per-server `version` field now exists; this is the missing "detect drift and upgrade" half.) **Deferred:** mutates possibly user-customized config, so it needs its own drift-detection + confirmation UX — tracked as a standalone change rather than bundled here.
 
 ### Generators
 - [ ] Merge into existing `CLAUDE.md` / `AGENTS.md` instead of skipping when present (append a managed block with markers).

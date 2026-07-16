@@ -25,6 +25,7 @@ Both files share the same shape and are written by the helpers in `src/manifest.
 | `agents` | `string[]` | Agent IDs for which dxai has installed something. |
 | `mcp` | `{ [agentId]: { [serverId]: { addedAt, configPath } } }` | Per-agent record of installed MCP servers. `addedAt` is ISO 8601; `configPath` points at the file dxai wrote into. |
 | `skills` | `{ [skillId]: { addedAt, path } }` | Installed agent skills. `path` is the directory containing the skill on disk. |
+| `tools` | — | — |
 | `files` | `[{ relativePath, addedAt }]` | Project files dxai created (`AGENTS.md`, `.cursor/rules/*.mdc`, etc.). Used by `dxai status` to detect deletion. |
 
 ## Empty manifest
@@ -39,6 +40,7 @@ A fresh manifest (before any installs) has the shape:
   "agents": [],
   "mcp": {},
   "skills": {},
+  "tools": {},
   "files": []
 }
 ```

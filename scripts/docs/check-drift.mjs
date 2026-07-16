@@ -59,7 +59,14 @@ if (failed > 0) {
   process.exit(1);
 }
 
-const result = spawnSync('diff', ['-ruN', committedDocs, tmpOut], {
+// changelog.md is generated from `git log`, so it is inherently non-deterministic
+// across checkouts: a PR runs against a merge commit (extra commit + base history
+// the branch doesn't have) and the "Unreleased" section can never contain its own
+// tip commit's hash. Byte-diffing it would fail every PR regardless of correctness,
+// so it is excluded from the drift gate — the deterministic reference pages
+// (commands, flags, registry, schemas) are still fully guarded. It is still
+// regenerated on `npm run docs:build`.
+const result = spawnSync('diff', ['-ruN', '-x', 'changelog.md', committedDocs, tmpOut], {
   encoding: 'utf-8',
   stdio: ['ignore', 'pipe', 'pipe'],
 });

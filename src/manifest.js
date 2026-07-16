@@ -1,6 +1,8 @@
 import fs from 'fs-extra';
 import path from 'path';
 import os from 'os';
+import { warnMsg } from './branding.js';
+import { writeJsonAtomic } from './fs-atomic.js';
 
 const HOME = os.homedir();
 
@@ -27,7 +29,15 @@ export function readManifest(filePath) {
     const data = fs.readJsonSync(filePath);
     // Future migrations would go here, gated on data.version.
     return { ...emptyManifest(), ...data };
-  } catch {
+  } catch (err) {
+    // A corrupt manifest must not silently read as "nothing installed" — that
+    // would hide real installs from `list`/`status` and let a subsequent write
+    // clobber recoverable data. Preserve the bad file and warn loudly.
+    try {
+      const salvage = `${filePath}.corrupt`;
+      if (!fs.existsSync(salvage)) fs.copySync(filePath, salvage);
+      warnMsg(`Manifest at ${filePath} is unreadable (${err.message}); preserved a copy at ${path.basename(salvage)}.`);
+    } catch { /* best-effort salvage */ }
     return emptyManifest();
   }
 }
@@ -40,8 +50,7 @@ export function writeManifest(filePath, manifest) {
     createdAt: manifest.createdAt || now,
     updatedAt: now,
   };
-  fs.ensureDirSync(path.dirname(filePath));
-  fs.writeJsonSync(filePath, out, { spaces: 2 });
+  writeJsonAtomic(filePath, out, { spaces: 2 });
   return out;
 }
 
@@ -53,17 +62,18 @@ export function updateManifest(filePath, mutator) {
 }
 
 // Record system MCP installs from writeMcpConfigs result map.
-// `mcpResults` is { [agentId]: { agent, added, skipped, errors, path } }
-export function recordSystemMcp(mcpResults, addedServerIds) {
+// `mcpResults` is { [agentId]: { agent, added, skipped, errors, path, addedIds } }.
+// We record only the IDs each agent actually merged (r.addedIds), so the manifest
+// never claims servers that were skipped because they were already present.
+export function recordSystemMcp(mcpResults) {
   if (!mcpResults) return;
   updateManifest(SYSTEM_MANIFEST_PATH, (m) => {
     const now = new Date().toISOString();
     for (const [agentId, r] of Object.entries(mcpResults)) {
-      if (r.added <= 0) continue;
+      const ids = r.addedIds || [];
+      if (ids.length === 0) continue;
       if (!m.mcp[agentId]) m.mcp[agentId] = {};
-      for (const serverId of addedServerIds) {
-        // We don't know per-server which ones were actually new vs skipped here,
-        // so we only record IDs the caller marked as freshly added.
+      for (const serverId of ids) {
         m.mcp[agentId][serverId] = {
           addedAt: now,
           configPath: r.path || null,
@@ -98,15 +108,16 @@ export function recordSystemTools(toolResults) {
   });
 }
 
-export function recordProjectMcp(mcpResults, addedServerIds, cwd = process.cwd()) {
+export function recordProjectMcp(mcpResults, cwd = process.cwd()) {
   if (!mcpResults) return;
   const filePath = path.join(cwd, PROJECT_MANIFEST_PATH);
   updateManifest(filePath, (m) => {
     const now = new Date().toISOString();
     for (const [agentId, r] of Object.entries(mcpResults)) {
-      if (r.added <= 0) continue;
+      const ids = r.addedIds || [];
+      if (ids.length === 0) continue;
       if (!m.mcp[agentId]) m.mcp[agentId] = {};
-      for (const serverId of addedServerIds) {
+      for (const serverId of ids) {
         m.mcp[agentId][serverId] = {
           addedAt: now,
           configPath: r.path || null,
@@ -129,6 +140,30 @@ export function recordProjectSkills(skillResults, cwd = process.cwd()) {
       };
     }
   });
+}
+
+// Remove specific MCP server IDs for one agent from a manifest file, cleaning up
+// an emptied agent bucket. No-op (and never creates the file) when the manifest
+// doesn't exist. Returns the count actually removed.
+export function unrecordMcp(filePath, agentId, ids) {
+  if (!fs.existsSync(filePath)) return 0;
+  let removed = 0;
+  updateManifest(filePath, (m) => {
+    if (!m.mcp[agentId]) return;
+    for (const id of ids) {
+      if (m.mcp[agentId][id]) { delete m.mcp[agentId][id]; removed++; }
+    }
+    if (Object.keys(m.mcp[agentId]).length === 0) delete m.mcp[agentId];
+  });
+  return removed;
+}
+
+export function unrecordSystemMcp(agentId, ids) {
+  return unrecordMcp(SYSTEM_MANIFEST_PATH, agentId, ids);
+}
+
+export function unrecordProjectMcp(agentId, ids, cwd = process.cwd()) {
+  return unrecordMcp(path.join(cwd, PROJECT_MANIFEST_PATH), agentId, ids);
 }
 
 export function recordProjectFiles(filePaths, cwd = process.cwd()) {

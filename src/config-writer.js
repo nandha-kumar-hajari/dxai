@@ -2,10 +2,17 @@ import fs from 'fs-extra';
 import path from 'path';
 import os from 'os';
 import { execSync, execFileSync } from 'child_process';
-import { successMsg, warnMsg, errorMsg, infoMsg, theme } from './branding.js';
+import { warnMsg, infoMsg } from './branding.js';
 import { buildAgentsMd, buildClaudeMd, buildGeminiMd, buildCursorRule } from './registry/stacks.js';
+import { isValidRepo, isValidSkillPath, isSafeId } from './registry/validate.js';
+import { writeFileAtomic, writeJsonAtomic } from './fs-atomic.js';
+import { fetchText } from './net.js';
 
 const HOME = os.homedir();
+
+function escapeRegExp(s) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 
 // ══════════════════════════════════════════════
 // Input substitution
@@ -154,20 +161,28 @@ function mergeJsonMcpConfig(filePath, mcpKey, newServers) {
 
   let added = 0;
   let skipped = 0;
+  const addedIds = [];
 
   for (const [serverId, serverConfig] of Object.entries(newServers)) {
+    // Defensive: never let a poisoned registry id (e.g. "__proto__") become a key.
+    if (!isSafeId(serverId)) {
+      skipped++;
+      continue;
+    }
     if (config[mcpKey][serverId]) {
       skipped++;
     } else {
       config[mcpKey][serverId] = serverConfig;
       added++;
+      addedIds.push(serverId);
     }
   }
 
-  fs.ensureDirSync(path.dirname(filePath));
-  fs.writeJsonSync(filePath, config, { spaces: 2 });
+  // Atomic write + 0600: configs may carry ${VAR} secret references, and a
+  // crash mid-write must never truncate the user's real config.
+  writeJsonAtomic(filePath, config, { spaces: 2, mode: 0o600 });
 
-  return { added, skipped };
+  return { added, skipped, addedIds };
 }
 
 // ══════════════════════════════════════════════
@@ -184,21 +199,24 @@ function mergeTomlMcpConfig(filePath, newTomlBlocks) {
 
   let added = 0;
   let skipped = 0;
+  const addedIds = [];
 
   for (const { id, toml } of newTomlBlocks) {
-    // Check if server already configured
-    if (content.includes(`[mcp_servers.${id}]`)) {
+    // Already configured? Match the header at the start of a line so a
+    // commented-out block (`# [mcp_servers.foo]`) doesn't count as present.
+    const headerRe = new RegExp(`^\\s*\\[mcp_servers\\.${escapeRegExp(id)}\\]`, 'm');
+    if (headerRe.test(content)) {
       skipped++;
     } else {
       content = content.trimEnd() + '\n\n' + toml + '\n';
       added++;
+      addedIds.push(id);
     }
   }
 
-  fs.ensureDirSync(path.dirname(filePath));
-  fs.writeFileSync(filePath, content, 'utf-8');
+  writeFileAtomic(filePath, content, { mode: 0o600 });
 
-  return { added, skipped };
+  return { added, skipped, addedIds };
 }
 
 // ══════════════════════════════════════════════
@@ -208,6 +226,7 @@ function configureClaudeCodeMcp(servers) {
   let added = 0;
   let skipped = 0;
   const errors = [];
+  const addedIds = [];
 
   for (const { id, config } of servers) {
     if (!config.command || config.command !== 'claude') continue;
@@ -237,12 +256,13 @@ function configureClaudeCodeMcp(servers) {
         env: { ...process.env },
       });
       added++;
+      addedIds.push(id);
     } catch (err) {
       errors.push({ id, error: err.message });
     }
   }
 
-  return { added, skipped, errors };
+  return { added, skipped, errors, addedIds };
 }
 
 // ══════════════════════════════════════════════
@@ -333,12 +353,13 @@ export function writeMcpConfigs(selectedAgents, selectedServers, mcpRegistry, in
         const replacements = buildReplacements(server, inputs);
         let config = substitutePlaceholders(server.configs[agent.id], replacements);
         if (server.version) config = pinPackageVersion(config, server.version);
-        return { id: serverId, config, meta: server };
+        return { id: serverId, config };
       })
       .filter(Boolean);
 
     if (serversForAgent.length === 0) {
       agentResult.skipped = selectedServers.length;
+      agentResult.addedIds = [];
       results[agent.id] = agentResult;
       continue;
     }
@@ -352,9 +373,10 @@ export function writeMcpConfigs(selectedAgents, selectedServers, mcpRegistry, in
             serverMap[id] = config;
           }
           const configPath = agent.globalMcpPath(HOME);
-          const { added, skipped } = mergeJsonMcpConfig(configPath, agent.mcpKey, serverMap);
+          const { added, skipped, addedIds } = mergeJsonMcpConfig(configPath, agent.mcpKey, serverMap);
           agentResult.added = added;
           agentResult.skipped = skipped;
+          agentResult.addedIds = addedIds;
           agentResult.path = configPath;
           break;
         }
@@ -365,18 +387,20 @@ export function writeMcpConfigs(selectedAgents, selectedServers, mcpRegistry, in
             .filter(({ config }) => config.toml)
             .map(({ id, config }) => ({ id, toml: config.toml }));
           const configPath = agent.globalMcpPath(HOME);
-          const { added, skipped } = mergeTomlMcpConfig(configPath, tomlBlocks);
+          const { added, skipped, addedIds } = mergeTomlMcpConfig(configPath, tomlBlocks);
           agentResult.added = added;
           agentResult.skipped = skipped;
+          agentResult.addedIds = addedIds;
           agentResult.path = configPath;
           break;
         }
 
         case 'cli': {
           // Claude Code uses CLI commands
-          const { added, skipped, errors } = configureClaudeCodeMcp(serversForAgent);
+          const { added, skipped, errors, addedIds } = configureClaudeCodeMcp(serversForAgent);
           agentResult.added = added;
           agentResult.skipped = skipped;
+          agentResult.addedIds = addedIds;
           agentResult.errors = errors;
           break;
         }
@@ -533,12 +557,13 @@ export function writeProjectMcpConfigs(agentsWithProjectMcp, selectedServers, mc
         const replacements = buildReplacements(server, inputs);
         let config = substitutePlaceholders(server.configs[agent.id], replacements);
         if (server.version) config = pinPackageVersion(config, server.version);
-        return { id: serverId, config, meta: server };
+        return { id: serverId, config };
       })
       .filter(Boolean);
 
     if (serversForAgent.length === 0) {
       agentResult.skipped = selectedServers.length;
+      agentResult.addedIds = [];
       results[agent.id] = agentResult;
       continue;
     }
@@ -549,9 +574,10 @@ export function writeProjectMcpConfigs(agentsWithProjectMcp, selectedServers, mc
         serverMap[id] = config;
       }
       const configPath = path.join(process.cwd(), agent.projectMcpPath());
-      const { added, skipped } = mergeJsonMcpConfig(configPath, agent.mcpKey, serverMap);
+      const { added, skipped, addedIds } = mergeJsonMcpConfig(configPath, agent.mcpKey, serverMap);
       agentResult.added = added;
       agentResult.skipped = skipped;
+      agentResult.addedIds = addedIds;
       agentResult.path = configPath;
     } catch (err) {
       agentResult.errors.push({ id: 'general', error: err.message });
@@ -667,7 +693,21 @@ export function writeAgentsMd(selectedStacks, profile = null) {
 // ══════════════════════════════════════════════
 // Skills Installer
 // ══════════════════════════════════════════════
-export function installSkills(selectedSkills, skillRegistry, selectedAgents) {
+// Download a skill's SKILL.md from its raw GitHub URL. Returns the markdown text.
+// A non-2xx (e.g. a missing file → 404) rejects inside fetchText, and an empty
+// body is treated as "not found" — so a failed download never writes a bogus
+// SKILL.md to disk. `fetchImpl` is injectable so the fetch path is testable
+// without a network. `skill.repo`/`skill.path` must be validated by the caller.
+export async function downloadSkillMarkdown(skill, { fetchImpl = fetchText, timeoutMs = 15000 } = {}) {
+  const rawUrl = `https://raw.githubusercontent.com/${skill.repo}/main/${skill.path === '.' ? '' : skill.path + '/'}SKILL.md`;
+  const content = await fetchImpl(rawUrl, { timeoutMs });
+  if (!content || content.trim().length === 0) {
+    throw new Error('SKILL.md not found at source');
+  }
+  return content;
+}
+
+export async function installSkills(selectedSkills, skillRegistry, selectedAgents) {
   const installed = [];
   const errors = [];
 
@@ -694,6 +734,14 @@ export function installSkills(selectedSkills, skillRegistry, selectedAgents) {
     const skill = skillRegistry.find((s) => s.id === skillId);
     if (!skill) continue;
 
+    // Registry data is untrusted (network-fetched). `repo`/`path` are
+    // interpolated into URLs and command arguments below, so reject anything
+    // that isn't a clean "owner/name" + safe sub-path before going further.
+    if (!isSafeId(skillId) || !isValidRepo(skill.repo) || !isValidSkillPath(skill.path)) {
+      errors.push({ name: skill.name, error: 'invalid skill repo/path in registry' });
+      continue;
+    }
+
     const targetDir = path.join(skillsBaseDir, skillId);
     if (hasSkillContent(targetDir)) {
       infoMsg(`Skill "${skill.name}" already installed, skipping`);
@@ -704,16 +752,18 @@ export function installSkills(selectedSkills, skillRegistry, selectedAgents) {
     if (fs.existsSync(targetDir)) fs.removeSync(targetDir);
 
     try {
-      // Use npx skills or git clone
       const repoUrl = `https://github.com/${skill.repo}`;
       const clonePath = skill.path === '.' ? '' : `/${skill.path}`;
 
       // Try npx skills first. It clones the (often large) source repo, so allow
       // a generous timeout, and verify SKILL.md landed before claiming success —
       // a 0 exit code with no files written must NOT be reported as installed.
+      // execFileSync (argv form, no shell) so registry-derived URL segments can
+      // never be interpreted as shell metacharacters.
       try {
-        execSync(
-          `npx -y skills install ${repoUrl}/tree/main${clonePath} --dir "${skillsBaseDir}" 2>/dev/null`,
+        execFileSync(
+          'npx',
+          ['-y', 'skills', 'install', `${repoUrl}/tree/main${clonePath}`, '--dir', skillsBaseDir],
           { stdio: 'pipe', timeout: 180000 }
         );
         if (hasSkillContent(targetDir)) {
@@ -724,18 +774,15 @@ export function installSkills(selectedSkills, skillRegistry, selectedAgents) {
         // Fall back to manual download
       }
 
-      // Manual: create skill dir and fetch SKILL.md
+      // Manual fallback: create the skill dir and fetch SKILL.md with native
+      // fetch (no shell, no curl dependency). A 404/empty body throws, so it
+      // lands in the catch and the dir is cleaned up rather than left holding a
+      // bogus file. repo/path were validated above.
       fs.ensureDirSync(targetDir);
-      const rawUrl = `https://raw.githubusercontent.com/${skill.repo}/main/${skill.path === '.' ? '' : skill.path + '/'}SKILL.md`;
       try {
-        const content = execSync(`curl -sL "${rawUrl}"`, { stdio: 'pipe', timeout: 15000 }).toString();
-        if (content && content.length > 50 && !content.includes('404')) {
-          fs.writeFileSync(path.join(targetDir, 'SKILL.md'), content, 'utf-8');
-          installed.push(skill.name);
-        } else {
-          fs.removeSync(targetDir);
-          errors.push({ name: skill.name, error: 'SKILL.md not found at source' });
-        }
+        const content = await downloadSkillMarkdown(skill);
+        fs.writeFileSync(path.join(targetDir, 'SKILL.md'), content, 'utf-8');
+        installed.push(skill.name);
       } catch (err) {
         fs.removeSync(targetDir);
         errors.push({ name: skill.name, error: err.message });

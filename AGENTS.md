@@ -30,10 +30,15 @@ src/manifest.js         → Install manifest tracking (.dxai/manifest.json)
 src/inspect.js          → list / status / doctor commands
 src/update.js           → Remote registry refresh (refreshRegistry + dxai update)
 src/auto-update.js      → Periodic TTL-based catalog auto-refresh on setup runs
-src/cleanup.js          → Manifest-aware cleanup
+src/cleanup.js          → Manifest-aware cleanup (prunes manifest on removal)
+src/mcp-cmd.js          → Fast-path `dxai add` / `dxai remove` MCP commands
+src/rollback.js         → dxai rollback — restore files from .bak.<ts> snapshots
 src/runtime.js          → Option normalization
 src/branding.js         → Banner, colors, message helpers
+src/net.js              → fetch with per-attempt timeout + retry/backoff (shared)
+src/fs-atomic.js        → Atomic file writes (temp + rename), optional 0600 mode
 src/registry/
+  validate.js           → Validation for untrusted registry data (commands, repo/path, ids)
   loader.js             → Cache > bundled JSON resolution
   mcp-servers.js        → MCP server catalog re-export
   skills.js             → Skills catalog re-export
@@ -57,10 +62,14 @@ src/registry/
 dxai system             # Global IDE configs, MCP servers, skills
 dxai project            # Repo-local rules, CLAUDE.md, AGENTS.md, stack detection
 dxai both               # System + project in one go
+dxai init               # Alias for `dxai project`
+dxai add <mcp...>       # Fast-path: add MCP server(s) to detected agents
+dxai remove <mcp...>    # Fast-path: remove MCP server(s) (alias: rm)
 dxai apply [profile]    # Non-interactive from a saved profile
 dxai save-profile       # Persist selections as reusable profile
 dxai list / status / doctor   # Manifest inspection and drift detection
 dxai cleanup / reset    # Remove dxai-managed configs
+dxai rollback           # Restore files from their most recent .bak.<ts> backup
 dxai update             # Refresh registry cache from remote
 ```
 
@@ -152,6 +161,16 @@ shapes. Migrate legacy explicit entries to `transport` opportunistically.
 (ids, category refs, `requires*` shapes) and locks the derivation output via a
 golden table. A typo in a config key or an unknown agent target now fails CI
 instead of silently breaking a user's setup.
+
+**Registry data is untrusted.** The catalog is fetched over the network
+(cache-over-bundled) and only shape-checked on fetch, so any field that reaches a
+shell/exec/URL sink must be validated via `src/registry/validate.js` first:
+package/install commands run through `parseSafeCommand`/`isSafeSpawnSpec`
+(allowlisted binary + clean package spec, no shell), skill `repo`/`path` through
+`isValidRepo`/`isValidSkillPath`, version refs through `isSafeVersionRef`, and map
+keys through `isSafeId`. `dxai update` rejects a payload that fails
+`validateRegistryPayload` and falls back to the bundled snapshot. Never interpolate
+registry values into an `execSync` shell string — use `execFileSync` (argv form).
 
 ### Profile System (src/profile.js)
 

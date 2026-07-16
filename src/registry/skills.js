@@ -8,22 +8,3 @@ const data = loadRegistry('skills');
 
 export const SKILL_CATEGORIES = data.categories;
 export const SKILLS = data.skills;
-
-export function buildSkillChoices() {
-  const choices = [];
-  for (const cat of SKILL_CATEGORIES) {
-    const catSkills = SKILLS.filter((s) => s.category === cat.id);
-    if (catSkills.length === 0) continue;
-
-    choices.push({ type: 'separator', line: `\n  ${cat.label}` });
-    for (const s of catSkills) {
-      const rec = s.recommended ? ' ★' : '';
-      choices.push({
-        name: `${s.name}${rec} — ${s.description}`,
-        value: s.id,
-        checked: !!s.recommended,
-      });
-    }
-  }
-  return choices;
-}

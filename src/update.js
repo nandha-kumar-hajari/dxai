@@ -2,6 +2,7 @@ import {
   fetchRegistry, writeRegistryCache, loadRegistry,
   diffRegistry, registryBaseFor,
 } from './registry/loader.js';
+import { validateRegistryPayload } from './registry/validate.js';
 import {
   printBanner, sectionHeader, successMsg, warnMsg, errorMsg, infoMsg, theme,
 } from './branding.js';
@@ -16,17 +17,24 @@ export const REGISTRY_FILES = [
 // against the previously-resolved registry. Returns a results array (one per file);
 // a per-file fetch/validation failure is captured as { ok: false, error } rather than
 // thrown, so one bad file doesn't sink the rest. Pure of any output — callers print.
-export async function refreshRegistry({ base = registryBaseFor({}), timeoutMs } = {}) {
+export async function refreshRegistry({ base = registryBaseFor({}), timeoutMs, retries } = {}) {
   const results = [];
   for (const { name, listKey } of REGISTRY_FILES) {
     const before = (() => {
       try { return loadRegistry(name); } catch { return null; }
     })();
     try {
-      const { url, data } = await fetchRegistry(name, base, { timeoutMs });
+      const { url, data } = await fetchRegistry(name, base, { timeoutMs, retries });
       // Basic shape check — must have an array under listKey.
       if (!Array.isArray(data?.[listKey])) {
         throw new Error(`Registry payload missing "${listKey}" array`);
+      }
+      // Security: vet untrusted fields (ids, commands, repo/path) before caching,
+      // so a poisoned/redirected registry can't seed a malicious entry that later
+      // drives command execution. A bad file is rejected; bundled fallback stands.
+      const problems = validateRegistryPayload(listKey, data[listKey]);
+      if (problems.length) {
+        throw new Error(`Registry payload failed validation: ${problems.slice(0, 3).join('; ')}${problems.length > 3 ? ` (+${problems.length - 3} more)` : ''}`);
       }
       const cachePath = writeRegistryCache(name, data);
       const diff = diffRegistry(before, data, listKey);

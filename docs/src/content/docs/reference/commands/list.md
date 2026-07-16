@@ -1,7 +1,7 @@
 ---
 title: dxai list
 description: "Show dxai-managed installs from the manifest (system + project)"
-sidebar: {"order":8}
+sidebar: {"order":11}
 ---
 <!--
 AUTO-GENERATED — do not edit by hand.

@@ -1,7 +1,7 @@
 ---
 title: dxai doctor
 description: "Validate dxai installation: configs parse, env vars set, tools on PATH"
-sidebar: {"order":10}
+sidebar: {"order":13}
 ---
 <!--
 AUTO-GENERATED — do not edit by hand.
@@ -22,3 +22,4 @@ dxai doctor [options]
 | Flag | Description | Notes |
 | --- | --- | --- |
 | `--json` | emit machine-readable JSON output | — |
+| `--handshake` | spawn each installed MCP server and verify it speaks JSON-RPC over stdio | — |
