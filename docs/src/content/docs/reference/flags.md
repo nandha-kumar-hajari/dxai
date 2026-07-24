@@ -44,4 +44,4 @@ Auto-generated flag reference. Pulled from every subcommand registered in `bin/c
 
 ## Environment variables
 
-See [Environment Variables](/dxai/reference/env-vars/) for the full list.
+See [Environment Variables](/reference/env-vars/) for the full list.
