@@ -1,0 +1,112 @@
+---
+// Capabilities presented as what they actually are: commands. A man-page
+// COMMANDS section — term + description rows, hairline-separated. No cards.
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+
+const commands = [
+  {
+    term: 'dxai init',
+    href: `${base}/guide/quick-start/`,
+    body: 'Make the current repo AI-agent-ready: detects your stack and writes AGENTS.md, CLAUDE.md, Cursor rules, and project MCP configs. dxai system does the same for global configs across all seven tools; dxai both runs everything.',
+  },
+  {
+    term: 'dxai add <mcp…>',
+    href: `${base}/reference/commands/add/`,
+    body: 'Fast path, no wizard. Wires a server into every detected agent in one line; remove takes it out again. Both honour --project, --dry-run, and --json.',
+  },
+  {
+    term: 'dxai apply <profile>',
+    href: `${base}/guide/profiles/`,
+    body: 'Team setups as data. Commit .dxai/profile.json and a teammate reproduces your whole environment with one command.',
+  },
+  {
+    term: 'dxai status / doctor',
+    href: `${base}/guide/introspection/`,
+    body: 'Every write lands in a manifest, so drift is visible: what went missing, what was added behind dxai’s back. doctor --handshake spawns each MCP server and verifies it actually speaks JSON-RPC.',
+  },
+  {
+    term: 'dxai rollback',
+    href: `${base}/reference/commands/rollback/`,
+    body: 'Writes merge instead of overwriting, and every touched file is snapshotted first. Rollback restores the latest backup — after snapshotting the current state, so it’s undoable too.',
+  },
+  {
+    term: 'dxai update',
+    href: `${base}/registry/custom-registry/`,
+    body: 'The MCP / skills catalog ships separately from the CLI and refreshes itself on a TTL. New servers arrive without an npm upgrade — or host your own registry with DXAI_REGISTRY_URL.',
+  },
+  {
+    term: 'dxai cleanup --yes',
+    href: `${base}/reference/commands/cleanup/`,
+    body: 'The whole lifecycle is scriptable: set up, verify, and tear down under CI with JSON output — and partial failures exit non-zero instead of pretending everything worked.',
+  },
+];
+---
+
+<section class="dx-section" aria-labelledby="dx-commands-title">
+  <h2 id="dx-commands-title" class="dx-mansec">Commands</h2>
+
+  <dl class="dx-cmd-list">
+    {commands.map((c) => (
+      <div class="dx-cmd-row">
+        <dt class="dx-cmd-term">
+          <a href={c.href}>{c.term}</a>
+        </dt>
+        <dd class="dx-cmd-body">{c.body}</dd>
+      </div>
+    ))}
+  </dl>
+</section>
+
+<style>
+  .dx-cmd-list {
+    margin: 0;
+    border-top: 1px solid var(--dx-hairline);
+  }
+
+  .dx-cmd-row {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.35rem 2.5rem;
+    padding: 1.15rem 0;
+    border-bottom: 1px solid var(--dx-hairline);
+  }
+
+  @media (min-width: 48rem) {
+    .dx-cmd-row {
+      grid-template-columns: 17rem minmax(0, 1fr);
+    }
+  }
+
+  .dx-cmd-term {
+    font-family: var(--dx-mono);
+    font-size: 0.9rem;
+    font-weight: 500;
+    margin: 0;
+  }
+
+  .dx-cmd-term a {
+    color: var(--dx-ink);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: color 150ms ease, border-color 150ms ease;
+  }
+
+  .dx-cmd-term a:hover,
+  .dx-cmd-term a:focus-visible {
+    color: var(--dx-accent);
+    border-bottom-color: var(--dx-accent);
+  }
+
+  .dx-cmd-term a:focus-visible {
+    outline: 2px solid var(--dx-accent);
+    outline-offset: 3px;
+  }
+
+  .dx-cmd-body {
+    margin: 0;
+    color: var(--dx-muted);
+    font-size: 0.95rem;
+    line-height: 1.65;
+    max-width: 44rem;
+  }
+</style>

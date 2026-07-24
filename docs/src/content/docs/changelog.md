@@ -18,16 +18,27 @@ Auto-generated from git history. Conventional-commit prefixes (`feat:`, `fix:`, 
 - add dxai rollback to restore config backups ([`16d2978`](https://github.com/nandha-kumar-hajari/dxai/commit/16d29786b42876b51672a2dd390081dbce942139))
 - centralize network timeout + retry/backoff in src/net.js ([`0a89340`](https://github.com/nandha-kumar-hajari/dxai/commit/0a893403039d10ba295ec46a82fe73806072b8c5))
 
+### Bug fixes
+
+- portable test runner; exclude changelog from docs drift gate ([`21a6df8`](https://github.com/nandha-kumar-hajari/dxai/commit/21a6df8e31f615e1c9c6b302b6703fe3486487eb))
+
 ### Refactor
 
 - replace curl shell-out with native fetch in installSkills ([`539411e`](https://github.com/nandha-kumar-hajari/dxai/commit/539411e8dbc2d5ef7ef5edabcf91fb3dd2ca20d8))
 
 ### Documentation
 
+- document add/remove/init fast-path commands ([`5117469`](https://github.com/nandha-kumar-hajari/dxai/commit/51174697f09e1b9ffb2b2699d3832d5f516cac55))
 - mark security & robustness items shipped; add rollback docs ([`81231ec`](https://github.com/nandha-kumar-hajari/dxai/commit/81231ec23b147d8b5a29f318e450b5038042e759))
+
+### Tests
+
+- cover installSkills fetch fallback; tighten SKILL.md guard ([`72783dc`](https://github.com/nandha-kumar-hajari/dxai/commit/72783dcb9e0f939e2a94dd23416ed16b9d8e69f1))
 
 ### Other changes
 
+- Update AGENTS.md with architecture and command enhancements; add ESLint configuration and CI linting job. Introduce new automation tools catalog and improve cleanup command options. Revise README for clarity and update documentation components. ([`eec7b29`](https://github.com/nandha-kumar-hajari/dxai/commit/eec7b297bd0bf382f8dcc552ca0a8c5b6dbadd4e))
+- Merge pull request #3 from nandha-kumar-hajari/audit-fixes ([`13630d9`](https://github.com/nandha-kumar-hajari/dxai/commit/13630d931e3c4d60665c3f75eaf875eaa7e56716))
 - Refactor registry for security  handling and enhance validation. Introduce atomic file write operations for safer config and manifest updates. Implement comprehensive validation for registry data to prevent command injection and ensure safe execution. Update AGENTS.md to document new features and clarify registry data handling. Improve cleanup processes to maintain accurate system and project manifests. Enhance tests for atomic file operations and registry validation. ([`f4e6188`](https://github.com/nandha-kumar-hajari/dxai/commit/f4e6188ce30a2761d86b3ac7c5c17fde5fae7c1b))
 - Update AGENTS.md and ROADMAP.md to reflect new features and improvements. Enhance testing coverage from 42 to 81 tests, add release/versioning guidelines, and document the new periodic catalog auto-refresh feature. Update CLI options for registry versioning and handshake testing, and improve agent definitions for better transport handling. Modify config writer to support version pinning for package specifications. ([`adc4cf7`](https://github.com/nandha-kumar-hajari/dxai/commit/adc4cf7f225531a828a0f787ea5147dcf807d10b))
 - Add automation tool detection and installation features. Introduce new CLI option for automation tools, enhance runtime to handle tool selection, and implement installation logic for agent-browser and agent-device. Update manifest to record installed tools and modify related files for improved project structure. ([`4a7cd32`](https://github.com/nandha-kumar-hajari/dxai/commit/4a7cd32b8094b8952feb1b548eae138a5e3bf979))

@@ -23,6 +23,11 @@ const PACKAGE_SPEC_VERSIONED_RE = /^(@[a-z0-9][\w.-]*\/)?[a-z0-9][\w.-]*(@[\w.-]
 // traversal — a "../.." here would repoint the fetch at a different repo.
 const VERSION_REF_RE = /^[A-Za-z0-9._-]+$/;
 
+// A bare binary name (no path separators, no shell metacharacters). Used for
+// registry fields that name a command to *probe* for (e.g. a tool's
+// `detectCommand`) — probing must never be able to execute anything else.
+const BINARY_NAME_RE = /^[A-Za-z0-9._-]+$/;
+
 // Binaries we are willing to spawn from registry data. Everything else is a
 // command we don't recognize and won't execute on the user's behalf.
 export const COMMAND_ALLOWLIST = new Set([
@@ -50,6 +55,10 @@ export function isAllowedCommand(cmd) {
 
 export function isSafeVersionRef(v) {
   return typeof v === 'string' && VERSION_REF_RE.test(v) && !v.split('/').includes('..');
+}
+
+export function isSafeBinaryName(name) {
+  return typeof name === 'string' && BINARY_NAME_RE.test(name);
 }
 
 // Reject registry ids that could pollute Object.prototype when used as a map key.
@@ -102,6 +111,11 @@ export function validateRegistryPayload(listKey, items) {
       for (const cmd of Object.values(item.installCommand || {})) {
         try { parseSafeCommand(cmd); }
         catch (err) { problems.push(`tool ${id}: ${err.message}`); }
+      }
+      // detectCommand is probed for existence on the user's PATH; a poisoned
+      // value must not be able to smuggle anything past that probe.
+      if (item.detectCommand !== undefined && !isSafeBinaryName(item.detectCommand)) {
+        problems.push(`tool ${id}: detectCommand is not a bare binary name "${item.detectCommand}"`);
       }
     } else if (listKey === 'servers') {
       const cmd = item.transport?.command;

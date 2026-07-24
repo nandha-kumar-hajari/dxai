@@ -1,9 +1,9 @@
 ---
 title: Non-interactive / CI
-description: Flags, env vars, and JSON output for unattended runs.
+description: Flags, env vars, JSON output, exit codes, and dry-run for unattended runs.
 ---
 
-Every setup command accepts flags to run unattended. Pass `--yes` (or set `CI=true`) to skip prompts entirely.
+Every setup command accepts flags to run unattended. Pass `--yes` (or set `CI=true`) to skip prompts entirely. `cleanup` and `rollback` support the same conventions, so the full lifecycle — set up, verify, tear down — is scriptable.
 
 ## Flag summary
 
@@ -13,12 +13,23 @@ Every setup command accepts flags to run unattended. Pass `--yes` (or set `CI=tr
 | `--agents <list>` | Comma-separated agent IDs |
 | `--mcp <list>` | Comma-separated MCP server IDs |
 | `--skills <list>` | Comma-separated skill IDs |
+| `--tools <list>` | Comma-separated automation tool IDs |
 | `--features <list>` | Comma-separated project feature IDs |
 | `--stack <list>` | Comma-separated tech stack IDs |
 | `--profile <nameOrPath>` | Load a saved profile |
 | `--no-profile` | Skip auto-discovery of profiles |
-| `--json` | Machine-readable output |
+| `--json` | Machine-readable output (implies non-interactive; no colors or spinners) |
 | `--dry-run` | Preview changes without writing |
+| `--no-update` | Skip the periodic catalog refresh check |
+
+Unknown IDs fail fast with a `Known: ...` hint rather than silently doing nothing.
+
+## Exit codes
+
+Non-zero exit codes are reliable signals for CI:
+
+- Setup flows (`system` / `project` / `both`) and `dxai add` exit **1** when any per-step write fails, even if the rest succeeded. JSON output carries `ok: false` and an `errorCount`.
+- `dxai doctor` exits **1** on any error-severity finding; `dxai update` exits **1** if any registry file failed to refresh.
 
 ## Environment variables
 
@@ -27,6 +38,9 @@ Every setup command accepts flags to run unattended. Pass `--yes` (or set `CI=tr
 | `CI=true` | Forces non-interactive mode + JSON output |
 | `NO_COLOR=1` | Disables ANSI colors |
 | `DXAI_DRY_RUN=1` | Equivalent to `--dry-run` |
+| `DXAI_NO_AUTO_UPDATE=1` | Disables the periodic catalog refresh (same as `--no-update`) |
+| `DXAI_UPDATE_TTL_DAYS=N` | Days between catalog refresh checks (default 7) |
+| `DXAI_UPDATE_TIMEOUT_MS=N` | Network timeout for the background refresh (default 4000) |
 | `DXAI_REGISTRY_URL` | Override default remote registry base URL |
 
 ## Examples
@@ -38,11 +52,22 @@ dxai project --yes
 # Pin exactly what to install.
 dxai system -y --agents cursor,claude-code --mcp github,playwright,context7
 
+# Fast path — add/remove servers without the wizard.
+dxai add github playwright --agents cursor --json
+dxai remove github --dry-run
+
 # CI pipeline run, JSON output, no writes.
 CI=true dxai system --agents cursor --dry-run
 
 # Pipe results into jq.
 dxai project --yes --json --stack react | jq '.project.features'
+
+# Tear down unattended (keeps CLAUDE.md/AGENTS.md-style files and backups;
+# add --backups to delete backups too).
+dxai cleanup both --yes --json
+
+# Restore every file from its latest backup, no prompts.
+dxai rollback --yes
 ```
 
-For the auto-generated, always-current flag reference see [Reference / Flags](/dxai/reference/flags/).
+For the auto-generated, always-current flag reference see [Reference / Flags](/reference/flags/).

@@ -2,7 +2,8 @@ import { execSync } from 'child_process';
 import os from 'os';
 import path from 'path';
 import fs from 'fs-extra';
-import { successMsg, warnMsg, theme } from './branding.js';
+import { successMsg, warnMsg } from './branding.js';
+import { isSafeBinaryName } from './registry/validate.js';
 
 // ── OS Detection ──
 export function detectOS() {
@@ -21,6 +22,11 @@ export function detectOS() {
 
 // ── Command existence check ──
 function commandExists(cmd) {
+  // `cmd` is interpolated into a shell string below. Agent detect commands are
+  // hardcoded, but automation-tool detect commands come from the (untrusted,
+  // network-refreshed) registry — so even though the payload is validated at
+  // the fetch boundary, refuse anything but a bare binary name here too.
+  if (!isSafeBinaryName(cmd)) return false;
   try {
     const check = os.platform() === 'win32'
       ? `where ${cmd} 2>nul`
@@ -38,9 +44,10 @@ function appExists(appName) {
 }
 
 function getVersion(cmd, flag = '--version') {
+  if (!isSafeBinaryName(cmd)) return null;
   try {
     const out = execSync(`${cmd} ${flag}`, { stdio: 'pipe', timeout: 10000 }).toString().trim();
-    const match = out.match(/(\d+\.\d+[\.\d]*)/);
+    const match = out.match(/(\d+\.\d+[.\d]*)/);
     return match ? match[1] : out.slice(0, 30);
   } catch {
     return null;

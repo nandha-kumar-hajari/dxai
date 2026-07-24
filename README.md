@@ -1,17 +1,10 @@
-# dxai
+<p align="center">
+  <img src="https://raw.githubusercontent.com/nandha-kumar-hajari/dxai/main/docs/public/og.png" alt="dxai — make your repo ready for every AI coding agent" width="640">
+</p>
 
-```
-  ██████╗ ██╗  ██╗ █████╗ ██╗
-  ██╔══██╗╚██╗██╔╝██╔══██╗██║
-  ██║  ██║ ╚███╔╝ ███████║██║
-  ██║  ██║ ██╔██╗ ██╔══██║██║
-  ██████╔╝██╔╝ ██╗██║  ██║██║
-  ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝
-  AI-Powered Dev Environment Setup
-  Powered by D3V
-```
-
-> **One command to bootstrap your entire AI development environment.**
+<p align="center">
+  <strong>One command to make your repo ready for every AI coding agent.</strong>
+</p>
 
 `dxai` is an interactive CLI that configures **MCP servers**, **agent skills**, **Cursor rules and commands**, **project instruction files** (`CLAUDE.md`, `GEMINI.md`, `AGENTS.md`), and **AI-friendly project scaffolding** across **Cursor, Claude Code, VS Code / Copilot, OpenAI Codex CLI, Gemini CLI, Windsurf, and Google Antigravity** — simultaneously and in the right format for each.
 
@@ -56,7 +49,7 @@ npx dxai --help     # full usage
 | `dxai doctor` | Validate dxai installation |
 | `dxai update` | Refresh registry cache from remote |
 | `dxai rollback` | Restore dxai-managed files from their most recent `.bak.<ts>` backup |
-| `dxai cleanup` (alias `reset`) | Remove dxai-managed configs and files |
+| `dxai cleanup [scope]` (alias `reset`) | Remove dxai-managed configs and files (`system`/`project`/`both`; supports `-y`, `--json`, `--dry-run`, `--backups`) |
 
 Per-command pages with full options tables: [Reference / Commands](https://nandha-kumar-hajari.github.io/dxai/reference/commands/).
 

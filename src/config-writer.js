@@ -1,10 +1,11 @@
 import fs from 'fs-extra';
 import path from 'path';
 import os from 'os';
-import { execSync, execFileSync } from 'child_process';
+import { execFileSync } from 'child_process';
 import { warnMsg, infoMsg } from './branding.js';
 import { buildAgentsMd, buildClaudeMd, buildGeminiMd, buildCursorRule } from './registry/stacks.js';
 import { isValidRepo, isValidSkillPath, isSafeId } from './registry/validate.js';
+import { listClaudeCodeMcpOutput, outputHasServerId } from './config-remover.js';
 import { writeFileAtomic, writeJsonAtomic } from './fs-atomic.js';
 import { fetchText } from './net.js';
 
@@ -130,11 +131,32 @@ export function pinPackageVersion(config, version) {
 // ══════════════════════════════════════════════
 // Backup helper
 // ══════════════════════════════════════════════
+// How many `.bak.<ts>` snapshots to keep per file. Older ones are pruned on
+// each new backup so repeated runs can't accumulate snapshots forever.
+const MAX_BACKUPS_PER_FILE = 5;
+
+function pruneOldBackups(filePath) {
+  const dir = path.dirname(filePath);
+  const prefix = `${path.basename(filePath)}.bak.`;
+  let siblings;
+  try {
+    siblings = fs.readdirSync(dir).filter((f) => f.startsWith(prefix));
+  } catch {
+    return;
+  }
+  // Timestamp suffixes sort lexicographically == chronologically.
+  siblings.sort().reverse();
+  for (const stale of siblings.slice(MAX_BACKUPS_PER_FILE)) {
+    try { fs.removeSync(path.join(dir, stale)); } catch { /* best-effort */ }
+  }
+}
+
 function backupFile(filePath) {
   if (fs.existsSync(filePath)) {
     const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
     const backupPath = `${filePath}.bak.${ts}`;
     fs.copySync(filePath, backupPath);
+    pruneOldBackups(filePath);
     return backupPath;
   }
   return null;
@@ -144,16 +166,13 @@ function backupFile(filePath) {
 // JSON Config Merge (Cursor, VS Code, Gemini, Windsurf)
 // ══════════════════════════════════════════════
 function mergeJsonMcpConfig(filePath, mcpKey, newServers) {
-  const backup = backupFile(filePath);
-  if (backup) infoMsg(`Backed up: ${path.basename(filePath)} → ${path.basename(backup)}`);
-
   let config = {};
   if (fs.existsSync(filePath)) {
     try {
       config = fs.readJsonSync(filePath);
     } catch (err) {
-      warnMsg(`Could not parse ${filePath} as JSON (${err.message}). Leaving existing file untouched and aborting merge.`);
-      throw new Error(`Refusing to overwrite malformed JSON at ${filePath}`);
+      warnMsg(`Could not parse ${filePath} as JSON (${err.message}). Note: JSON with comments (JSONC) is not supported. Leaving existing file untouched and aborting merge.`);
+      throw new Error(`Refusing to overwrite malformed JSON at ${filePath}`, { cause: err });
     }
   }
 
@@ -178,6 +197,12 @@ function mergeJsonMcpConfig(filePath, mcpKey, newServers) {
     }
   }
 
+  // Nothing to change → don't touch the file (and don't mint a pointless backup).
+  if (added === 0) return { added, skipped, addedIds };
+
+  const backup = backupFile(filePath);
+  if (backup) infoMsg(`Backed up: ${path.basename(filePath)} → ${path.basename(backup)}`);
+
   // Atomic write + 0600: configs may carry ${VAR} secret references, and a
   // crash mid-write must never truncate the user's real config.
   writeJsonAtomic(filePath, config, { spaces: 2, mode: 0o600 });
@@ -188,10 +213,12 @@ function mergeJsonMcpConfig(filePath, mcpKey, newServers) {
 // ══════════════════════════════════════════════
 // TOML Config Merge (Codex CLI)
 // ══════════════════════════════════════════════
+// NOTE: Codex TOML is handled by line-anchored string surgery, not a TOML
+// parser — deliberately, so user comments and formatting survive our edits.
+// Supported grammar: the `[mcp_servers.<id>]` blocks dxai itself generates
+// (single-line `key = value` pairs, single-line arrays). Hand-written exotic
+// TOML (multi-line arrays, dotted headers inside strings) is out of scope.
 function mergeTomlMcpConfig(filePath, newTomlBlocks) {
-  const backup = backupFile(filePath);
-  if (backup) infoMsg(`Backed up: ${path.basename(filePath)} → ${path.basename(backup)}`);
-
   let content = '';
   if (fs.existsSync(filePath)) {
     content = fs.readFileSync(filePath, 'utf-8');
@@ -214,6 +241,12 @@ function mergeTomlMcpConfig(filePath, newTomlBlocks) {
     }
   }
 
+  // Nothing to change → don't touch the file (and don't mint a pointless backup).
+  if (added === 0) return { added, skipped, addedIds };
+
+  const backup = backupFile(filePath);
+  if (backup) infoMsg(`Backed up: ${path.basename(filePath)} → ${path.basename(backup)}`);
+
   writeFileAtomic(filePath, content, { mode: 0o600 });
 
   return { added, skipped, addedIds };
@@ -228,22 +261,15 @@ function configureClaudeCodeMcp(servers) {
   const errors = [];
   const addedIds = [];
 
+  // One list call for the whole batch — token-boundary matched per id so
+  // e.g. "git" can never be mistaken for an already-configured "github".
+  const existing = listClaudeCodeMcpOutput();
+
   for (const { id, config } of servers) {
     if (!config.command || config.command !== 'claude') continue;
 
     try {
-      // Check if already configured
-      let existing = '';
-      try {
-        existing = execSync('claude mcp list 2>/dev/null || true', {
-          stdio: 'pipe',
-          timeout: 10000,
-        }).toString();
-      } catch {
-        // Claude Code might not be running
-      }
-
-      if (existing.includes(id)) {
+      if (outputHasServerId(existing, id)) {
         skipped++;
         continue;
       }
@@ -738,7 +764,7 @@ export async function installSkills(selectedSkills, skillRegistry, selectedAgent
     // interpolated into URLs and command arguments below, so reject anything
     // that isn't a clean "owner/name" + safe sub-path before going further.
     if (!isSafeId(skillId) || !isValidRepo(skill.repo) || !isValidSkillPath(skill.path)) {
-      errors.push({ name: skill.name, error: 'invalid skill repo/path in registry' });
+      errors.push({ id: skillId, name: skill.name, error: 'invalid skill repo/path in registry' });
       continue;
     }
 
@@ -767,7 +793,7 @@ export async function installSkills(selectedSkills, skillRegistry, selectedAgent
           { stdio: 'pipe', timeout: 180000 }
         );
         if (hasSkillContent(targetDir)) {
-          installed.push(skill.name);
+          installed.push(skillId);
           continue;
         }
       } catch {
@@ -782,13 +808,13 @@ export async function installSkills(selectedSkills, skillRegistry, selectedAgent
       try {
         const content = await downloadSkillMarkdown(skill);
         fs.writeFileSync(path.join(targetDir, 'SKILL.md'), content, 'utf-8');
-        installed.push(skill.name);
+        installed.push(skillId);
       } catch (err) {
         fs.removeSync(targetDir);
-        errors.push({ name: skill.name, error: err.message });
+        errors.push({ id: skillId, name: skill.name, error: err.message });
       }
     } catch (err) {
-      errors.push({ name: skill.name, error: err.message });
+      errors.push({ id: skillId, name: skill.name, error: err.message });
     }
   }
 

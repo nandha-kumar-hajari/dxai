@@ -1,24 +1,24 @@
 ---
 title: dxai
-description: Bootstrap your entire AI development environment with one command — MCP servers, agent skills, Cursor rules, and project scaffolding across every major AI coding tool.
+description: Bootstrap your entire AI development environment with one command — MCP servers, agent skills, Cursor rules, and project scaffolding across every major AI coding tool. Reversible, drift-aware, CI-scriptable, with a self-updating catalog.
 template: splash
 hero:
   tagline: One command to set up MCP servers, agent skills, Cursor rules, and AI-friendly project files across Cursor, Claude Code, VS Code, Codex, Gemini, Windsurf, and Antigravity.
 ---
 
+import Commands from '../../components/Commands.astro';
+import Guarantees from '../../components/Guarantees.astro';
 import ToolsGrid from '../../components/ToolsGrid.astro';
-import WhyGrid from '../../components/WhyGrid.astro';
-import InstallBlock from '../../components/InstallBlock.astro';
-import PathGrid from '../../components/PathGrid.astro';
+import SeeAlso from '../../components/SeeAlso.astro';
 
 <div class="dxai-landing">
 
+<Commands />
+
+<Guarantees />
+
 <ToolsGrid />
 
-<WhyGrid />
-
-<InstallBlock />
-
-<PathGrid />
+<SeeAlso />
 
 </div>

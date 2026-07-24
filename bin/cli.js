@@ -73,11 +73,15 @@ export function buildProgram() {
   );
 
   program
-    .command('cleanup')
+    .command('cleanup [scope]')
     .alias('reset')
-    .description('Remove dxai-managed configs, files, and skills')
-    .action(async () => {
-      await cleanup();
+    .description('Remove dxai-managed configs, files, and skills (scope: system | project | both)')
+    .addOption(new Option('-y, --yes', 'non-interactive; remove everything dxai-managed (custom-edit-prone files and backups are kept)'))
+    .addOption(new Option('--backups', 'with --yes/--json: also delete .bak.<ts> backup files'))
+    .addOption(new Option('--json', 'emit machine-readable JSON output (implies non-interactive)'))
+    .addOption(new Option('--dry-run', 'preview what would be removed without deleting anything'))
+    .action(async (scope, opts) => {
+      await cleanup(scope, opts);
     });
 
   // dxai add <id...> — fast path: add MCP server(s) without the wizard

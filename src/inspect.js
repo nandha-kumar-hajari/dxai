@@ -16,8 +16,6 @@ import {
 } from './config-remover.js';
 import { handshakeServer, resolveSpawnSpec } from './handshake.js';
 
-const HOME = os.homedir();
-
 function loadBoth(cwd = process.cwd()) {
   const system = readManifest(SYSTEM_MANIFEST_PATH);
   const project = readManifest(path.join(cwd, PROJECT_MANIFEST_PATH));

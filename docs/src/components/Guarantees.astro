@@ -1,0 +1,95 @@
+---
+// The contract dxai keeps with your config files. Four terse lines,
+// terminal-style status markers — the only place color carries meaning.
+const guarantees = [
+  {
+    mark: '✓',
+    kind: 'ok',
+    term: 'idempotent',
+    body: 'merges into existing configs; refuses to touch a file it can’t parse',
+  },
+  {
+    mark: '↩',
+    kind: 'ok',
+    term: 'reversible',
+    body: 'every write backed up as <file>.bak.<ts>; capped and auto-pruned',
+  },
+  {
+    mark: '!',
+    kind: 'warn',
+    term: 'honest',
+    body: 'partial failures exit non-zero; --json output everywhere',
+  },
+  {
+    mark: '✗',
+    kind: 'err',
+    term: 'paranoid',
+    body: 'remote catalog data is allowlisted and shell-escaped before it can execute anything',
+  },
+];
+---
+
+<section class="dx-section" aria-labelledby="dx-guarantees-title">
+  <h2 id="dx-guarantees-title" class="dx-mansec">Guarantees</h2>
+
+  <ul class="dx-guar-list">
+    {guarantees.map((g) => (
+      <li class="dx-guar-row">
+        <span class={`dx-guar-mark dx-guar-mark--${g.kind}`} aria-hidden="true">{g.mark}</span>
+        <span class="dx-guar-term">{g.term}</span>
+        <span class="dx-guar-body">{g.body}</span>
+      </li>
+    ))}
+  </ul>
+</section>
+
+<style>
+  .dx-guar-list {
+    list-style: none;
+    margin: 0;
+    padding: 1.4rem 1.5rem;
+    border: 1px solid var(--dx-hairline-strong);
+    border-radius: 8px;
+    background: var(--dx-well);
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+  }
+
+  .dx-guar-row {
+    display: grid;
+    grid-template-columns: 1.4rem 7.5rem minmax(0, 1fr);
+    gap: 0 0.75rem;
+    align-items: baseline;
+    font-family: var(--dx-mono);
+    font-size: 0.87rem;
+    line-height: 1.6;
+  }
+
+  @media (max-width: 40rem) {
+    .dx-guar-row {
+      grid-template-columns: 1.4rem minmax(0, 1fr);
+    }
+    .dx-guar-body {
+      grid-column: 2;
+    }
+  }
+
+  .dx-guar-mark {
+    font-weight: 600;
+    text-align: center;
+  }
+
+  .dx-guar-mark--ok { color: var(--dx-ok); }
+  .dx-guar-mark--warn { color: var(--dx-warn); }
+  .dx-guar-mark--err { color: var(--dx-err); }
+
+  .dx-guar-term {
+    color: var(--dx-ink);
+    font-weight: 500;
+  }
+
+  .dx-guar-body {
+    color: var(--dx-muted);
+  }
+</style>

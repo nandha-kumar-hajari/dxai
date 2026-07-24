@@ -1,33 +1,51 @@
 ---
 title: Architecture
 description: Module map and how the CLI is wired together.
+sidebar:
+  order: 1
 ---
 
 ```
-bin/cli.js                # Commander entry; subcommands + flags
+bin/cli.js                # Commander entry; exports buildProgram() so docs generators can introspect it
 src/
   index.js                # Setup orchestration: run / apply / saveProfile / listProfiles
+  select.js               # Shared selection resolution (flag > defaults > prompt) + catalog checkbox builder
   runtime.js              # Option normalization (CI / yes / json / dry-run)
   profile.js              # Profile load / merge / save / discovery
-  manifest.js             # ~/.dxai + ./.dxai manifest helpers
-  inspect.js              # list, status, doctor
-  update.js               # update (remote registry refresh)
-  cleanup.js              # cleanup / reset (manifest-aware)
-  config-writer.js        # File writers + dry-run previews (JSON/TOML/Claude CLI)
-  config-remover.js       # Scan + remove helpers
-  detect.js               # OS, prerequisite, agent detection
-  detect-project.js       # Stack / tooling / git inference
+  manifest.js             # ~/.dxai + ./.dxai manifest helpers (installs recorded by id)
+  inspect.js              # list, status, doctor (incl. --handshake)
+  handshake.js            # Spawns stdio MCP servers, verifies JSON-RPC initialize
+  update.js               # dxai update (remote registry refresh + validation)
+  auto-update.js          # TTL-based background catalog refresh on setup runs
+  cleanup.js              # cleanup / reset — manifest-aware, supports -y/--json/--dry-run
+  rollback.js             # dxai rollback — restore files from .bak.<ts> snapshots
+  mcp-cmd.js              # Fast-path dxai add / remove
+  config-writer.js        # File writers + dry-run previews (JSON/TOML/Claude CLI), backups
+  config-remover.js       # Scan + remove helpers (shared with cleanup/status/remove)
+  detect.js               # OS, prerequisite, agent detection; AGENT_DEFINITIONS + MCP dialects
+  detect-project.js       # Stack / tooling / git inference (shell-free, Windows-safe)
+  net.js                  # fetch with per-attempt timeout + retry/backoff (shared)
+  fs-atomic.js            # Atomic writes (temp + rename), optional 0600 mode
   branding.js             # Banner, colors, message helpers
   registry/
-    mcp-servers.js        # Re-exports loaded via the loader
-    skills.js             # Same
-    stacks.js             # Tech stacks, Cursor rules, commands, templates
+    validate.js           # Validation for untrusted registry data (commands, repo/path, ids)
     loader.js             # cache > bundled JSON resolution; remote fetch
-    data/
-      mcp-servers.json    # Bundled MCP catalog
-      skills.json         # Bundled skills catalog
-test/                     # node:test suite (42 tests)
-.github/workflows/        # ci.yml + docs.yml
+    mcp-servers.js        # Catalog re-export + per-agent config derivation from `transport`
+    skills.js             # Skills catalog re-export
+    automation-tools.js   # Automation tools catalog re-export
+    stacks.js             # Tech stacks, Cursor rules, commands, instruction-file templates
+    data/                 # Bundled JSON catalogs (MCP servers, skills, automation tools)
+test/                     # node:test suite (run `npm test` for the current count)
+scripts/
+  run-tests.mjs           # Portable test runner (Node 18–22, Windows-safe)
+  catalog-health.mjs      # Weekly pin/URL drift checker (drives the GitHub issue bot)
+  docs/                   # Docs generators + drift check
+.github/workflows/        # ci.yml (tests + lint + docs-check), docs.yml, catalog-health.yml
 ```
 
-Loading is synchronous: registry data is resolved at module import via `loadRegistry(name)` which prefers `~/.dxai/cache/<name>.json` and falls back to the bundled JSON shipped in `src/registry/data/`.
+Loading is synchronous: registry data is resolved at module import via `loadRegistry(name)`, which prefers `~/.dxai/cache/<name>.json` (written by `dxai update` / the auto-refresh) and falls back to the bundled JSON shipped in `src/registry/data/`.
+
+Two design decisions do most of the work:
+
+- **Transport derivation.** A catalog server declares its `transport` once; per-agent config blocks (JSON dialects, Codex TOML, `claude mcp add` argv) are derived from `AGENT_DEFINITIONS`. Adding a new agent definition makes every transport-based server support it instantly.
+- **Manifest-first state.** Every write is recorded, so `list` / `status` / `doctor` / `cleanup` / `rollback` operate on what dxai actually did rather than guessing.

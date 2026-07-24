@@ -1,41 +1,30 @@
 ---
 import { Icon } from 'astro-icon/components';
 
-// Real brand icons via astro-icon + Simple Icons collection (CC0).
-// Codex maps to `simple-icons:openai` since Codex is OpenAI's product.
-// Antigravity isn't in Simple Icons yet (Google product, too new), so we use
-// the generic Google "G" — the label disambiguates. Swap when an official
-// icon lands upstream.
+// Supported agents as a quiet index: logo, name, and the real config
+// destination dxai writes for each. Hairline rows, no cards.
+// Codex maps to `simple-icons:openai` (Codex is OpenAI's product); Antigravity
+// isn't in Simple Icons yet, so the generic Google mark + label disambiguates.
 const tools = [
-  { name: 'Cursor', icon: 'simple-icons:cursor', format: '.cursor/rules' },
-  { name: 'Claude Code', icon: 'simple-icons:claude', format: '.claude/' },
-  { name: 'Codex', icon: 'simple-icons:openai', format: 'config.toml' },
-  { name: 'Gemini CLI', icon: 'simple-icons:googlegemini', format: 'GEMINI.md' },
-  { name: 'VS Code', icon: 'simple-icons:visualstudiocode', format: '.vscode/mcp.json' },
-  { name: 'Windsurf', icon: 'simple-icons:windsurf', format: '.windsurf/' },
-  { name: 'Antigravity', icon: 'simple-icons:google', format: 'AGENTS.md' },
+  { name: 'Cursor', icon: 'simple-icons:cursor', path: '~/.cursor/mcp.json' },
+  { name: 'Claude Code', icon: 'simple-icons:claude', path: 'claude mcp add' },
+  { name: 'VS Code / Copilot', icon: 'simple-icons:visualstudiocode', path: '…/Code/User/mcp.json' },
+  { name: 'Codex CLI', icon: 'simple-icons:openai', path: '~/.codex/config.toml' },
+  { name: 'Gemini CLI', icon: 'simple-icons:googlegemini', path: '~/.gemini/settings.json' },
+  { name: 'Windsurf', icon: 'simple-icons:windsurf', path: '~/.codeium/windsurf/mcp_config.json' },
+  { name: 'Antigravity', icon: 'simple-icons:google', path: '~/.gemini/config/mcp_config.json' },
 ];
 ---
 
-<section class="dxai-section dx-tools" aria-labelledby="dx-tools-title">
-  <span class="dxai-section-eyebrow">Universal</span>
-  <h2 id="dx-tools-title" class="dxai-section-title">
-    Works with every major AI coding tool
-  </h2>
-  <p class="dxai-section-subtitle">
-    One config, written in the right format for each editor and agent — simultaneously.
-  </p>
+<section class="dx-section" aria-labelledby="dx-tools-title">
+  <h2 id="dx-tools-title" class="dx-mansec">Supported agents</h2>
 
   <ul class="dx-tools-list">
     {tools.map((t) => (
-      <li class="dx-tools-pill">
-        <span class="dx-tools-glyph" aria-hidden="true">
-          <Icon name={t.icon} />
-        </span>
-        <div class="dx-tools-text">
-          <span class="dx-tools-name">{t.name}</span>
-          <span class="dx-tools-meta">{t.format}</span>
-        </div>
+      <li class="dx-tools-row">
+        <span class="dx-tools-glyph" aria-hidden="true"><Icon name={t.icon} /></span>
+        <span class="dx-tools-name">{t.name}</span>
+        <span class="dx-tools-path">{t.path}</span>
       </li>
     ))}
   </ul>
@@ -44,106 +33,54 @@ const tools = [
 <style>
   .dx-tools-list {
     list-style: none;
-    margin: 2rem 0 0;
+    margin: 0;
     padding: 0;
+    border-top: 1px solid var(--dx-hairline);
+  }
+
+  .dx-tools-row {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
-    gap: 0.85rem;
+    grid-template-columns: 1.6rem minmax(0, 1fr);
+    gap: 0 0.9rem;
+    align-items: center;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--dx-hairline);
   }
 
-  /* All seven tools fit in one row on wide viewports. */
-  @media (min-width: 80rem) {
-    .dx-tools-list {
-      grid-template-columns: repeat(7, 1fr);
+  @media (min-width: 48rem) {
+    .dx-tools-row {
+      grid-template-columns: 1.6rem 14rem minmax(0, 1fr);
     }
-  }
-
-  .dx-tools-pill {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.85rem;
-    padding: 1.1rem 1.15rem;
-    border-radius: 14px;
-    border: 1px solid color-mix(in srgb, #0ea5e9 22%, transparent);
-    background:
-      radial-gradient(
-        120% 100% at 0% 0%,
-        color-mix(in srgb, #0ea5e9 8%, transparent) 0%,
-        transparent 55%
-      ),
-      color-mix(in srgb, var(--sl-color-bg) 90%, #0ea5e9 4%);
-    color: var(--sl-color-text);
-    position: relative;
-    overflow: hidden;
-    transition: transform 200ms ease, border-color 200ms ease, box-shadow 200ms ease;
-  }
-
-  .dx-tools-pill::after {
-    content: '';
-    position: absolute;
-    inset: auto -40% -60% auto;
-    width: 70%;
-    height: 70%;
-    background: radial-gradient(circle, color-mix(in srgb, #0ea5e9 18%, transparent) 0%, transparent 70%);
-    opacity: 0;
-    transition: opacity 250ms ease;
-    pointer-events: none;
-  }
-
-  .dx-tools-pill:hover {
-    transform: translateY(-3px);
-    border-color: color-mix(in srgb, #0ea5e9 55%, transparent);
-    box-shadow: 0 12px 36px -16px color-mix(in srgb, #0ea5e9 55%, transparent);
-  }
-
-  .dx-tools-pill:hover::after {
-    opacity: 1;
   }
 
   .dx-tools-glyph {
     display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 2.5rem;
-    height: 2.5rem;
-    border-radius: 10px;
-    background: color-mix(in srgb, #0ea5e9 14%, transparent);
-    border: 1px solid color-mix(in srgb, #0ea5e9 28%, transparent);
-    color: #0ea5e9;
-    transition: background 200ms ease, border-color 200ms ease, transform 200ms ease;
+    color: var(--dx-muted);
   }
 
   .dx-tools-glyph svg {
-    width: 1.25rem;
-    height: 1.25rem;
-  }
-
-  .dx-tools-pill:hover .dx-tools-glyph {
-    background: color-mix(in srgb, #0ea5e9 24%, transparent);
-    border-color: color-mix(in srgb, #0ea5e9 60%, transparent);
-    transform: scale(1.05);
-  }
-
-  .dx-tools-text {
-    display: flex;
-    flex-direction: column;
-    gap: 0.15rem;
-    min-width: 0;
+    width: 1.05rem;
+    height: 1.05rem;
   }
 
   .dx-tools-name {
-    font-size: 1rem;
-    font-weight: 600;
-    letter-spacing: -0.01em;
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: var(--dx-ink);
   }
 
-  .dx-tools-meta {
-    font-size: 0.78rem;
-    color: color-mix(in srgb, var(--sl-color-text) 55%, transparent);
-    font-family: var(--dx-mono, ui-monospace, SFMono-Regular, monospace);
+  .dx-tools-path {
+    font-family: var(--dx-mono);
+    font-size: 0.8rem;
+    color: var(--dx-faint);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  @media (max-width: 48rem) {
+    .dx-tools-path {
+      grid-column: 2;
+    }
   }
 </style>

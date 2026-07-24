@@ -18,7 +18,7 @@ export function frontmatter(data) {
     if (v === undefined || v === null) continue;
     if (typeof v === 'string') {
       // Quote the value if it contains characters YAML treats specially.
-      const needsQuotes = /[:\-?#&*!|>'"%@`,\[\]\{\}]|^\s|\s$/.test(v);
+      const needsQuotes = /[:\-?#&*!|>'"%@`,[\]{}]|^\s|\s$/.test(v);
       lines.push(`${k}: ${needsQuotes ? JSON.stringify(v) : v}`);
     } else if (typeof v === 'boolean' || typeof v === 'number') {
       lines.push(`${k}: ${v}`);

@@ -1,6 +1,6 @@
 import fs from 'fs-extra';
 import path from 'path';
-import { execSync, execFileSync } from 'child_process';
+import { execFileSync } from 'child_process';
 import { warnMsg } from './branding.js';
 import { writeJsonAtomic, writeFileAtomic } from './fs-atomic.js';
 
@@ -48,7 +48,7 @@ export function removeJsonMcpServers(filePath, mcpKey, idsToRemove) {
     config = fs.readJsonSync(filePath);
   } catch (err) {
     // Surface rather than silently report "removed 0" on a file we couldn't read.
-    throw new Error(`Could not parse ${filePath} as JSON: ${err.message}`);
+    throw new Error(`Could not parse ${filePath} as JSON: ${err.message}`, { cause: err });
   }
 
   if (!config[mcpKey] || typeof config[mcpKey] !== 'object') return { removed: 0 };
@@ -144,8 +144,31 @@ export function removeTomlMcpServers(filePath, idsToRemove) {
 }
 
 // ══════════════════════════════════════════════
-// Claude Code CLI Removal
+// Claude Code CLI Scanning & Removal
 // ══════════════════════════════════════════════
+
+// True when `id` appears in `claude mcp list` output as a whole token — a bare
+// substring check would let "git" match "github" and skip/remove the wrong
+// server. Boundaries are anything outside the id charset [A-Za-z0-9_-].
+export function outputHasServerId(output, id) {
+  if (!output || !id) return false;
+  const re = new RegExp(`(^|[^A-Za-z0-9_-])${escapeRegExp(id)}([^A-Za-z0-9_-]|$)`, 'm');
+  return re.test(output);
+}
+
+// `claude mcp list` output, or '' when the CLI is missing/unresponsive.
+// execFileSync (argv, no shell) — the previous `2>/dev/null || true` shell form
+// silently broke on Windows cmd.exe, reading every server as "not configured".
+export function listClaudeCodeMcpOutput() {
+  try {
+    return execFileSync('claude', ['mcp', 'list'], {
+      stdio: ['ignore', 'pipe', 'ignore'],
+      timeout: 10000,
+    }).toString();
+  } catch {
+    return '';
+  }
+}
 
 /**
  * Remove MCP servers from Claude Code via CLI.
@@ -174,22 +197,16 @@ export function removeClaudeCodeMcpServers(serverIds) {
  * Scan Claude Code for known MCP server IDs.
  */
 export function scanClaudeCodeMcpServers(knownIds) {
-  try {
-    const output = execSync('claude mcp list 2>/dev/null || true', {
-      stdio: 'pipe',
-      timeout: 10000,
-    }).toString();
+  const output = listClaudeCodeMcpOutput();
+  if (!output) return [];
 
-    // Filter out cloud-managed servers (lines starting with "claude.ai ")
-    const localLines = output
-      .split('\n')
-      .filter((line) => !line.trim().startsWith('claude.ai '))
-      .join('\n');
+  // Filter out cloud-managed servers (lines starting with "claude.ai ")
+  const localLines = output
+    .split('\n')
+    .filter((line) => !line.trim().startsWith('claude.ai '))
+    .join('\n');
 
-    return knownIds.filter((id) => localLines.includes(id));
-  } catch {
-    return [];
-  }
+  return knownIds.filter((id) => outputHasServerId(localLines, id));
 }
 
 // ══════════════════════════════════════════════
