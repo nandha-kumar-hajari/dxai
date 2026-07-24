@@ -23,6 +23,7 @@
   "main": "src/index.js",
   "scripts": {
     "test": "node scripts/run-tests.mjs",
+    "lint": "eslint .",
     "smoke": "node bin/cli.js --version && node bin/cli.js --help > /dev/null",
     "docs:install": "npm --prefix docs install",
     "docs:dev": "npm --prefix docs run dev",
@@ -46,5 +47,10 @@
     "fs-extra": "^11.2.0",
     "inquirer": "^9.2.23",
     "ora": "^8.0.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.7.0",
+    "globals": "^17.7.0"
   }
 }

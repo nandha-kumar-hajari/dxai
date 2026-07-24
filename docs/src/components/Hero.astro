@@ -1,264 +1,452 @@
 ---
-import TerminalMock from './TerminalMock.astro';
-
+// Landing hero, structured like the top of a man page: NAME line as the
+// headline, SYNOPSIS as a copyable command, and the fan-out diagram — one
+// `dxai init` making a repo AI-agent-ready — as the signature.
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 const getStartedHref = `${base}/guide/getting-started/`;
 const githubHref = 'https://github.com/nandha-kumar-hajari/dxai';
+
+// Each agent gets configured and ticked in sequence. Files are the real ones
+// project mode writes per agent — nothing invented.
+const fanout = [
+  { agent: 'Cursor', files: '.cursor/rules · commands · mcp.json' },
+  { agent: 'Claude Code', files: 'CLAUDE.md' },
+  { agent: 'VS Code', files: '.vscode/mcp.json' },
+  { agent: 'Codex CLI', files: 'AGENTS.md' },
+  { agent: 'Gemini CLI', files: 'GEMINI.md · .gemini/settings.json' },
+  { agent: 'Windsurf', files: 'AGENTS.md' },
+  { agent: 'Antigravity', files: 'AGENTS.md' },
+  { agent: 'shared', files: '.editorconfig · .gitattributes' },
+];
 ---
 
 <section class="dx-hero" aria-labelledby="dx-hero-title">
-  <div class="dx-hero-bg" aria-hidden="true">
-    <div class="dx-hero-glow"></div>
-    <div class="dx-hero-grid"></div>
-  </div>
-
   <div class="dx-hero-inner">
-    <div class="dx-hero-text">
-      <span class="dx-hero-eyebrow">
-        <span class="dx-hero-pulse" aria-hidden="true"></span>
-        AI dev environment bootstrapper
-      </span>
-      <h1 id="dx-hero-title" class="dx-hero-title">
-        One command to wire up <span class="dx-hero-grad">every AI coding tool</span>.
-      </h1>
-      <p class="dx-hero-tag">
-        dxai installs MCP servers, agent skills, Cursor rules, and AI-friendly project
-        files across Cursor, Claude Code, VS Code, Codex, Gemini, Windsurf, and Antigravity —
-        from a single interactive run.
+    <header class="dx-hero-name">
+      <p class="dx-hero-eyebrow" aria-hidden="true">
+        <span>User Commands</span>
+        <span class="dx-hero-eyebrow-rule"></span>
+        <span>dxai(1)</span>
       </p>
-      <div class="dx-hero-ctas">
-        <a class="dx-btn dx-btn--primary" href={getStartedHref}>
-          Get started
-          <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
-            <path
-              d="M6 3.5L10.5 8L6 12.5"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            ></path>
-          </svg>
-        </a>
-        <a class="dx-btn dx-btn--ghost" href={githubHref} rel="noopener" target="_blank">
-          <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
-            <path
-              fill="currentColor"
-              d="M8 0C3.58 0 0 3.58 0 8a8 8 0 0 0 5.47 7.59c.4.07.55-.17.55-.38 0-.19-.01-.69-.01-1.36-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.42 7.42 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"
-            ></path>
-          </svg>
-          View on GitHub
-        </a>
-      </div>
-      <div class="dx-hero-meta">
-        <code>npx dxai</code>
-        <span class="dx-hero-meta-sep" aria-hidden="true">•</span>
-        <span>no install needed</span>
-        <span class="dx-hero-meta-sep" aria-hidden="true">•</span>
-        <span>MIT licensed</span>
-      </div>
-    </div>
+      <h1 id="dx-hero-title" class="dx-hero-title">
+        <strong>dxai</strong><span class="dx-hero-dash"> — </span>make your repo ready for every AI coding agent
+      </h1>
+      <p class="dx-hero-lede">
+        One command detects your stack and writes the files every agent reads —
+        AGENTS.md, CLAUDE.md, Cursor rules, project MCP configs — for Cursor,
+        Claude&nbsp;Code, VS&nbsp;Code, Codex, Gemini, Windsurf, and Antigravity.
+        Merged, never overwritten. Backed up, tracked, reversible.
+      </p>
 
-    <div class="dx-hero-art">
-      <TerminalMock />
-    </div>
+      <div class="dx-hero-synopsis">
+        <code class="dx-hero-cmd"><span class="dx-prompt">$</span> npx dxai init</code>
+        <button type="button" class="dx-hero-copy" data-copy="npx dxai init" aria-label="Copy npx dxai init">
+          copy
+        </button>
+      </div>
+
+      <div class="dx-hero-ctas">
+        <a class="dx-btn dx-btn--primary" href={getStartedHref}>Get started</a>
+        <a class="dx-btn dx-btn--quiet" href={githubHref} rel="noopener" target="_blank">
+          GitHub&nbsp;<span aria-hidden="true">↗</span>
+        </a>
+        <span class="dx-hero-fine">Node 18+ · MIT · no install needed</span>
+      </div>
+    </header>
+
+    <figure class="dx-fan" aria-label="dxai init detects the stack, then configures and ticks off each agent in turn">
+      <figcaption class="dx-fan-caption">run it inside any repo</figcaption>
+      <div class="dx-fan-body">
+        <span class="dx-fan-line dx-fan-cmd"><span class="dx-prompt">$</span>&nbsp;<span class="dx-fan-typed">dxai init</span><span class="dx-fan-caret" aria-hidden="true">▍</span></span>
+        <span class="dx-fan-line dx-fan-det" style="--i:0"><span class="dx-fan-note">› detected: react + node · npm · vitest · github-actions</span></span>
+        {fanout.map((f, i) => (
+          <span class="dx-fan-line dx-fan-row" style={`--i:${i + 1}`}>
+            <span class="dx-fan-tree">{i === fanout.length - 1 ? '└─▸' : '├─▸'}</span>
+            <span class="dx-fan-agent">{f.agent}</span>
+            <span class="dx-fan-files">{f.files}</span>
+            <span class="dx-fan-state" aria-hidden="true"><span class="dx-fan-wait">…</span><span class="dx-fan-tick">✓</span></span>
+          </span>
+        ))}
+        <span class="dx-fan-line dx-fan-ok" style={`--i:${fanout.length + 1}`}><span class="dx-ok">✓</span>&nbsp;repo ready · nothing overwritten · manifest recorded</span>
+      </div>
+    </figure>
   </div>
 </section>
 
+<script>
+  const btn = document.querySelector<HTMLButtonElement>('.dx-hero-copy');
+  btn?.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(btn.dataset.copy || '');
+      btn.textContent = 'copied';
+      btn.classList.add('is-copied');
+      setTimeout(() => {
+        btn.textContent = 'copy';
+        btn.classList.remove('is-copied');
+      }, 1400);
+    } catch {
+      /* clipboard unavailable */
+    }
+  });
+</script>
+
 <style>
   .dx-hero {
-    position: relative;
-    isolation: isolate;
-    padding: 1.5rem 1.5rem 2rem;
-    overflow: hidden;
-  }
-
-  .dx-hero-bg {
-    position: absolute;
-    inset: 0;
-    z-index: -1;
-    pointer-events: none;
-  }
-
-  .dx-hero-glow {
-    position: absolute;
-    inset: -20% -10% auto -10%;
-    height: 70%;
-    background: radial-gradient(
-      ellipse at 50% 0%,
-      color-mix(in srgb, #0ea5e9 35%, transparent) 0%,
-      color-mix(in srgb, #0ea5e9 8%, transparent) 35%,
-      transparent 70%
-    );
-    filter: blur(20px);
-  }
-
-  .dx-hero-grid {
-    position: absolute;
-    inset: 0;
-    background-image:
-      radial-gradient(
-        circle at center,
-        color-mix(in srgb, var(--sl-color-text) 8%, transparent) 1px,
-        transparent 1px
-      );
-    background-size: 28px 28px;
-    mask-image: radial-gradient(ellipse at 50% 30%, #000 30%, transparent 70%);
-    -webkit-mask-image: radial-gradient(ellipse at 50% 30%, #000 30%, transparent 70%);
-    opacity: 0.6;
+    padding: 4.5rem 1.5rem 3.5rem;
   }
 
   .dx-hero-inner {
-    max-width: 78rem;
+    max-width: 72rem;
     margin: 0 auto;
     display: grid;
     grid-template-columns: 1fr;
-    gap: 2.5rem;
-    align-items: start;
+    gap: 3rem;
+    align-items: center;
   }
 
-  @media (min-width: 56rem) {
+  @media (min-width: 64rem) {
     .dx-hero {
-      padding: 2.25rem 2rem 2.75rem;
+      padding-top: 6rem;
     }
     .dx-hero-inner {
-      grid-template-columns: 1.05fr 1fr;
-      gap: 4rem;
+      grid-template-columns: minmax(0, 1.02fr) minmax(0, 0.98fr);
+      gap: 4.5rem;
     }
   }
 
+  /* ── NAME ── */
   .dx-hero-eyebrow {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-family: ui-monospace, SFMono-Regular, 'JetBrains Mono', Menlo, monospace;
-    font-size: 0.78rem;
-    letter-spacing: 0.06em;
-    color: #0ea5e9;
-    background: color-mix(in srgb, #0ea5e9 12%, transparent);
-    border: 1px solid color-mix(in srgb, #0ea5e9 28%, transparent);
-    border-radius: 999px;
-    padding: 0.3rem 0.7rem;
+    display: flex;
+    align-items: baseline;
+    gap: 1rem;
+    margin: 0 0 2.25rem;
+    font-family: var(--dx-mono);
+    font-size: 0.72rem;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--dx-faint);
   }
 
-  .dx-hero-pulse {
-    width: 0.45rem;
-    height: 0.45rem;
-    border-radius: 50%;
-    background: #0ea5e9;
-    box-shadow: 0 0 0 0 color-mix(in srgb, #0ea5e9 70%, transparent);
-  }
-
-  @media (prefers-reduced-motion: no-preference) {
-    .dx-hero-pulse {
-      animation: dx-pulse 2s ease-in-out infinite;
-    }
-  }
-
-  @keyframes dx-pulse {
-    0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, #0ea5e9 70%, transparent); }
-    50% { box-shadow: 0 0 0 6px color-mix(in srgb, #0ea5e9 0%, transparent); }
+  .dx-hero-eyebrow-rule {
+    flex: 1;
+    border-top: 1px solid var(--dx-hairline);
+    transform: translateY(-0.2em);
   }
 
   .dx-hero-title {
-    font-size: clamp(2rem, 4.5vw, 3.4rem);
-    line-height: 1.1;
-    letter-spacing: -0.03em;
-    margin: 1.1rem 0 0.9rem;
-    font-weight: 800;
-    max-width: 22ch;
+    font-family: var(--dx-mono);
+    font-weight: 400;
+    font-size: clamp(1.6rem, 3.4vw, 2.45rem);
+    line-height: 1.32;
+    letter-spacing: -0.015em;
+    margin: 0 0 1.25rem;
+    max-width: 24ch;
+    color: var(--dx-ink);
+    text-wrap: balance;
   }
 
-  .dx-hero-grad {
-    background: linear-gradient(
-      120deg,
-      #38bdf8 0%,
-      #0ea5e9 40%,
-      #6366f1 100%
-    );
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
+  .dx-hero-title strong {
+    font-weight: 600;
+    color: var(--dx-accent);
   }
 
-  .dx-hero-tag {
-    color: color-mix(in srgb, var(--sl-color-text) 75%, transparent);
-    font-size: 1.05rem;
-    line-height: 1.6;
-    max-width: 38rem;
-    margin: 0 0 1.5rem;
+  .dx-hero-dash {
+    color: var(--dx-faint);
   }
 
+  .dx-hero-lede {
+    font-size: 1.02rem;
+    line-height: 1.7;
+    color: var(--dx-muted);
+    max-width: 34rem;
+    margin: 0 0 1.75rem;
+  }
+
+  /* ── SYNOPSIS ── */
+  .dx-hero-synopsis {
+    display: inline-flex;
+    align-items: stretch;
+    border: 1px solid var(--dx-hairline-strong);
+    border-radius: 6px;
+    overflow: hidden;
+    margin-bottom: 1.75rem;
+    background: var(--dx-well);
+  }
+
+  .dx-hero-cmd {
+    font-family: var(--dx-mono);
+    font-size: 0.95rem;
+    padding: 0.65rem 1.1rem;
+    color: var(--dx-ink);
+    background: transparent;
+  }
+
+  .dx-hero-copy {
+    font-family: var(--dx-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 0 0.9rem;
+    border: none;
+    border-left: 1px solid var(--dx-hairline);
+    background: transparent;
+    color: var(--dx-faint);
+    cursor: pointer;
+    transition: color 150ms ease, background 150ms ease;
+  }
+
+  .dx-hero-copy:hover {
+    color: var(--dx-accent);
+    background: color-mix(in srgb, var(--dx-accent) 8%, transparent);
+  }
+
+  .dx-hero-copy:focus-visible {
+    outline: 2px solid var(--dx-accent);
+    outline-offset: -2px;
+  }
+
+  .dx-hero-copy.is-copied {
+    color: var(--dx-ok);
+  }
+
+  /* ── CTAs ── */
   .dx-hero-ctas {
     display: flex;
     flex-wrap: wrap;
+    align-items: center;
     gap: 0.75rem;
-    margin-bottom: 1.25rem;
   }
 
   .dx-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.7rem 1.1rem;
-    border-radius: 10px;
-    font-weight: 600;
-    font-size: 0.95rem;
+    font-family: var(--dx-mono);
+    font-size: 0.88rem;
+    font-weight: 500;
     text-decoration: none;
-    transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease, border-color 160ms ease;
-    border: 1px solid transparent;
+    padding: 0.6rem 1.15rem;
+    border-radius: 6px;
+    transition: background 150ms ease, border-color 150ms ease, color 150ms ease;
   }
 
   .dx-btn:focus-visible {
-    outline: 2px solid #0ea5e9;
+    outline: 2px solid var(--dx-accent);
     outline-offset: 2px;
   }
 
   .dx-btn--primary {
-    background: #0284c7;
-    color: #fff;
-    box-shadow:
-      0 1px 0 0 color-mix(in srgb, #ffffff 25%, transparent) inset,
-      0 12px 30px -12px color-mix(in srgb, #0ea5e9 70%, transparent);
+    background: var(--dx-accent);
+    color: var(--dx-on-accent);
+    border: 1px solid transparent;
   }
+
   .dx-btn--primary:hover {
-    background: #0369a1;
-    transform: translateY(-1px);
+    background: var(--dx-accent-strong);
   }
 
-  .dx-btn--ghost {
-    background: color-mix(in srgb, var(--sl-color-bg) 70%, transparent);
-    color: var(--sl-color-text);
-    border-color: color-mix(in srgb, var(--sl-color-text) 18%, transparent);
-    backdrop-filter: blur(8px);
-  }
-  .dx-btn--ghost:hover {
-    border-color: color-mix(in srgb, #0ea5e9 50%, transparent);
-    transform: translateY(-1px);
+  .dx-btn--quiet {
+    color: var(--dx-ink);
+    border: 1px solid var(--dx-hairline-strong);
+    background: transparent;
   }
 
-  .dx-hero-meta {
+  .dx-btn--quiet:hover {
+    border-color: var(--dx-accent);
+    color: var(--dx-accent);
+  }
+
+  .dx-hero-fine {
+    font-family: var(--dx-mono);
+    font-size: 0.75rem;
+    color: var(--dx-faint);
+    margin-left: 0.25rem;
+  }
+
+  /* ── Fan-out (signature) ── */
+  .dx-fan {
+    margin: 0;
+    border: 1px solid var(--dx-hairline-strong);
+    border-radius: 8px;
+    background: var(--dx-well);
+    min-width: 0;
+  }
+
+  .dx-fan-caption {
+    font-family: var(--dx-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--dx-faint);
+    padding: 0.7rem 1.15rem;
+    border-bottom: 1px solid var(--dx-hairline);
+  }
+
+  .dx-fan-body {
+    margin: 0;
+    padding: 1.15rem 1.25rem 1.3rem;
+    font-family: var(--dx-mono);
+    font-size: 0.83rem;
+    line-height: 1.85;
+    background: transparent;
+    color: var(--dx-ink);
+  }
+
+  .dx-fan-line {
+    display: block;
+  }
+
+  .dx-fan-cmd {
+    margin-bottom: 0.1rem;
+  }
+
+  .dx-fan-det {
+    margin-bottom: 0.4rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Agent rows: tree glyph · name · files · state — ticks align in a column,
+   * the files column truncates instead of overflowing on narrow screens. */
+  .dx-fan-row {
     display: flex;
-    flex-wrap: wrap;
-    gap: 0.6rem;
-    align-items: center;
-    color: color-mix(in srgb, var(--sl-color-text) 55%, transparent);
-    font-size: 0.85rem;
+    align-items: baseline;
+    gap: 0 0.9ch;
+    min-width: 0;
   }
-  .dx-hero-meta code {
-    background: color-mix(in srgb, var(--sl-color-bg) 50%, #000 50%);
-    color: #7dd3fc;
-    padding: 0.15rem 0.45rem;
-    border-radius: 6px;
-    border: 1px solid color-mix(in srgb, #0ea5e9 22%, transparent);
-    font-size: 0.8rem;
-  }
-  .dx-hero-meta-sep { opacity: 0.5; }
 
-  .dx-hero-art {
-    width: 100%;
+  .dx-fan-tree {
+    color: var(--dx-faint);
+    flex: none;
   }
-  @media (max-width: 56rem) {
-    .dx-hero-art { margin-top: 0.5rem; }
+
+  .dx-fan-agent {
+    color: var(--dx-ink);
+    flex: none;
+    width: 12ch;
+  }
+
+  .dx-fan-files {
+    color: var(--dx-faint);
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .dx-fan-state {
+    flex: none;
+    width: 1.4ch;
+    position: relative;
+    text-align: right;
+  }
+
+  /* Static default (and reduced motion): work is done — tick shown, no wait. */
+  .dx-fan-wait {
+    position: absolute;
+    right: 0;
+    color: var(--dx-faint);
+    opacity: 0;
+  }
+
+  .dx-fan-tick {
+    display: inline-block;
+    color: var(--dx-ok);
+    font-weight: 600;
+  }
+
+  .dx-fan-ok {
+    margin-top: 0.55rem;
+    color: var(--dx-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .dx-prompt {
+    color: var(--dx-accent);
+    font-weight: 600;
+  }
+
+  .dx-ok {
+    color: var(--dx-ok);
+    font-weight: 600;
+  }
+
+  /* Caret is an animation-only prop — invisible when motion is reduced. */
+  .dx-fan-caret {
+    color: var(--dx-accent);
+    opacity: 0;
+  }
+
+  /*
+   * Orchestrated once-per-load sequence, motion permitting:
+   *   0.4s–1.15s  `dxai init` types itself (9 steps), caret blinking
+   *   1.25s       stack detection line appears
+   *   1.5s→       agents appear one every 230ms, each pending "…"
+   *   +340ms      …then its ✓ ticks in — a cascade of completions
+   *   ~3.7s       the ✓ summary lands
+   * Reduced motion gets the final static state immediately.
+   */
+  @media (prefers-reduced-motion: no-preference) {
+    .dx-fan-typed {
+      display: inline-block;
+      overflow: hidden;
+      white-space: nowrap;
+      vertical-align: bottom;
+      width: 9ch;
+      animation: dx-fan-type 0.75s steps(9, end) 400ms both;
+    }
+
+    .dx-fan-caret {
+      /* Blink while typing; vanish the moment output starts. */
+      animation: dx-fan-caret-blink 0.7s steps(2, jump-none) 2, dx-fan-caret-off 1ms 1250ms forwards;
+      opacity: 1;
+    }
+
+    .dx-fan-line:not(.dx-fan-cmd) {
+      --d: calc(1250ms + var(--i, 0) * 230ms);
+      opacity: 0;
+      animation: dx-fan-in 260ms ease forwards;
+      animation-delay: var(--d);
+    }
+
+    /* Pending marker shows with its row, hides when the tick lands. */
+    .dx-fan-wait {
+      opacity: 1;
+      animation: dx-fan-off 1ms calc(var(--d) + 340ms) forwards;
+    }
+
+    .dx-fan-tick {
+      opacity: 0;
+      animation: dx-fan-tick-in 180ms ease calc(var(--d) + 340ms) forwards;
+    }
+
+    .dx-fan-line.dx-fan-ok {
+      animation-delay: 3700ms;
+    }
+
+    @keyframes dx-fan-type {
+      from { width: 0; }
+      to { width: 9ch; }
+    }
+    @keyframes dx-fan-caret-blink {
+      0%, 50% { opacity: 1; }
+      50.01%, 100% { opacity: 0; }
+    }
+    @keyframes dx-fan-caret-off {
+      to { opacity: 0; }
+    }
+    @keyframes dx-fan-off {
+      to { opacity: 0; }
+    }
+    @keyframes dx-fan-in {
+      from { opacity: 0; transform: translateX(-8px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+    @keyframes dx-fan-tick-in {
+      from { opacity: 0; transform: scale(0.5); }
+      to { opacity: 1; transform: scale(1); }
+    }
   }
 </style>

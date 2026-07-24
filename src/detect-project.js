@@ -1,6 +1,6 @@
 import fs from 'fs-extra';
 import path from 'path';
-import { execSync } from 'child_process';
+import { execFileSync } from 'child_process';
 
 // ══════════════════════════════════════════════
 // Stack Signal Mapping
@@ -88,12 +88,18 @@ function detectStacks(cwd, manifests) {
 // Git Info Detection
 // ══════════════════════════════════════════════
 
+// All git calls use execFileSync (argv form, no shell) with any line-counting
+// done in JS — the previous `| head -1` / `| wc -l` pipes silently failed under
+// Windows cmd.exe, zeroing the stats and skewing maturity classification.
+function git(args, cwd) {
+  return execFileSync('git', args, { stdio: 'pipe', timeout: 5000, cwd }).toString().trim();
+}
+
 function detectGitInfo(cwd) {
   const defaults = { isRepo: false, commitCount: 0, ageInDays: 0, contributorCount: 0 };
-  const opts = { stdio: 'pipe', timeout: 5000, cwd };
 
   try {
-    execSync('git rev-parse --is-inside-work-tree', opts);
+    git(['rev-parse', '--is-inside-work-tree'], cwd);
   } catch {
     return defaults;
   }
@@ -101,20 +107,22 @@ function detectGitInfo(cwd) {
   const info = { isRepo: true, commitCount: 0, ageInDays: 0, contributorCount: 0 };
 
   try {
-    info.commitCount = parseInt(execSync('git rev-list --count HEAD', opts).toString().trim(), 10) || 0;
+    info.commitCount = parseInt(git(['rev-list', '--count', 'HEAD'], cwd), 10) || 0;
   } catch { /* empty repo or no commits */ }
 
   try {
-    const firstTs = execSync('git log --reverse --format=%ct | head -1', opts).toString().trim();
-    if (firstTs) {
+    // Root commit(s), then their timestamp — cheap even in huge repos.
+    const rootSha = git(['rev-list', '--max-parents=0', 'HEAD'], cwd).split('\n')[0];
+    if (rootSha) {
+      const firstTs = git(['show', '-s', '--format=%ct', rootSha], cwd);
       const ageMs = Date.now() - parseInt(firstTs, 10) * 1000;
       info.ageInDays = Math.floor(ageMs / (1000 * 60 * 60 * 24));
     }
   } catch { /* no commits */ }
 
   try {
-    const count = execSync('git shortlog -sn --no-merges HEAD | wc -l', opts).toString().trim();
-    info.contributorCount = parseInt(count, 10) || 0;
+    const authors = git(['shortlog', '-sn', '--no-merges', 'HEAD'], cwd);
+    info.contributorCount = authors ? authors.split('\n').length : 0;
   } catch { /* no commits */ }
 
   return info;

@@ -1,36 +1,53 @@
 ---
 title: Testing
 description: How dxai is tested.
+sidebar:
+  order: 3
 ---
 
-dxai uses Node's built-in test runner — no extra test framework.
+dxai uses Node's built-in test runner — no extra test framework. Tests run through `scripts/run-tests.mjs`, a portable runner that enumerates `test/*.test.js` explicitly so the suite behaves identically on Node 18–22 across Linux, macOS, and Windows (glob expansion differs per platform).
 
 ```bash
-npm test                                    # 42 tests, ~100ms
-npm test -- 'test/runtime.test.js'          # single file
+npm test                                    # full suite (160+ tests, a few seconds)
+node --test test/runtime.test.js            # single file
 npm run smoke                               # quick --version + --help check
+npm run lint                                # ESLint (flat config)
 ```
 
-## Coverage
+## Conventions
+
+- Temp directories for every file operation — no side effects on the dev machine.
+- Mock at system boundaries (filesystem, network via injectable `fetchImpl`/`sleepFn`), not between internal modules.
+- Test names describe scenarios: "merges new server into existing config", not "test mergeJson".
+
+## Coverage map
 
 | File | Covers |
 |---|---|
 | `test/runtime.test.js` | Option normalization, ID partitioning |
+| `test/select.test.js` | Flag → defaults → prompt selection resolution, catalog choice builder |
 | `test/profile.test.js` | Resolve / read / merge / save |
 | `test/manifest.test.js` | Read / write / round-trip |
-| `test/config-writer.test.js` | JSON / TOML merge, placeholders, backups, malformed JSON refusal |
-| `test/config-remover.test.js` | Scan + remove + project file discovery |
+| `test/config-writer.test.js` | JSON / TOML merge, placeholders, version pinning, backups + pruning, malformed-JSON refusal, skill install paths |
+| `test/config-remover.test.js` | Scan + remove, backup-scan specificity, `claude mcp list` token matching |
 | `test/detect-project.test.js` | Stack / monorepo / pkg-manager / linter detection |
-| `test/registry-loader.test.js` | Bundled registry shape + diffRegistry |
+| `test/registry-loader.test.js` | Cache-over-bundled resolution, `diffRegistry`, `registryBaseFor` |
+| `test/registry-schema.test.js` | Every catalog entry validated; transport derivation locked by a golden table |
+| `test/validate.test.js` | Untrusted-registry validation: command allowlist, shell metacharacters, repo/path traversal, `detectCommand`, prototype-pollution ids |
+| `test/net.test.js` | Timeout, retry, backoff, retriable-status logic |
+| `test/update.test.js` | Registry refresh + payload rejection |
+| `test/auto-update.test.js` | TTL logic, skip conditions, offline degradation |
+| `test/rollback.test.js` | Backup discovery + restore |
+| `test/handshake.test.js` | JSON-RPC handshake against a fake stdio MCP fixture (ok / garbage / timeout / missing binary) |
+| `test/mcp-cmd.e2e.test.js` | Fast-path add/remove flows |
+| `test/cli.e2e.test.js` | Real subprocess runs: `--version`, `--help`, `list --json`, `doctor --json`, `cleanup --yes --dry-run --json` in an isolated HOME |
 
-## CI matrix
+## CI
 
-`.github/workflows/ci.yml`:
+`.github/workflows/ci.yml` runs three jobs on every push and PR:
 
-- **OS:** Ubuntu, macOS, Windows
-- **Node:** 18, 20, 22
+1. **Test matrix** — Ubuntu / macOS / Windows × Node 18 / 20 / 22: syntax check of every source file, `npm test`, smoke run.
+2. **Lint** — `npm run lint` on Node 22.
+3. **Docs drift** — `npm run docs:check` verifies generated reference docs match the committed ones.
 
-Each job runs:
-1. `node --check` against every `.js` in `src/` and `bin/`
-2. `npm test`
-3. Smoke run of `dxai --version` and `dxai --help`
+`catalog-health.yml` additionally validates registry entries on PRs that touch them, and runs a weekly pin/URL drift check that opens a GitHub issue on findings.

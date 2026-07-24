@@ -1,17 +1,26 @@
 ---
 title: Contributing
 description: Setting up dev, running tests, and proposing changes.
+sidebar:
+  order: 4
 ---
 
 ```bash
 git clone https://github.com/nandha-kumar-hajari/dxai.git
 cd dxai
 npm install
-npm test
+npm test && npm run lint
 ```
 
-Tests use `node:test` (no extra framework). 42 tests, runs in ~100ms.
+Tests use `node:test` (no extra framework) via a portable runner; the full suite takes a few seconds. CI runs on every push and PR across **Ubuntu, macOS, Windows × Node 18, 20, 22**, plus lint and docs-drift jobs on Node 22.
 
-CI runs on every push and PR across **Ubuntu, macOS, Windows × Node 18, 20, 22**.
+## Before you open a PR
 
-When you change anything in `src/registry/data/`, `bin/cli.js` flags, or `PROFILE_KEYS`, also run `npm run docs:generate` and commit the regenerated docs. The `docs-check` CI job will fail otherwise.
+- Read the [Maintainer Notes](/dxai/internals/development/) — dev loop, invariants (idempotent writes, backups, manifest recording, untrusted-registry validation, honest exit codes), and the data-vs-code release tracks.
+- Match existing patterns: read 2–3 similar files before writing new code. `AGENTS.md` at the repo root is the canonical rule set.
+- One logical change per commit, conventional commit messages (`feat:`, `fix:`, `docs:`, …), tests in the same commit as the change.
+- When you change anything in `src/registry/data/`, `bin/cli.js` flags, `PROFILE_KEYS`, or the manifest schema, also run `npm run docs:generate` and commit the regenerated docs — the `docs-check` CI job fails otherwise.
+
+## Catalog contributions
+
+Adding or updating an MCP server, skill, or automation tool only touches `src/registry/data/*.json` — no version bump, no release. Prefer the `transport` field over hand-written per-agent configs (derivation covers every agent automatically), and let `test/registry-schema.test.js` tell you if the entry is malformed. See [Maintainer Notes → Catalog maintenance](/dxai/internals/development/#catalog-maintenance-the-data-track).

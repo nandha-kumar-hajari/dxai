@@ -24,7 +24,8 @@ import {
   writeGitattributes, writeEditorconfig, writeAgentsMd,
   previewMcpConfigs,
 } from './config-writer.js';
-import { normalizeOptions, partitionByKnown } from './runtime.js';
+import { normalizeOptions } from './runtime.js';
+import { resolveSelection, buildCatalogChoices } from './select.js';
 import { parseSafeCommand } from './registry/validate.js';
 import { maybeRefreshCatalog } from './auto-update.js';
 import { resolveProfile, readProfile, mergeWithProfile, saveProfile, listProfiles } from './profile.js';
@@ -36,6 +37,16 @@ import {
 function quiet(runtime, fn) {
   if (runtime.json) return;
   fn();
+}
+
+// Count per-step failures captured inside a flow's result maps, so a partially
+// failed setup can exit non-zero instead of silently reporting success.
+function countResultErrors({ mcpResults, toolResults, skillResults } = {}) {
+  let n = 0;
+  for (const r of Object.values(mcpResults || {})) n += (r.errors || []).length;
+  n += (toolResults?.errors || []).length;
+  n += (skillResults?.errors || []).length;
+  return n;
 }
 
 // In non-interactive mode, fall back to defaults instead of prompting.
@@ -71,6 +82,27 @@ export async function collectMcpInputs(selectedMcpIds, mcpRegistry, runtime) {
 }
 
 // ══════════════════════════════════════════════
+// MCP servers — shared selection (system + project flows)
+// ══════════════════════════════════════════════
+function mcpServersFor(selectedAgentIds) {
+  return MCP_SERVERS.filter((s) => selectedAgentIds.some((aid) => s.configs[aid]));
+}
+
+function recommendedMcpIds(selectedAgentIds) {
+  return mcpServersFor(selectedAgentIds).filter((s) => s.recommended).map((s) => s.id);
+}
+
+async function promptMcpServers(selectedAgentIds, message) {
+  const choices = buildCatalogChoices(MCP_CATEGORIES, mcpServersFor(selectedAgentIds), {
+    decorate: (s) => ({ note: s.requiresEnv ? chalk.dim(' (needs API key)') : '' }),
+  });
+  const { picked } = await inquirer.prompt([
+    { type: 'checkbox', name: 'picked', message, choices, pageSize: 25, loop: false },
+  ]);
+  return picked;
+}
+
+// ══════════════════════════════════════════════
 // Shared: Banner + Detection + Agent Selection
 // ══════════════════════════════════════════════
 async function sharedSetup(runtime) {
@@ -92,49 +124,48 @@ async function sharedSetup(runtime) {
     process.exit(1);
   }
 
-  // Agent selection — flag, then prompt, then default to detected.
-  let selectedAgentIds;
-  if (runtime.agents && runtime.agents.length > 0) {
-    const knownIds = AGENT_DEFINITIONS.map((a) => a.id);
-    const { valid, invalid } = partitionByKnown(runtime.agents, knownIds);
-    if (invalid.length > 0) {
-      throw new Error(`Unknown agent ID(s): ${invalid.join(', ')}. Known: ${knownIds.join(', ')}`);
-    }
-    if (valid.length === 0) throw new Error('No valid agents specified.');
-    selectedAgentIds = valid;
-  } else if (runtime.nonInteractive) {
-    // Default to detected agents in non-interactive mode.
-    selectedAgentIds = agents.filter((a) => a.installed).map((a) => a.id);
-    if (selectedAgentIds.length === 0) {
-      throw new Error('No agents detected. Pass --agents to choose explicitly.');
-    }
-  } else {
-    console.log();
-    sectionHeader('Select Your AI Tools');
-    console.log();
+  // Agent selection — flag, then default to detected, then prompt.
+  const selectedAgentIds = await resolveSelection({
+    flag: runtime.agents && runtime.agents.length > 0 ? runtime.agents : undefined,
+    knownIds: AGENT_DEFINITIONS.map((a) => a.id),
+    label: 'agent ID',
+    requireNonEmpty: true,
+    nonInteractive: runtime.nonInteractive,
+    defaults: () => {
+      const detected = agents.filter((a) => a.installed).map((a) => a.id);
+      if (detected.length === 0) {
+        throw new Error('No agents detected. Pass --agents to choose explicitly.');
+      }
+      return detected;
+    },
+    prompt: async () => {
+      console.log();
+      sectionHeader('Select Your AI Tools');
+      console.log();
 
-    const agentChoices = AGENT_DEFINITIONS.map((def) => {
-      const detected = agents.find((a) => a.id === def.id);
-      const status = detected?.installed ? chalk.green(' (detected)') : '';
-      return {
-        name: `${def.name}${status} — ${def.description}`,
-        value: def.id,
-        checked: detected?.installed || false,
-      };
-    });
+      const agentChoices = AGENT_DEFINITIONS.map((def) => {
+        const detected = agents.find((a) => a.id === def.id);
+        const status = detected?.installed ? chalk.green(' (detected)') : '';
+        return {
+          name: `${def.name}${status} — ${def.description}`,
+          value: def.id,
+          checked: detected?.installed || false,
+        };
+      });
 
-    const { selectedAgentIds: picked } = await inquirer.prompt([
-      {
-        type: 'checkbox',
-        name: 'selectedAgentIds',
-        message: 'Which AI tools do you use? (Space to toggle, Enter to confirm)',
-        choices: agentChoices,
-        loop: false,
-        validate: (ans) => ans.length > 0 || 'Please select at least one tool.',
-      },
-    ]);
-    selectedAgentIds = picked;
-  }
+      const { picked } = await inquirer.prompt([
+        {
+          type: 'checkbox',
+          name: 'picked',
+          message: 'Which AI tools do you use? (Space to toggle, Enter to confirm)',
+          choices: agentChoices,
+          loop: false,
+          validate: (ans) => ans.length > 0 || 'Please select at least one tool.',
+        },
+      ]);
+      return picked;
+    },
+  });
 
   const selectedAgents = AGENT_DEFINITIONS.filter((a) => selectedAgentIds.includes(a.id));
 
@@ -194,53 +225,37 @@ async function sharedSetup(runtime) {
 // Codex reads natively, or .cursor/skills), so they're meaningful in both the
 // system and project flows. These helpers keep the two call sites consistent.
 async function selectSkills(runtime, headerLabel, { recommendByDefault = true } = {}) {
-  if (runtime.skills !== undefined) {
-    const knownIds = SKILLS.map((s) => s.id);
-    const { valid, invalid } = partitionByKnown(runtime.skills, knownIds);
-    if (invalid.length > 0) {
-      throw new Error(`Unknown skill ID(s): ${invalid.join(', ')}`);
-    }
-    return valid;
-  }
-  if (runtime.nonInteractive) {
+  return resolveSelection({
+    flag: runtime.skills,
+    knownIds: SKILLS.map((s) => s.id),
+    label: 'skill ID',
+    nonInteractive: runtime.nonInteractive,
     // No explicit --skills: system mode seeds the recommended set; project mode
     // stays empty so `dxai project --yes` doesn't trigger unexpected downloads.
-    return recommendByDefault ? SKILLS.filter((s) => s.recommended).map((s) => s.id) : [];
-  }
-
-  quiet(runtime, () => {
-    console.log();
-    sectionHeader(headerLabel);
-    console.log();
-  });
-
-  const skillChoices = [];
-  for (const cat of SKILL_CATEGORIES) {
-    const catSkills = SKILLS.filter((s) => s.category === cat.id);
-    if (catSkills.length === 0) continue;
-
-    skillChoices.push(new inquirer.Separator(chalk.cyan(`\n  ${cat.label}`)));
-    for (const s of catSkills) {
-      const rec = s.recommended ? chalk.yellow(' ★') : '';
-      skillChoices.push({
-        name: `${s.name}${rec} — ${chalk.dim(s.description)}`,
-        value: s.id,
-        checked: !!s.recommended,
+    defaults: () => (recommendByDefault ? SKILLS.filter((s) => s.recommended).map((s) => s.id) : []),
+    prompt: async () => {
+      quiet(runtime, () => {
+        console.log();
+        sectionHeader(headerLabel);
+        console.log();
+        infoMsg('Skills are downloaded into this project\'s skills folder (.agents/skills or .cursor/skills)');
+        console.log();
       });
-    }
-  }
 
-  const { selectedSkillIds: picked } = await inquirer.prompt([
-    {
-      type: 'checkbox',
-      name: 'selectedSkillIds',
-      message: 'Select agent skills to install:',
-      choices: skillChoices,
-      pageSize: 20,
-      loop: false,
+      const skillChoices = buildCatalogChoices(SKILL_CATEGORIES, SKILLS);
+      const { picked } = await inquirer.prompt([
+        {
+          type: 'checkbox',
+          name: 'picked',
+          message: 'Select agent skills to install:',
+          choices: skillChoices,
+          pageSize: 20,
+          loop: false,
+        },
+      ]);
+      return picked;
     },
-  ]);
-  return picked;
+  });
 }
 
 // Install the chosen skills and report results. `record` persists them to the
@@ -267,6 +282,7 @@ async function installAndReportSkills(selectedSkillIds, selectedAgents, runtime,
     });
   } catch (err) {
     spinner?.stop();
+    result.errorCount = (result.errorCount || 0) + 1;
     if (runtime.json) throw err;
     errorMsg(`Skills installation failed: ${err.message}`);
   }
@@ -279,111 +295,63 @@ async function runSystem(ctx, runtime) {
   const { osInfo, selectedAgents, selectedAgentIds } = ctx;
 
   // ── MCP Server Selection ──
-  let selectedMcpIds;
-  if (runtime.mcp !== undefined) {
-    const knownIds = MCP_SERVERS.map((s) => s.id);
-    const { valid, invalid } = partitionByKnown(runtime.mcp, knownIds);
-    if (invalid.length > 0) {
-      throw new Error(`Unknown MCP server ID(s): ${invalid.join(', ')}`);
-    }
-    selectedMcpIds = valid;
-  } else if (runtime.nonInteractive) {
-    selectedMcpIds = MCP_SERVERS
-      .filter((s) => s.recommended && selectedAgentIds.some((aid) => s.configs[aid]))
-      .map((s) => s.id);
-  } else {
-    quiet(runtime, () => {
-      console.log();
-      sectionHeader('Select MCP Servers (Global)');
-      console.log();
-      infoMsg('★ = recommended  •  Servers are configured globally for all your selected tools');
-      console.log();
-    });
-
-    const mcpChoices = [];
-    for (const cat of MCP_CATEGORIES) {
-      const servers = MCP_SERVERS.filter(
-        (s) => s.category === cat.id && selectedAgentIds.some((aid) => s.configs[aid])
-      );
-      if (servers.length === 0) continue;
-
-      mcpChoices.push(new inquirer.Separator(chalk.cyan(`\n  ${cat.label}  `) + chalk.dim(cat.description)));
-      for (const s of servers) {
-        const rec = s.recommended ? chalk.yellow(' ★') : '';
-        const envNote = s.requiresEnv ? chalk.dim(' (needs API key)') : '';
-        mcpChoices.push({
-          name: `${s.name}${rec} — ${chalk.dim(s.description)}${envNote}`,
-          value: s.id,
-          checked: !!s.recommended,
-        });
-      }
-    }
-
-    const { selectedMcpIds: picked } = await inquirer.prompt([
-      {
-        type: 'checkbox',
-        name: 'selectedMcpIds',
-        message: 'Select MCP servers to install globally:',
-        choices: mcpChoices,
-        pageSize: 25,
-        loop: false,
-      },
-    ]);
-    selectedMcpIds = picked;
-  }
+  const selectedMcpIds = await resolveSelection({
+    flag: runtime.mcp,
+    knownIds: MCP_SERVERS.map((s) => s.id),
+    label: 'MCP server ID',
+    nonInteractive: runtime.nonInteractive,
+    defaults: () => recommendedMcpIds(selectedAgentIds),
+    prompt: async () => {
+      quiet(runtime, () => {
+        console.log();
+        sectionHeader('Select MCP Servers (Global)');
+        console.log();
+        infoMsg('★ = recommended  •  Servers are configured globally for all your selected tools');
+        console.log();
+      });
+      return promptMcpServers(selectedAgentIds, 'Select MCP servers to install globally:');
+    },
+  });
 
   // ── Suggested Automation Tools ──
-  let selectedToolIds;
-  if (runtime.tools !== undefined) {
-    const knownIds = AUTOMATION_TOOLS.map((t) => t.id);
-    const { valid, invalid } = partitionByKnown(runtime.tools, knownIds);
-    if (invalid.length > 0) {
-      throw new Error(`Unknown automation tool ID(s): ${invalid.join(', ')}`);
-    }
-    selectedToolIds = valid;
-  } else if (runtime.nonInteractive) {
-    selectedToolIds = AUTOMATION_TOOLS.filter((t) => t.recommended).map((t) => t.id);
-  } else {
-    const detectedTools = detectAutomationTools(AUTOMATION_TOOLS);
+  const selectedToolIds = await resolveSelection({
+    flag: runtime.tools,
+    knownIds: AUTOMATION_TOOLS.map((t) => t.id),
+    label: 'automation tool ID',
+    nonInteractive: runtime.nonInteractive,
+    defaults: () => AUTOMATION_TOOLS.filter((t) => t.recommended).map((t) => t.id),
+    prompt: async () => {
+      const detectedTools = detectAutomationTools(AUTOMATION_TOOLS);
 
-    quiet(runtime, () => {
-      console.log();
-      sectionHeader('Suggested Automation Tools');
-      console.log();
-      infoMsg('★ = suggested  •  Standalone CLIs that give your AI agents browser & device control');
-      console.log();
-    });
+      quiet(runtime, () => {
+        console.log();
+        sectionHeader('Suggested Automation Tools');
+        console.log();
+        infoMsg('★ = suggested  •  Standalone CLIs that give your AI agents browser & device control');
+        console.log();
+      });
 
-    const toolChoices = [];
-    for (const cat of AUTOMATION_TOOL_CATEGORIES) {
-      const catTools = detectedTools.filter((t) => t.category === cat.id);
-      if (catTools.length === 0) continue;
-      toolChoices.push(new inquirer.Separator(chalk.cyan(`\n  ${cat.label}  `) + chalk.dim(cat.description)));
-      for (const t of catTools) {
-        const rec = t.recommended ? chalk.yellow(' ★') : '';
-        const status = t.installed ? chalk.green(' (detected)') : '';
-        toolChoices.push({
-          name: `${t.name}${rec}${status} — ${chalk.dim(t.description)}`,
-          value: t.id,
-          checked: !!t.recommended,
-        });
-      }
-    }
+      const toolChoices = buildCatalogChoices(AUTOMATION_TOOL_CATEGORIES, detectedTools, {
+        decorate: (t) => ({ status: t.installed ? chalk.green(' (detected)') : '' }),
+      });
 
-    const { selectedToolIds: picked } = await inquirer.prompt([
-      {
-        type: 'checkbox',
-        name: 'selectedToolIds',
-        message: 'Select automation tools to install:',
-        choices: toolChoices,
-        loop: false,
-      },
-    ]);
-    selectedToolIds = picked;
-  }
+      const { picked } = await inquirer.prompt([
+        {
+          type: 'checkbox',
+          name: 'picked',
+          message: 'Select automation tools to install:',
+          choices: toolChoices,
+          loop: false,
+        },
+      ]);
+      return picked;
+    },
+  });
 
   // ── Agent Skills Selection ──
-  const selectedSkillIds = await selectSkills(runtime, 'Select Agent Skills (Global)');
+  // Note: skills always land in the *current project's* skills folder (that's
+  // where the agents read them from) — the header says so rather than "Global".
+  const selectedSkillIds = await selectSkills(runtime, 'Select Agent Skills');
 
   // Collect required inputs.
   const mcpInputs = await collectMcpInputs(selectedMcpIds, MCP_SERVERS, runtime);
@@ -461,7 +429,7 @@ async function runSystem(ctx, runtime) {
     sectionHeader('Configuring (System)');
   });
 
-  const result = { mcpResults: null, skillResults: null, toolResults: null };
+  const result = { mcpResults: null, skillResults: null, toolResults: null, errorCount: 0 };
 
   if (selectedMcpIds.length > 0) {
     const spinner = runtime.json
@@ -474,7 +442,7 @@ async function runSystem(ctx, runtime) {
       recordSystemMcp(mcpResults);
 
       quiet(runtime, () => {
-        for (const [agentId, r] of Object.entries(mcpResults)) {
+        for (const r of Object.values(mcpResults)) {
           if (r.added > 0) {
             successMsg(`${r.agent}: ${r.added} MCP server(s) added` + (r.path ? ` → ${r.path}` : ''));
           }
@@ -488,6 +456,7 @@ async function runSystem(ctx, runtime) {
       });
     } catch (err) {
       spinner?.stop();
+      result.errorCount++;
       if (runtime.json) throw err;
       errorMsg(`MCP config failed: ${err.message}`);
     }
@@ -585,42 +554,37 @@ async function runProject(ctx, runtime, { handleSkills = false } = {}) {
   });
 
   // ── Tech Stack Selection ──
-  let selectedStackIds;
-  if (runtime.stack !== undefined) {
-    const knownIds = TECH_STACKS.map((s) => s.id);
-    const { valid, invalid } = partitionByKnown(runtime.stack, knownIds);
-    if (invalid.length > 0) {
-      throw new Error(`Unknown stack ID(s): ${invalid.join(', ')}`);
-    }
-    if (valid.length === 0) throw new Error('No valid stacks specified.');
-    selectedStackIds = valid;
-  } else if (runtime.nonInteractive) {
-    selectedStackIds = profile.detectedStacks.length > 0
-      ? profile.detectedStacks
-      : ['node']; // sensible fallback
-  } else {
-    quiet(runtime, () => {
-      console.log();
-      sectionHeader('Select Your Tech Stack');
-      console.log();
-    });
+  const selectedStackIds = await resolveSelection({
+    flag: runtime.stack,
+    knownIds: TECH_STACKS.map((s) => s.id),
+    label: 'stack ID',
+    requireNonEmpty: true,
+    nonInteractive: runtime.nonInteractive,
+    defaults: () => (profile.detectedStacks.length > 0 ? profile.detectedStacks : ['node']),
+    prompt: async () => {
+      quiet(runtime, () => {
+        console.log();
+        sectionHeader('Select Your Tech Stack');
+        console.log();
+      });
 
-    const { selectedStackIds: picked } = await inquirer.prompt([
-      {
-        type: 'checkbox',
-        name: 'selectedStackIds',
-        message: 'What do you work with? (Space to toggle)',
-        choices: TECH_STACKS.map((s) => ({
-          name: s.label + (profile.detectedStacks.includes(s.id) ? chalk.green(' (detected)') : ''),
-          value: s.id,
-          checked: profile.detectedStacks.includes(s.id),
-        })),
-        loop: false,
-        validate: (ans) => ans.length > 0 || 'Please select at least one stack.',
-      },
-    ]);
-    selectedStackIds = picked;
-  }
+      const { picked } = await inquirer.prompt([
+        {
+          type: 'checkbox',
+          name: 'picked',
+          message: 'What do you work with? (Space to toggle)',
+          choices: TECH_STACKS.map((s) => ({
+            name: s.label + (profile.detectedStacks.includes(s.id) ? chalk.green(' (detected)') : ''),
+            value: s.id,
+            checked: profile.detectedStacks.includes(s.id),
+          })),
+          loop: false,
+          validate: (ans) => ans.length > 0 || 'Please select at least one stack.',
+        },
+      ]);
+      return picked;
+    },
+  });
 
   // ── Project Features Checklist ──
   const allFeatures = [];
@@ -631,100 +595,66 @@ async function runProject(ctx, runtime, { handleSkills = false } = {}) {
   if (agentsWithProjectMcp.length > 0) allFeatures.push('project-mcp');
   allFeatures.push('agent-instructions', 'agents-md', 'gitattributes', 'editorconfig');
 
-  let selectedFeatures;
-  if (runtime.features !== undefined) {
-    const { valid, invalid } = partitionByKnown(runtime.features, allFeatures);
-    if (invalid.length > 0) {
-      throw new Error(`Unknown feature ID(s): ${invalid.join(', ')}. Known: ${allFeatures.join(', ')}`);
-    }
-    selectedFeatures = valid;
-  } else if (runtime.nonInteractive) {
-    selectedFeatures = [...allFeatures];
-  } else {
-    quiet(runtime, () => {
-      console.log();
-      sectionHeader('Project Configuration');
-      console.log();
-    });
+  const selectedFeatures = await resolveSelection({
+    flag: runtime.features,
+    knownIds: allFeatures,
+    label: 'feature ID',
+    nonInteractive: runtime.nonInteractive,
+    defaults: () => [...allFeatures],
+    prompt: async () => {
+      quiet(runtime, () => {
+        console.log();
+        sectionHeader('Project Configuration');
+        console.log();
+      });
 
-    const featureChoices = [];
-    if (hasCursor) {
+      const featureChoices = [];
+      if (hasCursor) {
+        featureChoices.push(
+          { name: 'Cursor Rules — stack-specific .mdc rule files', value: 'cursor-rules', checked: true },
+          { name: 'Cursor Commands — /pr, /fix-issue, /review, /test-all, /refactor', value: 'cursor-commands', checked: true },
+          { name: '.cursorignore — exclude noise from AI context', value: 'cursor-ignore', checked: true },
+        );
+      }
+      if (agentsWithProjectMcp.length > 0) {
+        featureChoices.push({ name: 'Project-level MCP — .vscode/mcp.json, .cursor/mcp.json', value: 'project-mcp', checked: true });
+      }
       featureChoices.push(
-        { name: 'Cursor Rules — stack-specific .mdc rule files', value: 'cursor-rules', checked: true },
-        { name: 'Cursor Commands — /pr, /fix-issue, /review, /test-all, /refactor', value: 'cursor-commands', checked: true },
-        { name: '.cursorignore — exclude noise from AI context', value: 'cursor-ignore', checked: true },
+        { name: 'CLAUDE.md / GEMINI.md — agent instruction files', value: 'agent-instructions', checked: true },
+        { name: 'AGENTS.md — agent rules + project context (Codex CLI & other AGENTS.md-aware agents)', value: 'agents-md', checked: true },
+        { name: '.gitattributes — AI-friendly git config', value: 'gitattributes', checked: true },
+        { name: '.editorconfig — consistent formatting', value: 'editorconfig', checked: true },
       );
-    }
-    if (agentsWithProjectMcp.length > 0) {
-      featureChoices.push({ name: 'Project-level MCP — .vscode/mcp.json, .cursor/mcp.json', value: 'project-mcp', checked: true });
-    }
-    featureChoices.push(
-      { name: 'CLAUDE.md / GEMINI.md — agent instruction files', value: 'agent-instructions', checked: true },
-      { name: 'AGENTS.md — agent rules + project context (Codex CLI & other AGENTS.md-aware agents)', value: 'agents-md', checked: true },
-      { name: '.gitattributes — AI-friendly git config', value: 'gitattributes', checked: true },
-      { name: '.editorconfig — consistent formatting', value: 'editorconfig', checked: true },
-    );
 
-    const { selectedFeatures: picked } = await inquirer.prompt([
-      {
-        type: 'checkbox',
-        name: 'selectedFeatures',
-        message: 'Which project configs should we set up? (Space to toggle)',
-        choices: featureChoices,
-        loop: false,
-      },
-    ]);
-    selectedFeatures = picked;
-  }
+      const { picked } = await inquirer.prompt([
+        {
+          type: 'checkbox',
+          name: 'picked',
+          message: 'Which project configs should we set up? (Space to toggle)',
+          choices: featureChoices,
+          loop: false,
+        },
+      ]);
+      return picked;
+    },
+  });
 
   // ── Project-level MCP servers ──
   let projectMcpIds = [];
   if (selectedFeatures.includes('project-mcp')) {
-    if (runtime.mcp !== undefined) {
-      const knownIds = MCP_SERVERS.map((s) => s.id);
-      const { valid, invalid } = partitionByKnown(runtime.mcp, knownIds);
-      if (invalid.length > 0) throw new Error(`Unknown MCP server ID(s): ${invalid.join(', ')}`);
-      projectMcpIds = valid;
-    } else if (runtime.nonInteractive) {
-      projectMcpIds = MCP_SERVERS
-        .filter((s) => s.recommended && selectedAgentIds.some((aid) => s.configs[aid]))
-        .map((s) => s.id);
-    } else {
-      console.log();
-      infoMsg('Select MCP servers for project-level config (these go into the repo):');
-      console.log();
-
-      const mcpChoices = [];
-      for (const cat of MCP_CATEGORIES) {
-        const servers = MCP_SERVERS.filter(
-          (s) => s.category === cat.id && selectedAgentIds.some((aid) => s.configs[aid])
-        );
-        if (servers.length === 0) continue;
-
-        mcpChoices.push(new inquirer.Separator(chalk.cyan(`\n  ${cat.label}  `) + chalk.dim(cat.description)));
-        for (const s of servers) {
-          const rec = s.recommended ? chalk.yellow(' ★') : '';
-          const envNote = s.requiresEnv ? chalk.dim(' (needs API key)') : '';
-          mcpChoices.push({
-            name: `${s.name}${rec} — ${chalk.dim(s.description)}${envNote}`,
-            value: s.id,
-            checked: !!s.recommended,
-          });
-        }
-      }
-
-      const { selectedProjectMcpIds } = await inquirer.prompt([
-        {
-          type: 'checkbox',
-          name: 'selectedProjectMcpIds',
-          message: 'Select MCP servers for project config:',
-          choices: mcpChoices,
-          pageSize: 25,
-          loop: false,
-        },
-      ]);
-      projectMcpIds = selectedProjectMcpIds;
-    }
+    projectMcpIds = await resolveSelection({
+      flag: runtime.mcp,
+      knownIds: MCP_SERVERS.map((s) => s.id),
+      label: 'MCP server ID',
+      nonInteractive: runtime.nonInteractive,
+      defaults: () => recommendedMcpIds(selectedAgentIds),
+      prompt: async () => {
+        console.log();
+        infoMsg('Select MCP servers for project-level config (these go into the repo):');
+        console.log();
+        return promptMcpServers(selectedAgentIds, 'Select MCP servers for project config:');
+      },
+    });
   }
 
   const projectMcpInputs = await collectMcpInputs(projectMcpIds, MCP_SERVERS, runtime);
@@ -736,7 +666,7 @@ async function runProject(ctx, runtime, { handleSkills = false } = {}) {
   // flow owns them (project-only mode).
   let selectedSkillIds = [];
   if (handleSkills) {
-    selectedSkillIds = await selectSkills(runtime, 'Select Agent Skills (Project)', { recommendByDefault: false });
+    selectedSkillIds = await selectSkills(runtime, 'Select Agent Skills', { recommendByDefault: false });
   }
 
   // ── Summary & Confirmation ──
@@ -789,20 +719,25 @@ async function runProject(ctx, runtime, { handleSkills = false } = {}) {
     sectionHeader('Configuring (Project)');
   });
 
+  let projectMcpResults = null;
+  let projectErrorCount = 0;
   if (selectedFeatures.includes('project-mcp') && projectMcpIds.length > 0) {
     const spinner = runtime.json ? null : ora({ text: 'Writing project-level MCP configs...', color: 'cyan' }).start();
     try {
       const mcpResults = writeProjectMcpConfigs(agentsWithProjectMcp, projectMcpIds, MCP_SERVERS, projectMcpInputs);
       spinner?.stop();
+      projectMcpResults = mcpResults;
       recordProjectMcp(mcpResults);
       quiet(runtime, () => {
         for (const [_, r] of Object.entries(mcpResults)) {
           if (r.added > 0) successMsg(`${r.agent}: ${r.added} project MCP server(s) added → ${r.path}`);
           if (r.skipped > 0) infoMsg(`${r.agent}: ${r.skipped} already configured, skipped`);
+          for (const err of r.errors || []) warnMsg(`${r.agent}: ${err.id} — ${err.error}`);
         }
       });
     } catch (err) {
       spinner?.stop();
+      projectErrorCount++;
       if (runtime.json) throw err;
       errorMsg(`Project MCP config failed: ${err.message}`);
     }
@@ -874,7 +809,10 @@ async function runProject(ctx, runtime, { handleSkills = false } = {}) {
 
   if (writtenFiles.length > 0) recordProjectFiles(writtenFiles);
 
-  const projectResult = { selectedStackIds, selectedFeatures, projectMcpIds, selectedSkillIds };
+  const projectResult = {
+    selectedStackIds, selectedFeatures, projectMcpIds, selectedSkillIds,
+    mcpResults: projectMcpResults, errorCount: projectErrorCount,
+  };
   if (handleSkills) {
     await installAndReportSkills(selectedSkillIds, selectedAgents, runtime, projectResult, recordProjectSkills);
   }
@@ -954,9 +892,16 @@ export async function run(mode, opts = {}) {
     projectResult = await runProject(ctx, runtime, { handleSkills: mode === 'project' });
   }
 
+  // A partially failed setup must not exit 0 — CI callers rely on the code.
+  const errorCount =
+    (systemResult?.errorCount || 0) + countResultErrors(systemResult || {}) +
+    (projectResult?.errorCount || 0) + countResultErrors(projectResult || {});
+  if (errorCount > 0) process.exitCode = 1;
+
   if (runtime.json) {
     const out = {
-      ok: true,
+      ok: errorCount === 0,
+      errorCount,
       mode,
       dryRun: runtime.dryRun,
       agents: ctx.selectedAgentIds,
@@ -978,6 +923,7 @@ export async function run(mode, opts = {}) {
         projectMcp: projectResult.projectMcpIds || [],
         skills: projectResult.selectedSkillIds || [],
         results: {
+          mcp: projectResult.mcpResults || null,
           skills: projectResult.skillResults || null,
         },
       } : null,

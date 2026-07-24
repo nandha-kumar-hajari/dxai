@@ -218,3 +218,31 @@ test('downloadSkillMarkdown: a 404 (fetch rejection) propagates as an error', as
     /HTTP 404/
   );
 });
+
+// ── backup behavior ──
+test('writeMcpConfigs: no backup minted when nothing changes', () => {
+  const p = path.join(tmp, 'mcp.json');
+  fs.writeJsonSync(p, { mcpServers: {} });
+  writeMcpConfigs([fakeJsonAgent(p)], ['context7'], MCP_SERVERS);
+  // Second run adds nothing — must not touch the file or create another backup.
+  const before = fs.readFileSync(p, 'utf8');
+  writeMcpConfigs([fakeJsonAgent(p)], ['context7'], MCP_SERVERS);
+  assert.equal(fs.readFileSync(p, 'utf8'), before);
+  const backups = fs.readdirSync(tmp).filter((f) => f.startsWith('mcp.json.bak.'));
+  assert.equal(backups.length, 1);
+});
+
+test('backup pruning: at most 5 .bak snapshots survive per file', () => {
+  const p = path.join(tmp, 'mcp.json');
+  fs.writeJsonSync(p, { mcpServers: {} });
+  // Seed 7 fake old backups with ascending timestamps.
+  for (let i = 1; i <= 7; i++) {
+    fs.writeFileSync(`${p}.bak.2020-01-0${i}T00-00-0${i}`, '{}');
+  }
+  // A real write mints one more backup, then prunes to the cap.
+  writeMcpConfigs([fakeJsonAgent(p)], ['context7'], MCP_SERVERS);
+  const backups = fs.readdirSync(tmp).filter((f) => f.startsWith('mcp.json.bak.')).sort();
+  assert.equal(backups.length, 5);
+  // The oldest seeds are gone; the newest survivors remain.
+  assert.ok(!backups.includes('mcp.json.bak.2020-01-01T00-00-01'));
+});

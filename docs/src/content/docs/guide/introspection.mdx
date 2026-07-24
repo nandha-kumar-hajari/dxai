@@ -18,4 +18,6 @@ dxai doctor         # validate install (configs parse, env vars, tools on PATH)
 
 `status` reports both **missing** entries (recorded but no longer in config) and **extra** entries (in config but not added by dxai). All three commands support `--json`. `doctor` exits 1 if any error-severity finding is reported.
 
-The manifest also makes `dxai cleanup` precise — it only removes things dxai actually installed.
+For a deeper health check, `dxai doctor --handshake` actually **spawns each installed stdio MCP server**, sends a JSON-RPC `initialize`, and verifies the reply — catching servers that are configured but broken. Remote/URL servers and servers with unset required env vars are reported as skipped.
+
+The manifest also makes `dxai cleanup` precise — it only removes things dxai actually installed — and `dxai rollback` can restore any dxai-managed file from its most recent `.bak.<ts>` backup.

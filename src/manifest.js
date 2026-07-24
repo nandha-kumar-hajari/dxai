@@ -84,12 +84,14 @@ export function recordSystemMcp(mcpResults) {
   });
 }
 
+// `skillResults.installed` holds skill IDs (which are also the on-disk
+// directory names), so manifest keys line up with what cleanup scans for.
 export function recordSystemSkills(skillResults) {
   if (!skillResults || skillResults.installed.length === 0) return;
   updateManifest(SYSTEM_MANIFEST_PATH, (m) => {
     const now = new Date().toISOString();
-    for (const skillName of skillResults.installed) {
-      m.skills[skillName] = {
+    for (const skillId of skillResults.installed) {
+      m.skills[skillId] = {
         addedAt: now,
         path: skillResults.directory,
       };
@@ -133,8 +135,8 @@ export function recordProjectSkills(skillResults, cwd = process.cwd()) {
   const filePath = path.join(cwd, PROJECT_MANIFEST_PATH);
   updateManifest(filePath, (m) => {
     const now = new Date().toISOString();
-    for (const skillName of skillResults.installed) {
-      m.skills[skillName] = {
+    for (const skillId of skillResults.installed) {
+      m.skills[skillId] = {
         addedAt: now,
         path: skillResults.directory,
       };

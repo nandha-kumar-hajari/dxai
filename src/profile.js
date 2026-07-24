@@ -70,7 +70,7 @@ export function readProfile(filePath) {
   try {
     data = fs.readJsonSync(filePath);
   } catch (err) {
-    throw new Error(`Failed to parse profile ${filePath}: ${err.message}`);
+    throw new Error(`Failed to parse profile ${filePath}: ${err.message}`, { cause: err });
   }
   const out = {};
   for (const k of PROFILE_KEYS) {

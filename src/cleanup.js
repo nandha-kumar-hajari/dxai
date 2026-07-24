@@ -3,16 +3,14 @@ import chalk from 'chalk';
 import ora from 'ora';
 import fs from 'fs-extra';
 import path from 'path';
-import os from 'os';
 
 import {
   printBanner, sectionHeader, successMsg, warnMsg,
-  errorMsg, infoMsg, theme,
+  errorMsg, infoMsg,
 } from './branding.js';
 import { detectOS, AGENT_DEFINITIONS } from './detect.js';
 import { MCP_SERVERS } from './registry/mcp-servers.js';
 import { SKILLS } from './registry/skills.js';
-import { TECH_STACKS, CURSOR_COMMANDS } from './registry/stacks.js';
 import {
   scanJsonMcpConfig, removeJsonMcpServers,
   scanTomlMcpConfig, removeTomlMcpServers,
@@ -20,6 +18,7 @@ import {
   scanBackupFiles, scanSkillDirectories,
   scanProjectFiles, isEmptyDir,
 } from './config-remover.js';
+import { normalizeOptions } from './runtime.js';
 
 import { readManifest, SYSTEM_MANIFEST_PATH, PROJECT_MANIFEST_PATH, writeManifest } from './manifest.js';
 
@@ -46,10 +45,15 @@ function candidateSkillIds(manifest) {
 // System Cleanup
 // ══════════════════════════════════════════════
 
-async function runSystemCleanup(home) {
-  sectionHeader('System Cleanup — Scanning');
+// ctx: { nonInteractive, dryRun, json, includeBackups }
+// Returns a structured report of what was (or would be) removed.
+async function runSystemCleanup(home, ctx) {
+  const { nonInteractive, dryRun, json } = ctx;
+  const say = (fn) => { if (!json) fn(); };
 
-  const spinner = ora({ text: 'Scanning global configs...', color: 'cyan' }).start();
+  say(() => sectionHeader('System Cleanup — Scanning'));
+
+  const spinner = json ? null : ora({ text: 'Scanning global configs...', color: 'cyan' }).start();
   const manifest = readManifest(SYSTEM_MANIFEST_PATH);
 
   // 1. Scan MCP servers across all agents — prefer manifest IDs when present
@@ -102,166 +106,194 @@ async function runSystemCleanup(home) {
     .filter(Boolean);
   const foundBackups = scanBackupFiles(backupTargets);
 
-  spinner.stop();
+  spinner?.stop();
 
   // Check if anything was found
   const totalMcpServers = agentFindings.reduce((sum, f) => sum + f.foundServers.length, 0);
   if (totalMcpServers === 0 && foundSkills.length === 0 && foundBackups.length === 0) {
-    infoMsg('No dxai-managed system configurations found.');
-    return;
+    say(() => infoMsg('No dxai-managed system configurations found.'));
+    return { mcp: {}, skills: [], backups: [] };
   }
 
-  // 4. Prompt: MCP servers to remove
+  // 4. Select MCP servers to remove — everything found in non-interactive mode.
   let mcpToRemove = {};
   if (totalMcpServers > 0) {
-    console.log();
-    sectionHeader('MCP Servers Found');
+    if (nonInteractive) {
+      for (const finding of agentFindings) {
+        mcpToRemove[finding.agent.id] = [...finding.foundServers];
+      }
+    } else {
+      console.log();
+      sectionHeader('MCP Servers Found');
 
-    // Build unified choices grouped by agent
-    const mcpChoices = [];
-    for (const finding of agentFindings) {
-      mcpChoices.push(new inquirer.Separator(chalk.cyan(`\n  ${finding.agent.name}`)));
-      for (const serverId of finding.foundServers) {
-        const server = MCP_SERVERS.find((s) => s.id === serverId);
-        const label = server ? server.name : serverId;
-        mcpChoices.push({
-          name: `${label} (${finding.agent.name})`,
-          value: `${finding.agent.id}::${serverId}`,
-          checked: true,
-        });
+      // Build unified choices grouped by agent
+      const mcpChoices = [];
+      for (const finding of agentFindings) {
+        mcpChoices.push(new inquirer.Separator(chalk.cyan(`\n  ${finding.agent.name}`)));
+        for (const serverId of finding.foundServers) {
+          const server = MCP_SERVERS.find((s) => s.id === serverId);
+          const label = server ? server.name : serverId;
+          mcpChoices.push({
+            name: `${label} (${finding.agent.name})`,
+            value: `${finding.agent.id}::${serverId}`,
+            checked: true,
+          });
+        }
+      }
+
+      console.log();
+      const { selectedMcp } = await inquirer.prompt([
+        {
+          type: 'checkbox',
+          name: 'selectedMcp',
+          message: 'Select MCP servers to remove:',
+          choices: mcpChoices,
+          pageSize: 25,
+          loop: false,
+        },
+      ]);
+
+      // Parse selections into { agentId: [serverIds] }
+      for (const sel of selectedMcp) {
+        const [agentId, serverId] = sel.split('::');
+        if (!mcpToRemove[agentId]) mcpToRemove[agentId] = [];
+        mcpToRemove[agentId].push(serverId);
       }
     }
+  }
 
-    console.log();
-    const { selectedMcp } = await inquirer.prompt([
-      {
-        type: 'checkbox',
-        name: 'selectedMcp',
-        message: 'Select MCP servers to remove:',
-        choices: mcpChoices,
-        pageSize: 25,
-        loop: false,
-      },
-    ]);
+  // 5. Select skills to remove — everything found in non-interactive mode.
+  let skillsToRemove = [];
+  if (foundSkills.length > 0) {
+    if (nonInteractive) {
+      skillsToRemove = foundSkills.map((s) => s.path);
+    } else {
+      console.log();
+      sectionHeader('Installed Skills Found');
 
-    // Parse selections into { agentId: [serverIds] }
-    for (const sel of selectedMcp) {
-      const [agentId, serverId] = sel.split('::');
-      if (!mcpToRemove[agentId]) mcpToRemove[agentId] = [];
-      mcpToRemove[agentId].push(serverId);
+      const skillChoices = foundSkills.map((s) => {
+        const skill = SKILLS.find((sk) => sk.id === s.id);
+        const label = skill ? skill.name : s.id;
+        return { name: `${label} (${s.path})`, value: s.path, checked: true };
+      });
+
+      console.log();
+      const { selectedSkills } = await inquirer.prompt([
+        {
+          type: 'checkbox',
+          name: 'selectedSkills',
+          message: 'Select skills to remove:',
+          choices: skillChoices,
+          pageSize: 20,
+          loop: false,
+        },
+      ]);
+      skillsToRemove = selectedSkills;
     }
   }
 
-  // 5. Prompt: Skills to remove
-  let skillsToRemove = [];
-  if (foundSkills.length > 0) {
-    console.log();
-    sectionHeader('Installed Skills Found');
-
-    const skillChoices = foundSkills.map((s) => {
-      const skill = SKILLS.find((sk) => sk.id === s.id);
-      const label = skill ? skill.name : s.id;
-      return { name: `${label} (${s.path})`, value: s.path, checked: true };
-    });
-
-    console.log();
-    const { selectedSkills } = await inquirer.prompt([
-      {
-        type: 'checkbox',
-        name: 'selectedSkills',
-        message: 'Select skills to remove:',
-        choices: skillChoices,
-        pageSize: 20,
-        loop: false,
-      },
-    ]);
-    skillsToRemove = selectedSkills;
-  }
-
-  // 6. Prompt: Backup files
+  // 6. Backup files — non-interactive keeps them unless --backups was passed.
   let deleteBackups = false;
   if (foundBackups.length > 0) {
-    console.log();
-    const { confirmBackups } = await inquirer.prompt([
-      {
-        type: 'confirm',
-        name: 'confirmBackups',
-        message: `Delete ${foundBackups.length} backup file(s)?`,
-        default: false,
-      },
-    ]);
-    deleteBackups = confirmBackups;
+    if (nonInteractive) {
+      deleteBackups = !!ctx.includeBackups;
+    } else {
+      console.log();
+      const { confirmBackups } = await inquirer.prompt([
+        {
+          type: 'confirm',
+          name: 'confirmBackups',
+          message: `Delete ${foundBackups.length} backup file(s)?`,
+          default: false,
+        },
+      ]);
+      deleteBackups = confirmBackups;
+    }
   }
 
   // Check if anything was selected
   const mcpCount = Object.values(mcpToRemove).reduce((sum, ids) => sum + ids.length, 0);
   if (mcpCount === 0 && skillsToRemove.length === 0 && !deleteBackups) {
-    infoMsg('Nothing selected for removal.');
-    return;
+    say(() => infoMsg('Nothing selected for removal.'));
+    return { mcp: {}, skills: [], backups: [] };
   }
 
-  // 7. Summary & confirm
-  console.log();
-  sectionHeader('Cleanup Summary');
-  if (mcpCount > 0) infoMsg(`MCP servers to remove: ${mcpCount}`);
-  if (skillsToRemove.length > 0) infoMsg(`Skills to remove: ${skillsToRemove.length}`);
-  if (deleteBackups) infoMsg(`Backup files to delete: ${foundBackups.length}`);
+  // 7. Summary & confirm (interactive only)
+  say(() => {
+    console.log();
+    sectionHeader(dryRun ? 'Cleanup Summary (dry run)' : 'Cleanup Summary');
+    if (mcpCount > 0) infoMsg(`MCP servers to remove: ${mcpCount}`);
+    if (skillsToRemove.length > 0) infoMsg(`Skills to remove: ${skillsToRemove.length}`);
+    if (deleteBackups) infoMsg(`Backup files to delete: ${foundBackups.length}`);
+  });
 
-  console.log();
-  const { confirmCleanup } = await inquirer.prompt([
-    {
-      type: 'confirm',
-      name: 'confirmCleanup',
-      message: 'Proceed with cleanup?',
-      default: false,
-    },
-  ]);
+  if (!nonInteractive && !dryRun) {
+    console.log();
+    const { confirmCleanup } = await inquirer.prompt([
+      {
+        type: 'confirm',
+        name: 'confirmCleanup',
+        message: 'Proceed with cleanup?',
+        default: false,
+      },
+    ]);
 
-  if (!confirmCleanup) {
-    warnMsg('Cleanup cancelled.');
-    return;
+    if (!confirmCleanup) {
+      warnMsg('Cleanup cancelled.');
+      return { mcp: {}, skills: [], backups: [], cancelled: true };
+    }
   }
 
-  // 8. Execute
-  console.log();
-  sectionHeader('Removing');
+  const report = {
+    mcp: mcpToRemove,
+    skills: skillsToRemove,
+    backups: deleteBackups ? [...foundBackups] : [],
+  };
+
+  // 8. Execute (skipped entirely on --dry-run)
+  if (dryRun) return report;
+
+  say(() => {
+    console.log();
+    sectionHeader('Removing');
+  });
 
   // Remove MCP servers
   for (const [agentId, serverIds] of Object.entries(mcpToRemove)) {
     const agent = AGENT_DEFINITIONS.find((a) => a.id === agentId);
     if (!agent) continue;
 
-    const spin = ora({ text: `Removing from ${agent.name}...`, color: 'cyan' }).start();
+    const spin = json ? null : ora({ text: `Removing from ${agent.name}...`, color: 'cyan' }).start();
 
     try {
       switch (agent.configFormat) {
         case 'json': {
           const configPath = agent.globalMcpPath(home);
           const { removed } = removeJsonMcpServers(configPath, agent.mcpKey, serverIds);
-          spin.stop();
-          successMsg(`Removed ${removed} server(s) from ${agent.name}`);
+          spin?.stop();
+          say(() => successMsg(`Removed ${removed} server(s) from ${agent.name}`));
           break;
         }
         case 'toml': {
           const configPath = agent.globalMcpPath(home);
           const { removed } = removeTomlMcpServers(configPath, serverIds);
-          spin.stop();
-          successMsg(`Removed ${removed} server(s) from ${agent.name}`);
+          spin?.stop();
+          say(() => successMsg(`Removed ${removed} server(s) from ${agent.name}`));
           break;
         }
         case 'cli': {
           const { removed, errors } = removeClaudeCodeMcpServers(serverIds);
-          spin.stop();
-          successMsg(`Removed ${removed} server(s) from ${agent.name}`);
+          spin?.stop();
+          say(() => successMsg(`Removed ${removed} server(s) from ${agent.name}`));
           for (const err of errors) {
-            warnMsg(`Failed to remove "${err.id}": ${err.error}`);
+            say(() => warnMsg(`Failed to remove "${err.id}": ${err.error}`));
           }
           break;
         }
       }
     } catch (err) {
-      spin.stop();
-      errorMsg(`Failed to clean ${agent.name}: ${err.message}`);
+      spin?.stop();
+      say(() => errorMsg(`Failed to clean ${agent.name}: ${err.message}`));
     }
   }
 
@@ -269,9 +301,9 @@ async function runSystemCleanup(home) {
   for (const skillPath of skillsToRemove) {
     try {
       fs.removeSync(skillPath);
-      successMsg(`Removed skill: ${path.basename(skillPath)}`);
+      say(() => successMsg(`Removed skill: ${path.basename(skillPath)}`));
     } catch (err) {
-      errorMsg(`Failed to remove ${skillPath}: ${err.message}`);
+      say(() => errorMsg(`Failed to remove ${skillPath}: ${err.message}`));
     }
   }
 
@@ -284,12 +316,14 @@ async function runSystemCleanup(home) {
         // Skip individual backup errors
       }
     }
-    successMsg(`Deleted ${foundBackups.length} backup file(s)`);
+    say(() => successMsg(`Deleted ${foundBackups.length} backup file(s)`));
   }
 
   // Prune the manifest so `list`/`status` reflect what was just removed —
   // otherwise removed servers/skills linger forever as phantom drift.
   pruneSystemManifest(mcpToRemove, skillsToRemove);
+
+  return report;
 }
 
 // Remove cleaned-up entries from the system manifest. `mcpToRemove` is
@@ -309,7 +343,8 @@ function pruneSystemManifest(mcpToRemove, skillPaths) {
   for (const skillPath of skillPaths) {
     const skillId = path.basename(skillPath);
     const skill = SKILLS.find((s) => s.id === skillId);
-    // Skills are recorded by name (recordSystemSkills); also try the id defensively.
+    // Skills are recorded by id (recordSystemSkills); legacy manifests may
+    // still key them by display name, so try both.
     for (const key of [skillId, skill?.name].filter(Boolean)) {
       if (m.skills[key]) { delete m.skills[key]; changed = true; }
     }
@@ -322,12 +357,15 @@ function pruneSystemManifest(mcpToRemove, skillPaths) {
 // Project Cleanup
 // ══════════════════════════════════════════════
 
-async function runProjectCleanup() {
+// ctx: { nonInteractive, dryRun, json }
+async function runProjectCleanup(ctx) {
+  const { nonInteractive, dryRun, json } = ctx;
+  const say = (fn) => { if (!json) fn(); };
   const cwd = process.cwd();
 
-  sectionHeader('Project Cleanup — Scanning');
+  say(() => sectionHeader('Project Cleanup — Scanning'));
 
-  const spinner = ora({ text: 'Scanning project files...', color: 'cyan' }).start();
+  const spinner = json ? null : ora({ text: 'Scanning project files...', color: 'cyan' }).start();
 
   // 1. Scan project files
   const foundFiles = scanProjectFiles(cwd);
@@ -345,118 +383,147 @@ async function runProjectCleanup() {
     }
   }
 
-  spinner.stop();
+  spinner?.stop();
 
   if (foundFiles.length === 0 && projectMcpFindings.length === 0) {
-    infoMsg('No dxai-managed project files found in current directory.');
-    return;
+    say(() => infoMsg('No dxai-managed project files found in current directory.'));
+    return { files: [], skippedFiles: [], mcp: {} };
   }
 
-  // 3. Prompt: Project files to remove
+  // 3. Select project files to remove. Non-interactive mirrors the interactive
+  // defaults: files that may carry custom edits (CLAUDE.md, AGENTS.md, ...) are
+  // NOT removed automatically — they're reported as skipped instead.
   let filesToRemove = [];
+  let skippedFiles = [];
   if (foundFiles.length > 0) {
-    console.log();
-    sectionHeader('Project Files Found');
+    if (nonInteractive) {
+      filesToRemove = foundFiles.filter((f) => !f.mayHaveCustomEdits).map((f) => f.absolutePath);
+      skippedFiles = foundFiles.filter((f) => f.mayHaveCustomEdits).map((f) => f.relativePath);
+    } else {
+      console.log();
+      sectionHeader('Project Files Found');
 
-    const fileChoices = foundFiles.map((f) => {
-      const label = f.mayHaveCustomEdits
-        ? `${f.relativePath} (may contain custom edits)`
-        : f.relativePath;
-      return { name: label, value: f.absolutePath, checked: !f.mayHaveCustomEdits };
-    });
+      const fileChoices = foundFiles.map((f) => {
+        const label = f.mayHaveCustomEdits
+          ? `${f.relativePath} (may contain custom edits)`
+          : f.relativePath;
+        return { name: label, value: f.absolutePath, checked: !f.mayHaveCustomEdits };
+      });
 
-    console.log();
-    const { selectedFiles } = await inquirer.prompt([
-      {
-        type: 'checkbox',
-        name: 'selectedFiles',
-        message: 'Select project files to remove:',
-        choices: fileChoices,
-        pageSize: 20,
-        loop: false,
-      },
-    ]);
-    filesToRemove = selectedFiles;
+      console.log();
+      const { selectedFiles } = await inquirer.prompt([
+        {
+          type: 'checkbox',
+          name: 'selectedFiles',
+          message: 'Select project files to remove:',
+          choices: fileChoices,
+          pageSize: 20,
+          loop: false,
+        },
+      ]);
+      filesToRemove = selectedFiles;
+    }
   }
 
-  // 4. Prompt: Project MCP servers to remove
+  // 4. Select project MCP servers to remove — everything found when non-interactive.
   let projectMcpToRemove = {};
   if (projectMcpFindings.length > 0) {
-    console.log();
-    sectionHeader('Project MCP Servers Found');
-
-    const mcpChoices = [];
-    for (const finding of projectMcpFindings) {
-      mcpChoices.push(new inquirer.Separator(chalk.cyan(`\n  ${finding.agent.name}`) + chalk.dim(` — ${finding.configPath}`)));
-      for (const serverId of finding.foundServers) {
-        const server = MCP_SERVERS.find((s) => s.id === serverId);
-        const label = server ? server.name : serverId;
-        mcpChoices.push({
-          name: `${label}`,
-          value: `${finding.agent.id}::${serverId}`,
-          checked: true,
-        });
+    if (nonInteractive) {
+      for (const finding of projectMcpFindings) {
+        projectMcpToRemove[finding.agent.id] = [...finding.foundServers];
       }
-    }
+    } else {
+      console.log();
+      sectionHeader('Project MCP Servers Found');
 
-    console.log();
-    const { selectedProjectMcp } = await inquirer.prompt([
-      {
-        type: 'checkbox',
-        name: 'selectedProjectMcp',
-        message: 'Select project MCP servers to remove:',
-        choices: mcpChoices,
-        pageSize: 25,
-        loop: false,
-      },
-    ]);
+      const mcpChoices = [];
+      for (const finding of projectMcpFindings) {
+        mcpChoices.push(new inquirer.Separator(chalk.cyan(`\n  ${finding.agent.name}`) + chalk.dim(` — ${finding.configPath}`)));
+        for (const serverId of finding.foundServers) {
+          const server = MCP_SERVERS.find((s) => s.id === serverId);
+          const label = server ? server.name : serverId;
+          mcpChoices.push({
+            name: `${label}`,
+            value: `${finding.agent.id}::${serverId}`,
+            checked: true,
+          });
+        }
+      }
 
-    for (const sel of selectedProjectMcp) {
-      const [agentId, serverId] = sel.split('::');
-      if (!projectMcpToRemove[agentId]) projectMcpToRemove[agentId] = [];
-      projectMcpToRemove[agentId].push(serverId);
+      console.log();
+      const { selectedProjectMcp } = await inquirer.prompt([
+        {
+          type: 'checkbox',
+          name: 'selectedProjectMcp',
+          message: 'Select project MCP servers to remove:',
+          choices: mcpChoices,
+          pageSize: 25,
+          loop: false,
+        },
+      ]);
+
+      for (const sel of selectedProjectMcp) {
+        const [agentId, serverId] = sel.split('::');
+        if (!projectMcpToRemove[agentId]) projectMcpToRemove[agentId] = [];
+        projectMcpToRemove[agentId].push(serverId);
+      }
     }
   }
 
   // Check if anything selected
   const projectMcpCount = Object.values(projectMcpToRemove).reduce((sum, ids) => sum + ids.length, 0);
   if (filesToRemove.length === 0 && projectMcpCount === 0) {
-    infoMsg('Nothing selected for removal.');
-    return;
+    say(() => infoMsg('Nothing selected for removal.'));
+    return { files: [], skippedFiles, mcp: {} };
   }
 
-  // 5. Summary & confirm
-  console.log();
-  sectionHeader('Cleanup Summary');
-  if (filesToRemove.length > 0) infoMsg(`Files to remove: ${filesToRemove.length}`);
-  if (projectMcpCount > 0) infoMsg(`Project MCP servers to remove: ${projectMcpCount}`);
+  // 5. Summary & confirm (interactive only)
+  say(() => {
+    console.log();
+    sectionHeader(dryRun ? 'Cleanup Summary (dry run)' : 'Cleanup Summary');
+    if (filesToRemove.length > 0) infoMsg(`Files to remove: ${filesToRemove.length}`);
+    if (skippedFiles.length > 0) infoMsg(`Skipped (may contain custom edits): ${skippedFiles.join(', ')}`);
+    if (projectMcpCount > 0) infoMsg(`Project MCP servers to remove: ${projectMcpCount}`);
+  });
 
-  console.log();
-  const { confirmCleanup } = await inquirer.prompt([
-    {
-      type: 'confirm',
-      name: 'confirmCleanup',
-      message: 'Proceed with cleanup?',
-      default: false,
-    },
-  ]);
+  if (!nonInteractive && !dryRun) {
+    console.log();
+    const { confirmCleanup } = await inquirer.prompt([
+      {
+        type: 'confirm',
+        name: 'confirmCleanup',
+        message: 'Proceed with cleanup?',
+        default: false,
+      },
+    ]);
 
-  if (!confirmCleanup) {
-    warnMsg('Cleanup cancelled.');
-    return;
+    if (!confirmCleanup) {
+      warnMsg('Cleanup cancelled.');
+      return { files: [], skippedFiles, mcp: {}, cancelled: true };
+    }
   }
 
-  // 6. Execute
-  console.log();
-  sectionHeader('Removing');
+  const report = {
+    files: filesToRemove.map((f) => path.relative(cwd, f)),
+    skippedFiles,
+    mcp: projectMcpToRemove,
+  };
+
+  // 6. Execute (skipped entirely on --dry-run)
+  if (dryRun) return report;
+
+  say(() => {
+    console.log();
+    sectionHeader('Removing');
+  });
 
   // Remove project files
   for (const filePath of filesToRemove) {
     try {
       fs.removeSync(filePath);
-      successMsg(`Removed: ${path.relative(cwd, filePath)}`);
+      say(() => successMsg(`Removed: ${path.relative(cwd, filePath)}`));
     } catch (err) {
-      errorMsg(`Failed to remove ${path.relative(cwd, filePath)}: ${err.message}`);
+      say(() => errorMsg(`Failed to remove ${path.relative(cwd, filePath)}: ${err.message}`));
     }
   }
 
@@ -468,9 +535,9 @@ async function runProjectCleanup() {
     const projectConfigPath = path.join(cwd, agent.projectMcpPath());
     try {
       const { removed } = removeJsonMcpServers(projectConfigPath, agent.mcpKey, serverIds);
-      successMsg(`Removed ${removed} server(s) from project ${agent.name} config`);
+      say(() => successMsg(`Removed ${removed} server(s) from project ${agent.name} config`));
     } catch (err) {
-      errorMsg(`Failed to clean project ${agent.name} config: ${err.message}`);
+      say(() => errorMsg(`Failed to clean project ${agent.name} config: ${err.message}`));
     }
   }
 
@@ -495,6 +562,8 @@ async function runProjectCleanup() {
 
   // Prune the project manifest for the files and MCP servers we removed.
   pruneProjectManifest(cwd, filesToRemove, projectMcpToRemove);
+
+  return report;
 }
 
 function pruneProjectManifest(cwd, filePaths, projectMcpToRemove) {
@@ -525,36 +594,68 @@ function pruneProjectManifest(cwd, filePaths, projectMcpToRemove) {
 // Main Cleanup Entry Point
 // ══════════════════════════════════════════════
 
-export async function cleanup() {
-  printBanner();
+const CLEANUP_SCOPES = ['system', 'project', 'both'];
 
-  sectionHeader('Cleanup');
-  console.log();
+// `dxai cleanup [scope]` — interactive by default; --yes/--json run without
+// prompts (removing everything dxai-managed except custom-edit-prone files and
+// backups), --dry-run reports without touching anything.
+export async function cleanup(scopeArg, opts = {}) {
+  const runtime = normalizeOptions(opts);
+  const json = runtime.json;
+  const nonInteractive = runtime.nonInteractive || json;
+  const dryRun = runtime.dryRun;
+  const ctx = { nonInteractive, dryRun, json, includeBackups: !!opts.backups };
 
-  const { scope } = await inquirer.prompt([
-    {
-      type: 'list',
-      name: 'scope',
-      message: 'What would you like to clean up?',
-      choices: [
-        { name: 'System — global MCP configs, skills, backups', value: 'system' },
-        { name: 'Project — project files, rules, commands', value: 'project' },
-        { name: 'Both — system and project', value: 'both' },
-      ],
-    },
-  ]);
+  let scope = scopeArg;
+  if (scope && !CLEANUP_SCOPES.includes(scope)) {
+    throw new Error(`Unknown cleanup scope: ${scope}. Known: ${CLEANUP_SCOPES.join(', ')}`);
+  }
+
+  if (!json) {
+    printBanner();
+    sectionHeader(dryRun ? 'Cleanup (dry run)' : 'Cleanup');
+    console.log();
+  }
+
+  if (!scope) {
+    if (nonInteractive) {
+      scope = 'both';
+    } else {
+      const { picked } = await inquirer.prompt([
+        {
+          type: 'list',
+          name: 'picked',
+          message: 'What would you like to clean up?',
+          choices: [
+            { name: 'System — global MCP configs, skills, backups', value: 'system' },
+            { name: 'Project — project files, rules, commands', value: 'project' },
+            { name: 'Both — system and project', value: 'both' },
+          ],
+        },
+      ]);
+      scope = picked;
+    }
+  }
 
   const { home } = detectOS();
+  const report = { ok: true, dryRun, scope, system: null, project: null };
 
   if (scope === 'system' || scope === 'both') {
-    await runSystemCleanup(home);
+    report.system = await runSystemCleanup(home, ctx);
   }
 
   if (scope === 'project' || scope === 'both') {
-    await runProjectCleanup();
+    report.project = await runProjectCleanup(ctx);
+  }
+
+  if (json) {
+    process.stdout.write(JSON.stringify(report, null, 2) + '\n');
+    return report;
   }
 
   console.log();
-  successMsg('Cleanup complete.');
+  if (dryRun) warnMsg('Dry run — no files were changed.');
+  else successMsg('Cleanup complete.');
   console.log();
+  return report;
 }

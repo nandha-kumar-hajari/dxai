@@ -13,8 +13,9 @@
 - **Language**: JavaScript (no TypeScript, but JSDoc is welcome)
 - **CLI framework**: Commander.js v14
 - **Interactive prompts**: Inquirer.js
-- **Tests**: `node:test` + `node:assert/strict` (81+ tests)
-- **CI**: GitHub Actions (Ubuntu/macOS/Windows x Node 18/20/22)
+- **Tests**: `node:test` + `node:assert/strict` — run `npm test` (don't hardcode the count here; it drifts)
+- **Lint**: ESLint flat config (`eslint.config.mjs`) — run `npm run lint`
+- **CI**: GitHub Actions (Ubuntu/macOS/Windows x Node 18/20/22; lint + docs-drift on Node 22)
 
 ## Architecture
 
@@ -34,6 +35,7 @@ src/cleanup.js          → Manifest-aware cleanup (prunes manifest on removal)
 src/mcp-cmd.js          → Fast-path `dxai add` / `dxai remove` MCP commands
 src/rollback.js         → dxai rollback — restore files from .bak.<ts> snapshots
 src/runtime.js          → Option normalization
+src/select.js           → Shared selection resolution (flag > defaults > prompt) + catalog checkbox builder
 src/branding.js         → Banner, colors, message helpers
 src/net.js              → fetch with per-attempt timeout + retry/backoff (shared)
 src/fs-atomic.js        → Atomic file writes (temp + rename), optional 0600 mode
@@ -44,8 +46,9 @@ src/registry/
   skills.js             → Skills catalog re-export
   stacks.js             → Tech stacks, rules, template generators
   data/
-    mcp-servers.json    → MCP server catalog (90+ servers)
-    skills.json         → Skills catalog (13+ skills)
+    mcp-servers.json    → MCP server catalog (count lives in the JSON — don't cite numbers here, they drift)
+    skills.json         → Skills catalog
+    automation-tools.json → Automation tool catalog
 ```
 
 ## Data Flow
@@ -68,7 +71,7 @@ dxai remove <mcp...>    # Fast-path: remove MCP server(s) (alias: rm)
 dxai apply [profile]    # Non-interactive from a saved profile
 dxai save-profile       # Persist selections as reusable profile
 dxai list / status / doctor   # Manifest inspection and drift detection
-dxai cleanup / reset    # Remove dxai-managed configs
+dxai cleanup [scope]    # Remove dxai-managed configs (scope: system|project|both; supports -y/--json/--dry-run/--backups)
 dxai rollback           # Restore files from their most recent .bak.<ts> backup
 dxai update             # Refresh registry cache from remote
 ```
@@ -128,8 +131,9 @@ exist surface themselves rather than rotting silently.
 - Conventional commits: `feat:`, `fix:`, `chore:`, `docs:`, `refactor:`, `test:`
 - One logical change per commit
 - Config writes must be idempotent — merge, don't overwrite
-- Always back up existing config files before modifying them
-- Record all writes to the manifest for drift detection
+- Back up existing config files before modifying them (only when the write actually changes something; snapshots are capped at 5 per file)
+- Record all writes to the manifest for drift detection; skills are recorded by **id** (the on-disk directory name), never display name
+- Setup/add flows must exit non-zero when any per-step write fails (`errorCount` plumbing in `src/index.js` / `src/mcp-cmd.js`)
 
 ## Agent-Specific Notes
 
@@ -166,11 +170,14 @@ instead of silently breaking a user's setup.
 (cache-over-bundled) and only shape-checked on fetch, so any field that reaches a
 shell/exec/URL sink must be validated via `src/registry/validate.js` first:
 package/install commands run through `parseSafeCommand`/`isSafeSpawnSpec`
-(allowlisted binary + clean package spec, no shell), skill `repo`/`path` through
-`isValidRepo`/`isValidSkillPath`, version refs through `isSafeVersionRef`, and map
-keys through `isSafeId`. `dxai update` rejects a payload that fails
-`validateRegistryPayload` and falls back to the bundled snapshot. Never interpolate
-registry values into an `execSync` shell string — use `execFileSync` (argv form).
+(allowlisted binary + clean package spec, no shell), tool `detectCommand` through
+`isSafeBinaryName` (a bare binary name — it is probed via the shell), skill
+`repo`/`path` through `isValidRepo`/`isValidSkillPath`, version refs through
+`isSafeVersionRef`, and map keys through `isSafeId`. `dxai update` rejects a
+payload that fails `validateRegistryPayload` and falls back to the bundled
+snapshot. Never interpolate registry values into an `execSync` shell string — use
+`execFileSync` (argv form). Avoid shell pipes (`| head`, `| wc`) in any exec
+call: they silently break under Windows cmd.exe — do the post-processing in JS.
 
 ### Profile System (src/profile.js)
 

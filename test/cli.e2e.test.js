@@ -51,3 +51,21 @@ test('e2e: doctor --json emits parseable JSON with a summary', () => {
   assert.ok('summary' in parsed);
   assert.ok(Array.isArray(parsed.findings));
 });
+
+test('e2e: cleanup --yes --dry-run --json emits a structured report, touches nothing', () => {
+  const r = runCli(['cleanup', '--yes', '--dry-run', '--json'], isolated());
+  assert.equal(r.status, 0);
+  const parsed = JSON.parse(r.stdout);
+  assert.equal(parsed.ok, true);
+  assert.equal(parsed.dryRun, true);
+  assert.equal(parsed.scope, 'both');
+  assert.ok('system' in parsed && 'project' in parsed);
+  // Isolated HOME/cwd hold nothing dxai-managed — nothing may be listed for removal.
+  assert.deepEqual(parsed.project.files, []);
+});
+
+test('e2e: cleanup rejects an unknown scope', () => {
+  const r = runCli(['cleanup', 'everything', '--json'], isolated());
+  assert.notEqual(r.status, 0);
+  assert.match(r.stderr, /Unknown cleanup scope/);
+});

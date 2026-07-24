@@ -1,0 +1,95 @@
+---
+title: Maintainer Notes
+description: The full dev loop — setup, testing, linting, docs generation, catalog maintenance, and releasing.
+sidebar:
+  order: 2
+---
+
+Everything you need to develop, test, and ship dxai. The canonical machine-readable version of these rules lives in [`AGENTS.md`](https://github.com/nandha-kumar-hajari/dxai/blob/main/AGENTS.md) at the repo root — AI agents working in the repo read that file; this page is the human-friendly tour.
+
+## Dev setup
+
+```bash
+git clone https://github.com/nandha-kumar-hajari/dxai.git
+cd dxai
+npm install
+
+npm test          # full node:test suite (portable runner, no framework deps)
+npm run lint      # ESLint flat config (eslint.config.mjs) — needs Node 20.19+/22+
+npm run smoke     # quick --version + --help sanity check
+node bin/cli.js   # run the CLI from source
+```
+
+There is no build step — the CLI runs straight from `src/` as ES modules on Node 18+.
+
+## Day-to-day loop
+
+1. **Read 2–3 similar files first** and match the existing patterns (one responsibility per file, `async/await`, destructuring, no `console.log` outside the branding helpers).
+2. Make the change, **add or update tests in the same commit** — tests live in `test/*.test.js`, use `node:test` + `node:assert/strict`, temp dirs for all file ops, and scenario-style names ("merges new server into existing config").
+3. `npm test && npm run lint` before every commit.
+4. Conventional commits: `feat:`, `fix:`, `chore:`, `docs:`, `refactor:`, `test:` — one logical change per commit.
+
+Run a single test file with:
+
+```bash
+node --test test/config-writer.test.js
+```
+
+## Non-negotiable invariants
+
+These are enforced by tests and CI — breaking them fails the build or, worse, a user's setup:
+
+- **Config writes are idempotent** — merge into existing files, never overwrite. Refuse to touch a file that doesn't parse.
+- **Back up before modifying** — writers snapshot the target as `<file>.bak.<ts>` (only when the write actually changes something; capped at 5 snapshots per file).
+- **Every write is recorded in the manifest** (`~/.dxai/manifest.json` / `./.dxai/manifest.json`) so `list` / `status` / `doctor` / `cleanup` stay accurate. Skills are keyed by **id** (the on-disk directory name).
+- **Registry data is untrusted.** Anything from the network-refreshed catalog that reaches a shell, exec, or URL sink must pass `src/registry/validate.js` first (allowlisted binaries, no shell metacharacters, traversal-checked repo paths, prototype-pollution-safe ids). Spawn with `execFileSync` argv form — never interpolate into a shell string, and never use shell pipes (`| head`, `| wc`) in exec calls; they silently break on Windows.
+- **Exit codes are honest** — a partially failed setup exits non-zero (`errorCount` plumbing in `src/index.js` / `src/mcp-cmd.js`).
+- **`--json` is quiet** — machine output suppresses the banner, spinners, and decorative text.
+
+## Docs pipeline
+
+Reference pages (commands, flags, registry tables, schemas, changelog) are **generated**, not hand-written:
+
+```bash
+npm run docs:generate   # regenerate all reference pages from the source of truth
+npm run docs:check      # verify committed docs match the generators (CI gate)
+npm run docs:dev        # live-preview the Astro/Starlight site
+npm run docs:build      # production build (includes docs:generate)
+```
+
+If you change `bin/cli.js` flags/commands, `src/registry/data/*.json`, `PROFILE_KEYS`, the manifest schema, or `src/registry/stacks.js`, run `npm run docs:generate` and commit the result — the `docs-check` CI job fails on drift. Generators live in `scripts/docs/` and introspect `buildProgram()` directly, so docs can't lie about the CLI.
+
+## Catalog maintenance (the data track)
+
+The catalog and the CLI ship on **two independent tracks**:
+
+- **Data track** — `src/registry/data/*.json`. Push to `main`; users pick it up via the auto-refresh TTL (7 days) or `dxai update` instantly. **No version bump.** Use for new/changed servers, skills, tools, description edits, `stale` markers, pin bumps.
+- **Code track** — npm package. Bump `package.json` + publish, only for CLI *logic* changes.
+
+When adding an MCP server, prefer a single `transport` declaration — per-agent config blocks are derived from `AGENT_DEFINITIONS` automatically (see the Registry section of AGENTS.md). Pin versions only when reproducibility genuinely matters.
+
+Two guardrails watch the catalog so you don't have to:
+
+- `test/registry-schema.test.js` validates every entry and locks the transport-derivation output with a golden table — runs on every PR touching registry files.
+- The **catalog-health** workflow (`.github/workflows/catalog-health.yml`) runs weekly: it checks pinned versions against npm `latest` and that server URLs still resolve, and opens/updates a GitHub issue when something drifts.
+
+## CI
+
+`.github/workflows/`:
+
+| Workflow | What it runs |
+|---|---|
+| `ci.yml` — test matrix | `node --check` on every source file, `npm test`, smoke run — on **Ubuntu / macOS / Windows × Node 18 / 20 / 22** |
+| `ci.yml` — lint | `npm run lint` on Node 22 (ESLint 10 doesn't support Node 18) |
+| `ci.yml` — docs-check | `npm run docs:check` drift gate |
+| `docs.yml` | Builds and deploys the docs site to GitHub Pages |
+| `catalog-health.yml` | Registry schema validation on PRs; weekly pin/URL drift check that files an issue |
+
+## Releasing
+
+1. Ensure `main` is green (tests, lint, docs-check).
+2. Bump `package.json` per semver — only code-track changes require a release.
+3. `npm publish` (the `files` allowlist ships `bin/`, `src/`, README, LICENSE — the docs site and tests stay out of the tarball).
+4. Tag the release: `git tag vX.Y.Z && git push --tags`.
+
+Catalog-only changes skip all of this — just merge to `main`.

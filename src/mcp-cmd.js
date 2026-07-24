@@ -115,8 +115,13 @@ export async function addMcp(serverIds = [], opts = {}) {
     : writeMcpConfigs(agents, ids, MCP_SERVERS, inputs);
   if (project) recordProjectMcp(results); else recordSystemMcp(results);
 
+  // Per-agent write failures land in results[*].errors — exit non-zero so
+  // scripted callers can detect a partial failure.
+  const errorCount = Object.values(results).reduce((n, r) => n + (r.errors || []).length, 0);
+  if (errorCount > 0) process.exitCode = 1;
+
   if (runtime.json) {
-    process.stdout.write(JSON.stringify({ ok: true, added: ids, project, results }, null, 2) + '\n');
+    process.stdout.write(JSON.stringify({ ok: errorCount === 0, added: ids, project, results }, null, 2) + '\n');
     return;
   }
   reportMcpResults(results, runtime, 'added');
@@ -184,7 +189,7 @@ export async function removeMcp(serverIds = [], opts = {}) {
       continue;
     }
 
-    let count = 0;
+    let count;
     try {
       count = removeFrom(agent, present, configPath);
     } catch (err) {

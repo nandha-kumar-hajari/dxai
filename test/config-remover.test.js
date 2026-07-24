@@ -7,6 +7,7 @@ import {
   scanJsonMcpConfig, removeJsonMcpServers,
   scanTomlMcpConfig, removeTomlMcpServers,
   scanBackupFiles, scanProjectFiles,
+  outputHasServerId,
 } from '../src/config-remover.js';
 
 let tmp;
@@ -63,4 +64,21 @@ test('scanProjectFiles surfaces dxai-managed files only', () => {
   assert.ok(names.includes('AGENTS.md'));
   assert.ok(names.some((n) => n.endsWith('react.mdc')));
   assert.ok(!names.includes('README.md'));
+});
+
+// ── outputHasServerId (claude mcp list matching) ──
+test('outputHasServerId matches whole tokens only — "git" must not match "github"', () => {
+  const output = 'github: https://api.githubcopilot.com/mcp/ (HTTP)\nplaywright: npx @playwright/mcp';
+  assert.equal(outputHasServerId(output, 'github'), true);
+  assert.equal(outputHasServerId(output, 'playwright'), true);
+  assert.equal(outputHasServerId(output, 'git'), false);
+  assert.equal(outputHasServerId(output, 'play'), false);
+});
+
+test('outputHasServerId handles hyphenated ids and boundaries', () => {
+  const output = 'sequential-thinking: npx -y @modelcontextprotocol/server-sequential-thinking';
+  assert.equal(outputHasServerId(output, 'sequential-thinking'), true);
+  assert.equal(outputHasServerId(output, 'sequential'), false);
+  assert.equal(outputHasServerId('', 'anything'), false);
+  assert.equal(outputHasServerId(output, ''), false);
 });

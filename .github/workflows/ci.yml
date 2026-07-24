@@ -47,6 +47,26 @@ jobs:
           node bin/cli.js --version
           node bin/cli.js --help
 
+  lint:
+    name: eslint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          # ESLint 10 needs a newer Node than the oldest supported runtime (18),
+          # so lint runs once here rather than in the test matrix.
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
   docs-check:
     name: docs drift check
     runs-on: ubuntu-latest
