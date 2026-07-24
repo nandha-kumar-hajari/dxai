@@ -28,16 +28,7 @@ jobs:
         run: npm ci
 
       - name: Syntax check (every src + bin .js)
-        run: |
-          node -e "
-            const fs=require('fs'),path=require('path');
-            const walk=(d)=>fs.readdirSync(d,{withFileTypes:true}).flatMap(e=>{
-              const p=path.join(d,e.name);
-              return e.isDirectory()?walk(p):p.endsWith('.js')?[p]:[];
-            });
-            const files=[...walk('src'),...walk('bin')];
-            for(const f of files){require('child_process').execSync(\`node --check \${f}\`,{stdio:'inherit'})}
-          "
+        run: node scripts/check-syntax.mjs
 
       - name: Run tests
         run: npm test
