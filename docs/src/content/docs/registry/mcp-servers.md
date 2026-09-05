@@ -1,6 +1,6 @@
 ---
 title: MCP Servers
-description: "17 MCP servers across 8 categories. Auto-generated from src/registry/data/mcp-servers.json."
+description: "17 MCP servers across 8 categories, 11 resolved from the official MCP Registry. Auto-generated from src/registry/data/mcp-servers.json."
 ---
 <!--
 AUTO-GENERATED — do not edit by hand.
@@ -12,83 +12,86 @@ The bundled catalog of MCP servers. Each row shows which agents support the serv
 
 Pick servers in the wizard, or pass `--mcp <id1>,<id2>` to a setup command. ★ marks recommended (pre-checked) entries.
 
+The **Source** column names the record in the [official MCP Registry](https://registry.modelcontextprotocol.io) an entry is resolved from; `bundled` entries are written by hand. See [Registry Sources](/registry/custom-registry/).
+
 ## 🔧 Essential
 
 Core tools every developer should have
 
-| ID | Name | Description | Agents | Required env | Required input |
-| --- | --- | --- | --- | --- | --- |
-| `context7` | ★ Context7 | Live, version-specific library documentation | `cursor`, `claude-code`, `vscode`, `codex`, `gemini`, `windsurf`, `antigravity-ide`, `antigravity-cli` | — | — |
-| `sequential-thinking` | ★ Sequential Thinking | Multi-step structured reasoning for complex problems | `cursor`, `claude-code`, `vscode`, `codex`, `gemini`, `windsurf`, `antigravity-ide`, `antigravity-cli` | — | — |
+| ID | Name | Description | Agents | Required env | Required input | Source |
+| --- | --- | --- | --- | --- | --- | --- |
+| `context7` | ★ Context7 | Live, version-specific library documentation | `cursor`, `claude-code`, `vscode`, `codex`, `gemini`, `windsurf`, `antigravity-ide`, `antigravity-cli` | — | — | `io.github.upstash/context7` |
+| `sequential-thinking` | ★ Sequential Thinking | Multi-step structured reasoning for complex problems | `cursor`, `claude-code`, `vscode`, `codex`, `gemini`, `windsurf`, `antigravity-ide`, `antigravity-cli` | — | — | bundled |
 
 ## 💻 Code & Git
 
 Source control and code intelligence
 
-| ID | Name | Description | Agents | Required env | Required input |
-| --- | --- | --- | --- | --- | --- |
-| `github` | ★ GitHub | PRs, issues, repos, code search (official remote MCP, OAuth) | `cursor`, `claude-code`, `vscode`, `codex`, `gemini`, `windsurf`, `antigravity-ide`, `antigravity-cli` | — | — |
-| `gitlab` | GitLab | Merge requests, issues, pipelines (official remote MCP) | `cursor`, `claude-code`, `vscode`, `codex`, `gemini`, `windsurf`, `antigravity-ide`, `antigravity-cli` | — | — |
-| `claude-code-mcp` | Claude Code as MCP | Use Claude Code as a sub-agent inside other editors | `cursor`, `vscode`, `gemini`, `windsurf`, `antigravity-ide`, `antigravity-cli` | — | — |
+| ID | Name | Description | Agents | Required env | Required input | Source |
+| --- | --- | --- | --- | --- | --- | --- |
+| `github` | ★ GitHub | PRs, issues, repos, code search (official remote MCP, OAuth) | `cursor`, `claude-code`, `vscode`, `codex`, `gemini`, `windsurf`, `antigravity-ide`, `antigravity-cli` | — | — | `io.github.github/github-mcp-server` |
+| `gitlab` | GitLab | Merge requests, issues, pipelines (official remote MCP) | `cursor`, `claude-code`, `vscode`, `codex`, `gemini`, `windsurf`, `antigravity-ide`, `antigravity-cli` | — | — | `com.gitlab/mcp` |
+| `claude-code-mcp` | Claude Code as MCP | Use Claude Code as a sub-agent inside other editors | `cursor`, `vscode`, `gemini`, `windsurf`, `antigravity-ide`, `antigravity-cli` | — | — | bundled |
 
 ## 🎨 Design
 
 Design-to-code workflows
 
-| ID | Name | Description | Agents | Required env | Required input |
-| --- | --- | --- | --- | --- | --- |
-| `figma` | Figma | Design-to-code from Figma components | `cursor`, `claude-code`, `vscode`, `codex`, `gemini`, `windsurf`, `antigravity-ide`, `antigravity-cli` | — | — |
+| ID | Name | Description | Agents | Required env | Required input | Source |
+| --- | --- | --- | --- | --- | --- | --- |
+| `figma` | Figma | Design-to-code from Figma components | `cursor`, `claude-code`, `vscode`, `codex`, `gemini`, `windsurf`, `antigravity-ide`, `antigravity-cli` | — | — | `com.figma.mcp/mcp` |
 
 ## 📋 Productivity
 
 Project management and communication
 
-| ID | Name | Description | Agents | Required env | Required input |
-| --- | --- | --- | --- | --- | --- |
-| `notion` | Notion | Read/write Notion pages and databases | `cursor`, `claude-code`, `vscode`, `codex`, `gemini`, `windsurf`, `antigravity-ide`, `antigravity-cli` | — | — |
-| `slack` | Slack | Search messages, channels, send notifications | `cursor`, `claude-code`, `vscode`, `codex`, `gemini`, `windsurf`, `antigravity-ide`, `antigravity-cli` | `SLACK_BOT_TOKEN` | — |
-| `linear` | Linear | Issues, projects, cycles management (official remote MCP, OAuth) | `cursor`, `claude-code`, `vscode`, `codex`, `gemini`, `windsurf`, `antigravity-ide`, `antigravity-cli` | — | — |
+| ID | Name | Description | Agents | Required env | Required input | Source |
+| --- | --- | --- | --- | --- | --- | --- |
+| `notion` | Notion | Read/write Notion pages and databases | `cursor`, `claude-code`, `vscode`, `codex`, `gemini`, `windsurf`, `antigravity-ide`, `antigravity-cli` | — | — | `com.notion/mcp` |
+| `slack` | Slack | Search messages, channels, send notifications | `cursor`, `claude-code`, `vscode`, `codex`, `gemini`, `windsurf`, `antigravity-ide`, `antigravity-cli` | `SLACK_BOT_TOKEN` | — | bundled |
+| `linear` | Linear | Issues, projects, cycles management (official remote MCP, OAuth) | `cursor`, `claude-code`, `vscode`, `codex`, `gemini`, `windsurf`, `antigravity-ide`, `antigravity-cli` | — | — | `app.linear/linear` |
 
 ## 🗄️  Database
 
 Database access and management
 
-| ID | Name | Description | Agents | Required env | Required input |
-| --- | --- | --- | --- | --- | --- |
-| `supabase` | Supabase | Supabase database, auth, storage (official remote MCP) | `cursor`, `claude-code`, `vscode`, `codex`, `gemini`, `windsurf`, `antigravity-ide`, `antigravity-cli` | — | — |
-| `neon` | Neon Postgres | Serverless Postgres database | `cursor`, `claude-code`, `vscode`, `codex`, `gemini`, `windsurf`, `antigravity-ide`, `antigravity-cli` | `NEON_API_KEY` | — |
+| ID | Name | Description | Agents | Required env | Required input | Source |
+| --- | --- | --- | --- | --- | --- | --- |
+| `supabase` | Supabase | Supabase database, auth, storage (official remote MCP) | `cursor`, `claude-code`, `vscode`, `codex`, `gemini`, `windsurf`, `antigravity-ide`, `antigravity-cli` | — | — | `com.supabase/mcp` |
+| `neon` | Neon Postgres | Serverless Postgres database | `cursor`, `claude-code`, `vscode`, `codex`, `gemini`, `windsurf`, `antigravity-ide`, `antigravity-cli` | `NEON_API_KEY` | — | bundled |
 
 ## 🌐 Browser & Testing
 
 Browser automation and testing
 
-| ID | Name | Description | Agents | Required env | Required input |
-| --- | --- | --- | --- | --- | --- |
-| `playwright` | ★ Playwright | Browser automation, E2E testing, screenshots | `cursor`, `claude-code`, `vscode`, `codex`, `gemini`, `windsurf`, `antigravity-ide`, `antigravity-cli` | — | — |
-| `browserbase` | Browserbase | Cloud browser sessions for testing | `cursor`, `claude-code`, `vscode`, `codex`, `gemini`, `windsurf`, `antigravity-ide`, `antigravity-cli` | `BROWSERBASE_API_KEY`, `BROWSERBASE_PROJECT_ID`, `GEMINI_API_KEY` | — |
+| ID | Name | Description | Agents | Required env | Required input | Source |
+| --- | --- | --- | --- | --- | --- | --- |
+| `playwright` | ★ Playwright | Browser automation, E2E testing, screenshots | `cursor`, `claude-code`, `vscode`, `codex`, `gemini`, `windsurf`, `antigravity-ide`, `antigravity-cli` | — | — | `io.github.microsoft/playwright-mcp` |
+| `browserbase` | Browserbase | Cloud browser sessions for testing | `cursor`, `claude-code`, `vscode`, `codex`, `gemini`, `windsurf`, `antigravity-ide`, `antigravity-cli` | `BROWSERBASE_API_KEY`, `BROWSERBASE_PROJECT_ID`, `GEMINI_API_KEY` | — | `io.github.browserbase/mcp-server-browserbase` |
 
 ## ☁️  Cloud & Deploy
 
 Deployment and infrastructure
 
-| ID | Name | Description | Agents | Required env | Required input |
-| --- | --- | --- | --- | --- | --- |
-| `vercel` | Vercel | Deploy, manage projects, domains (official remote MCP) | `cursor`, `claude-code`, `vscode`, `codex`, `gemini`, `windsurf`, `antigravity-ide`, `antigravity-cli` | — | — |
-| `cloudflare` | Cloudflare | Workers bindings: KV, D1, R2, Durable Objects (official remote MCP) | `cursor`, `claude-code`, `vscode`, `codex`, `gemini`, `windsurf`, `antigravity-ide`, `antigravity-cli` | — | — |
+| ID | Name | Description | Agents | Required env | Required input | Source |
+| --- | --- | --- | --- | --- | --- | --- |
+| `vercel` | Vercel | Deploy, manage projects, domains (official remote MCP) | `cursor`, `claude-code`, `vscode`, `codex`, `gemini`, `windsurf`, `antigravity-ide`, `antigravity-cli` | — | — | `com.vercel/vercel-mcp` |
+| `cloudflare` | Cloudflare | Workers bindings: KV, D1, R2, Durable Objects (official remote MCP) | `cursor`, `claude-code`, `vscode`, `codex`, `gemini`, `windsurf`, `antigravity-ide`, `antigravity-cli` | — | — | `com.cloudflare.mcp/mcp` |
 
 ## ⚡ Advanced
 
 Agent orchestration and specialized tools
 
-| ID | Name | Description | Agents | Required env | Required input |
-| --- | --- | --- | --- | --- | --- |
-| `filesystem` | Filesystem | Secure file access outside project root | `cursor`, `claude-code`, `vscode`, `codex`, `gemini`, `windsurf`, `antigravity-ide`, `antigravity-cli` | — | `allowedPath` |
-| `memory` | Memory | Persistent memory across agent sessions | `cursor`, `claude-code`, `vscode`, `codex`, `gemini`, `windsurf`, `antigravity-ide`, `antigravity-cli` | — | — |
+| ID | Name | Description | Agents | Required env | Required input | Source |
+| --- | --- | --- | --- | --- | --- | --- |
+| `filesystem` | Filesystem | Secure file access outside project root | `cursor`, `claude-code`, `vscode`, `codex`, `gemini`, `windsurf`, `antigravity-ide`, `antigravity-cli` | — | `allowedPath` | bundled |
+| `memory` | Memory | Persistent memory across agent sessions | `cursor`, `claude-code`, `vscode`, `codex`, `gemini`, `windsurf`, `antigravity-ide`, `antigravity-cli` | — | — | bundled |
 
 ## Want one that's missing?
 
-Three options:
+Four options:
 
-1. Open a PR adding it to [`src/registry/data/mcp-servers.json`](https://github.com/nandha-kumar-hajari/dxai/main/src/registry/data/mcp-servers.json).
-2. Host your own catalog and point [`DXAI_REGISTRY_URL`](/registry/custom-registry/) at it.
-3. Add the entry directly to your tool's config; dxai will leave hand-added entries alone.
+1. Add it straight from the official MCP Registry by name: `dxai add io.github.owner/server`. No catalog change needed.
+2. Open a PR adding it to [`src/registry/data/mcp-servers.json`](https://github.com/nandha-kumar-hajari/dxai/main/src/registry/data/mcp-servers.json) — a `registry` block is enough, the weekly sync fills in the rest.
+3. Host your own catalog and point [`DXAI_REGISTRY_URL`](/registry/custom-registry/) at it.
+4. Add the entry directly to your tool's config; dxai will leave hand-added entries alone.

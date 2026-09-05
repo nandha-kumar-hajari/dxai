@@ -28,6 +28,7 @@ npx dxai --help     # full usage
 - **Profiles for teams.** `dxai save-profile --here` writes `./.dxai/profile.json`. Teammates run `dxai apply` to get the same setup.
 - **Drift-aware introspection.** `dxai list` / `status` / `doctor` read a manifest of installs, so cleanup is precise and PR review can spot config drift.
 - **CI-ready.** Set `CI=true` (or pass `--yes`) for unattended runs. JSON output mode pipes into the rest of your tooling.
+- **Backed by the official MCP Registry.** Catalog entries link to their record on [registry.modelcontextprotocol.io](https://registry.modelcontextprotocol.io); a weekly sync keeps the bundled catalog current and `dxai update` re-resolves live. Any registry server can be added by name: `dxai add io.github.owner/server`.
 - **Bundled + remote registry.** `dxai update` refreshes the MCP / skill catalog from a remote URL; bundled JSON is the offline fallback. Override the source with `DXAI_REGISTRY_URL`. Network calls (registry refresh, skill downloads) use native `fetch` with per-attempt timeouts and retry/backoff — no `curl` dependency.
 - **Reversible.** Every write is backed up as `<file>.bak.<ts>`; `dxai rollback` restores the most recent snapshot (and snapshots the current file first, so it's undoable).
 

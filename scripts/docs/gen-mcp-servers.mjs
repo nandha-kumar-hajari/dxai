@@ -10,6 +10,8 @@ export default function generate() {
     '',
     'Pick servers in the wizard, or pass `--mcp <id1>,<id2>` to a setup command. ★ marks recommended (pre-checked) entries.',
     '',
+    'The **Source** column names the record in the [official MCP Registry](https://registry.modelcontextprotocol.io) an entry is resolved from; `bundled` entries are written by hand. See [Registry Sources](/registry/custom-registry/).',
+    '',
   );
 
   // Source of truth — stays correct as agents are added/split (see AGENT_DEFINITIONS).
@@ -39,26 +41,28 @@ export default function generate() {
       const inputs = s.requiresInput
         ? Object.keys(s.requiresInput).map((k) => '`' + k + '`').join(', ')
         : '—';
-      return [id, name, s.description, agentsSupported || '—', env, inputs];
+      const source = s.registry?.name ? '`' + s.registry.name + '`' : 'bundled';
+      return [id, name, s.description, agentsSupported || '—', env, inputs, source];
     });
 
-    sections.push(mdTable(['ID', 'Name', 'Description', 'Agents', 'Required env', 'Required input'], rows));
+    sections.push(mdTable(['ID', 'Name', 'Description', 'Agents', 'Required env', 'Required input', 'Source'], rows));
     sections.push('');
   }
 
   sections.push('## Want one that\'s missing?');
   sections.push('');
-  sections.push('Three options:');
+  sections.push('Four options:');
   sections.push('');
-  sections.push('1. Open a PR adding it to [`src/registry/data/mcp-servers.json`](https://github.com/nandha-kumar-hajari/dxai/main/src/registry/data/mcp-servers.json).');
-  sections.push('2. Host your own catalog and point [`DXAI_REGISTRY_URL`](/registry/custom-registry/) at it.');
-  sections.push('3. Add the entry directly to your tool\'s config; dxai will leave hand-added entries alone.');
+  sections.push('1. Add it straight from the official MCP Registry by name: `dxai add io.github.owner/server`. No catalog change needed.');
+  sections.push('2. Open a PR adding it to [`src/registry/data/mcp-servers.json`](https://github.com/nandha-kumar-hajari/dxai/main/src/registry/data/mcp-servers.json) — a `registry` block is enough, the weekly sync fills in the rest.');
+  sections.push('3. Host your own catalog and point [`DXAI_REGISTRY_URL`](/registry/custom-registry/) at it.');
+  sections.push('4. Add the entry directly to your tool\'s config; dxai will leave hand-added entries alone.');
 
   writePage({
     relativePath: 'registry/mcp-servers.md',
     frontmatter: {
       title: 'MCP Servers',
-      description: `${MCP_SERVERS.length} MCP servers across ${MCP_CATEGORIES.length} categories. Auto-generated from src/registry/data/mcp-servers.json.`,
+      description: `${MCP_SERVERS.length} MCP servers across ${MCP_CATEGORIES.length} categories, ${MCP_SERVERS.filter((s) => s.registry?.name).length} resolved from the official MCP Registry. Auto-generated from src/registry/data/mcp-servers.json.`,
     },
     sourceLabel: 'src/registry/data/mcp-servers.json (generator: scripts/docs/gen-mcp-servers.mjs)',
     body: sections.join('\n'),

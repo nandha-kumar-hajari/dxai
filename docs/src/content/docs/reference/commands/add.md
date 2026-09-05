@@ -1,6 +1,6 @@
 ---
 title: dxai add
-description: "Add MCP server(s) to detected agents (fast path, no wizard)"
+description: "Add MCP server(s) to detected agents (fast path, no wizard). Takes catalogue ids or official MCP Registry names like io.github.owner/server"
 sidebar: {"order":5}
 ---
 <!--
@@ -9,7 +9,7 @@ Regenerate via: npm run docs:generate
 Source: bin/cli.js (generator: scripts/docs/gen-commands.mjs)
 -->
 
-Add MCP server(s) to detected agents (fast path, no wizard)
+Add MCP server(s) to detected agents (fast path, no wizard). Takes catalogue ids or official MCP Registry names like io.github.owner/server
 
 ## Synopsis
 

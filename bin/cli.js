@@ -87,7 +87,7 @@ export function buildProgram() {
   // dxai add <id...> — fast path: add MCP server(s) without the wizard
   program
     .command('add <mcp...>')
-    .description('Add MCP server(s) to detected agents (fast path, no wizard)')
+    .description('Add MCP server(s) to detected agents (fast path, no wizard). Takes catalogue ids or official MCP Registry names like io.github.owner/server')
     .addOption(new Option('--agents <list>', 'comma-separated agent IDs to target (default: detected)').argParser(csv))
     .addOption(new Option('--project', 'write to project-level config instead of global'))
     .addOption(new Option('-y, --yes', 'non-interactive; use defaults for any required inputs'))
@@ -222,6 +222,7 @@ Examples:
   $ dxai save-profile myteam --agents cursor --mcp github,playwright
   $ dxai add github playwright                # add MCP servers to detected agents
   $ dxai add context7 --agents cursor,codex   # target specific agents
+  $ dxai add io.github.upstash/context7       # any server from the official MCP Registry
   $ dxai remove github --dry-run              # preview an MCP removal
   $ dxai apply myteam                         # run setup from a saved profile
   $ dxai apply --dry-run                      # auto-load ./.dxai/profile.json

@@ -61,6 +61,7 @@ Tracking gaps and missing features for a modern AI dev-environment CLI. Items ar
 
 - [x] **Automation tools** — `agent-browser` and `agent-device` are detected and installable. New `--tools` flag, an `automation-tools` registry catalog (`src/registry/data/automation-tools.json` + `src/registry/automation-tools.js`), and install logic in the runtime. `dxai update` refreshes the `automation-tools` registry alongside MCP servers and skills.
 - [x] **Pre-publish hardening round (2026-07)** — closed the `detectCommand` validation gap (registry tool detect commands are now vetted by `isSafeBinaryName` at the fetch boundary *and* guarded in `commandExists`); `claude mcp list` parsing switched to shell-free `execFileSync` with whole-token id matching (`outputHasServerId` — "git" can no longer match "github"); Windows-hostile shell pipes removed from git stats in `detect-project.js`; `dxai cleanup [scope]` gained `-y/--json/--dry-run/--backups` parity; setup/add flows exit non-zero on partial failure; the flag→defaults→prompt selection triplet deduplicated into `src/select.js`; skills recorded by id; backups only written when a merge changes something and capped at 5 per file; ESLint (flat config) added with a CI job.
+- [x] **Official MCP Registry integration (2026-09)** — catalog entries link to their record on registry.modelcontextprotocol.io via a `registry` block; `src/registry/mcp-registry.js` resolves records into dxai fields (remote-first, npm/pypi packages, env vars, deprecation → stale) under an ownership rule that keeps hand-curated fields untouched. `scripts/registry-sync.mjs` runs weekly from `catalog-health.yml` and opens a bot PR when anything changed; `dxai update` re-resolves live (`--no-resolve` to skip); `dxai add <registry-name>` installs any registry server on the spot, with provenance recorded in the manifest so `status`/`doctor` cover it. First sync moved GitLab, Vercel and Supabase to their official hosted remotes and dropped their token requirements.
 - [x] **Periodic catalog auto-refresh** (`src/auto-update.js`) — setup runs lazily refresh the registry cache on a TTL (default 7 days) so catalog improvements and pinned-version bumps reach users who never run `dxai update` manually. Because the catalog loads at import time, the refresh updates the on-disk cache for the *next* run and emits a dim one-line nudge now; offline failures degrade gracefully. Opt out with `--no-update` / `DXAI_NO_AUTO_UPDATE=1`; tune with `DXAI_UPDATE_TTL_DAYS` / `DXAI_UPDATE_TIMEOUT_MS`. Skipped automatically under `--json` and CI. `refreshRegistry` was extracted from `updateCmd` so both paths share one fetch/validate/cache loop.
 
 ---
@@ -77,7 +78,9 @@ Tracking gaps and missing features for a modern AI dev-environment CLI. Items ar
 - [x] **Replace `execSync('curl ...')` in `installSkills` with native `fetch`.** The manual SKILL.md fallback now uses `fetchText` (`src/net.js`) instead of shelling out to `curl` — no external binary, and a non-2xx response rejects instead of writing an error page to disk. `installSkills` is async; callers updated.
 - [x] **Add timeouts + retry/backoff for network calls.** New `src/net.js` (`fetchWithRetry`/`fetchJson`/`fetchText`): per-attempt `AbortSignal.timeout`, bounded retries (default 2), exponential backoff. Retriable = timeout/abort/network-throw/5xx/429; other 4xx fail fast. The registry refresh routes through it; interactive `dxai update` gets the default retries, the background auto-refresh passes `retries: 0` so an offline host never stalls a run.
 - [x] **`dxai rollback`** (`src/rollback.js`) — restores dxai-managed files (agent global configs + generated project files) from their most recent `.bak.<ts>` snapshot, snapshotting the current file first so the rollback is reversible. Supports `--list`, `--dry-run`, `--json`, `--yes`; interactive checkbox otherwise.
-- [ ] Verify MCP packages: pin versions, surface npm provenance/audit info, warn on unsigned packages.
+- [ ] Verify MCP packages: pin versions, surface npm provenance/audit info, warn on unsigned packages. (Registry `prefer.pin` covers the pin half.)
+- [ ] Render remote auth headers (`headers[]` on registry remotes) per agent dialect — today a required header is a warning and the remote is used as-is (OAuth covers the vendor ones).
+- [ ] Support `oci` (docker run) and `mcpb` registry packages in the resolver.
 - [ ] Idempotent updates — let `mergeJsonMcpConfig` upgrade an existing entry to a new version instead of always skipping. (The per-server `version` field now exists; this is the missing "detect drift and upgrade" half.) **Deferred:** mutates possibly user-customized config, so it needs its own drift-detection + confirmation UX — tracked as a standalone change rather than bundled here.
 
 ### Generators
@@ -92,7 +95,8 @@ Tracking gaps and missing features for a modern AI dev-environment CLI. Items ar
 
 ### Coverage
 - [ ] Add agents: **Aider, Continue, Cline, Zed AI, JetBrains AI Assistant, Copilot Workspace, Roo Code**.
-- [ ] Add MCP servers: vendor-owned GitHub MCP, vendor-owned Slack MCP, Sentry, Stripe, AWS, GCP, Postgres (generic), MongoDB, Redis, Datadog, PostHog.
+- [x] Vendor-owned GitHub, GitLab, Vercel, Supabase, Notion, Figma, Linear, Cloudflare MCPs — resolved from the official MCP Registry.
+- [ ] Add MCP servers: Slack (no vendor record in the registry yet — keep watching the sync report's candidates), Sentry, Stripe, AWS, GCP, Postgres (generic), MongoDB, Redis, Datadog, PostHog. Each is one `registry` block once a vendor record exists.
 
 ---
 

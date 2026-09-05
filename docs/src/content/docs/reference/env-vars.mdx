@@ -9,6 +9,8 @@ description: Env vars dxai reads at runtime.
 | `NO_COLOR=1` | Disables ANSI colors (chalk-standard). |
 | `DXAI_DRY_RUN=1` | Equivalent to `--dry-run`. |
 | `DXAI_REGISTRY_URL` | Override the default remote registry base URL used by `dxai update`. |
+| `DXAI_MCP_REGISTRY_URL` | Override the official MCP Registry base URL (default `https://registry.modelcontextprotocol.io`) used by `dxai update` and `dxai add <registry-name>`. |
+| `DXAI_REGISTRY_SOURCE=bundled` | Ignore `~/.dxai/cache` and use the bundled catalog. Set by the test runner and doc generators. |
 | `HOME` | Standard Unix home directory; used for resolving `~` and locating user-level config (`~/.dxai/...`). On Windows, `USERPROFILE` is used. |
 
 Plus any env vars required by the MCP servers you select (e.g. `GITHUB_PERSONAL_ACCESS_TOKEN`, `LINEAR_API_KEY`). See [Registry / MCP servers](/registry/mcp-servers/) for the per-server list.
