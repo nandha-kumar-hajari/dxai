@@ -30,7 +30,7 @@ const BINARY_NAME_RE = /^[A-Za-z0-9._-]+$/;
 
 // Binaries we are willing to spawn from registry data. Everything else is a
 // command we don't recognize and won't execute on the user's behalf.
-export const COMMAND_ALLOWLIST = new Set([
+const COMMAND_ALLOWLIST = new Set([
   'npx', 'node', 'npm', 'bunx', 'bun', 'pnpm', 'yarn', 'deno',
   'uvx', 'uv', 'pipx', 'pip', 'pip3', 'python', 'python3', 'docker', 'claude',
 ]);

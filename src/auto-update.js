@@ -16,7 +16,7 @@ import { refreshRegistry } from './update.js';
 import { infoMsg } from './branding.js';
 import { writeJsonAtomic } from './fs-atomic.js';
 
-export const LAST_CHECK_PATH = path.join(CACHE_DIR, '.last-check.json');
+const LAST_CHECK_PATH = path.join(CACHE_DIR, '.last-check.json');
 const DEFAULT_TTL_DAYS = 7;
 const DEFAULT_TIMEOUT_MS = 4000;
 

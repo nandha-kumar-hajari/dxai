@@ -24,7 +24,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 export const CACHE_DIR = path.join(HOME, '.dxai', 'cache');
-export const BUNDLED_DIR = path.join(__dirname, 'data');
+const BUNDLED_DIR = path.join(__dirname, 'data');
 
 // Default remote URL — points at the bundled JSON in the repo. Overridable
 // via the DXAI_REGISTRY_URL env var; that's the supported escape hatch for

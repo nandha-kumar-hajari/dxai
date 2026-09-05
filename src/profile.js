@@ -18,13 +18,13 @@ export const PROFILE_KEYS = [
 ];
 
 // Default project-level profile location.
-export const PROJECT_PROFILE_PATH = path.join('.dxai', 'profile.json');
+const PROJECT_PROFILE_PATH = path.join('.dxai', 'profile.json');
 
 // Default user-level profile dir.
-export const USER_PROFILE_DIR = path.join(HOME, '.dxai', 'profiles');
+const USER_PROFILE_DIR = path.join(HOME, '.dxai', 'profiles');
 
 // Auto-discovery: first existing wins.
-export function findDefaultProfile(cwd = process.cwd()) {
+function findDefaultProfile(cwd = process.cwd()) {
   const candidates = [
     path.join(cwd, '.dxai', 'profile.json'),
     path.join(HOME, '.dxai', 'config.json'),

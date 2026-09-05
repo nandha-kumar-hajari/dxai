@@ -1,12 +1,10 @@
 import fs from 'fs-extra';
 import path from 'path';
-import os from 'os';
-import { execSync } from 'child_process';
 
 import {
   printBanner, sectionHeader, successMsg, warnMsg, errorMsg, infoMsg, theme,
 } from './branding.js';
-import { detectOS, AGENT_DEFINITIONS } from './detect.js';
+import { detectOS, AGENT_DEFINITIONS, commandExists } from './detect.js';
 import { MCP_SERVERS } from './registry/mcp-servers.js';
 import {
   readManifest, SYSTEM_MANIFEST_PATH, PROJECT_MANIFEST_PATH,
@@ -16,13 +14,15 @@ import {
 } from './config-remover.js';
 import { handshakeServer, resolveSpawnSpec } from './handshake.js';
 
+const KNOWN_MCP_IDS = MCP_SERVERS.map((s) => s.id);
+
 function loadBoth(cwd = process.cwd()) {
   const system = readManifest(SYSTEM_MANIFEST_PATH);
   const project = readManifest(path.join(cwd, PROJECT_MANIFEST_PATH));
   return { system, project };
 }
 
-// ── list ──────────────────────────────────────
+// ── list ──
 export async function listCmd(opts = {}) {
   const { system, project } = loadBoth();
 
@@ -64,23 +64,23 @@ export async function listCmd(opts = {}) {
   console.log();
 }
 
-// ── status ─────────────────────────────────────
+// ── status ──
 // Diff manifest vs actual config files. Reports drift.
 function readActualMcp(agent, home, cwd) {
   const out = { global: [], project: [] };
 
   if (agent.configFormat === 'json' && typeof agent.globalMcpPath === 'function') {
-    out.global = scanJsonMcpConfig(agent.globalMcpPath(home), agent.mcpKey, MCP_SERVERS.map((s) => s.id));
+    out.global = scanJsonMcpConfig(agent.globalMcpPath(home), agent.mcpKey, KNOWN_MCP_IDS);
   } else if (agent.configFormat === 'toml' && typeof agent.globalMcpPath === 'function') {
-    out.global = scanTomlMcpConfig(agent.globalMcpPath(home), MCP_SERVERS.map((s) => s.id));
+    out.global = scanTomlMcpConfig(agent.globalMcpPath(home), KNOWN_MCP_IDS);
   } else if (agent.configFormat === 'cli') {
-    out.global = scanClaudeCodeMcpServers(MCP_SERVERS.map((s) => s.id));
+    out.global = scanClaudeCodeMcpServers(KNOWN_MCP_IDS);
   }
 
   if (typeof agent.projectMcpPath === 'function') {
     const projPath = path.join(cwd, agent.projectMcpPath());
     if (fs.existsSync(projPath)) {
-      out.project = scanJsonMcpConfig(projPath, agent.mcpKey, MCP_SERVERS.map((s) => s.id));
+      out.project = scanJsonMcpConfig(projPath, agent.mcpKey, KNOWN_MCP_IDS);
     }
   }
 
@@ -163,7 +163,7 @@ export async function statusCmd(opts = {}) {
   console.log();
 }
 
-// ── doctor ─────────────────────────────────────
+// ── doctor ──
 // Validate that configs parse, env vars are set, and (best-effort) MCP commands exist.
 export async function doctorCmd(opts = {}) {
   const { home } = detectOS();
@@ -176,7 +176,7 @@ export async function doctorCmd(opts = {}) {
   const fail = (msg) => findings.push({ severity: 'error', msg });
   const info = (msg) => findings.push({ severity: 'info', msg });
 
-  // 1. Config files parse.
+  // Config files parse.
   for (const agent of AGENT_DEFINITIONS) {
     if (typeof agent.globalMcpPath !== 'function') continue;
     if (agent.configFormat === 'cli') continue; // no file to parse
@@ -200,7 +200,7 @@ export async function doctorCmd(opts = {}) {
     }
   }
 
-  // 2. Env vars for installed servers.
+  // Env vars for installed servers.
   const installedIds = new Set();
   for (const servers of Object.values(system.mcp)) Object.keys(servers).forEach((id) => installedIds.add(id));
   for (const servers of Object.values(project.mcp)) Object.keys(servers).forEach((id) => installedIds.add(id));
@@ -214,24 +214,18 @@ export async function doctorCmd(opts = {}) {
     }
   }
 
-  // 3. Tools available on PATH for installed servers (heuristic — only npx-based).
-  let npxAvailable = true;
-  try {
-    execSync(os.platform() === 'win32' ? 'where npx' : 'command -v npx', { stdio: 'pipe' });
-  } catch {
-    npxAvailable = false;
-    fail('npx not found on PATH — most MCP servers spawn via `npx`.');
-  }
-  if (npxAvailable) ok('npx is on PATH');
+  // Most MCP servers spawn via npx.
+  if (commandExists('npx')) ok('npx is on PATH');
+  else fail('npx not found on PATH — most MCP servers spawn via `npx`.');
 
-  // 4. Project files referenced in manifest still exist.
+  // Project files referenced in manifest still exist.
   for (const f of project.files || []) {
     const abs = path.join(cwd, f.relativePath);
     if (fs.existsSync(abs)) ok(`project file present: ${f.relativePath}`);
     else warn(`project file missing: ${f.relativePath} (recorded in manifest)`);
   }
 
-  // 5. Handshake (opt-in) — spawn each installed MCP server and verify JSON-RPC.
+  // Handshake (opt-in) — spawn each installed MCP server and verify JSON-RPC.
   if (opts.handshake) {
     for (const id of installedIds) {
       const meta = MCP_SERVERS.find((s) => s.id === id);

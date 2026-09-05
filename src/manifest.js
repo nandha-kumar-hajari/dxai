@@ -55,29 +55,26 @@ export function writeManifest(filePath, manifest) {
 }
 
 // Convenience: load → mutate → save.
-export function updateManifest(filePath, mutator) {
+function updateManifest(filePath, mutator) {
   const m = readManifest(filePath);
   mutator(m);
   return writeManifest(filePath, m);
 }
 
-// Record system MCP installs from writeMcpConfigs result map.
+// Record MCP installs from a writeMcpConfigs / writeProjectMcpConfigs result map.
 // `mcpResults` is { [agentId]: { agent, added, skipped, errors, path, addedIds } }.
-// We record only the IDs each agent actually merged (r.addedIds), so the manifest
-// never claims servers that were skipped because they were already present.
-export function recordSystemMcp(mcpResults) {
+// Only the IDs each agent actually merged (r.addedIds) are recorded, so the
+// manifest never claims servers that were skipped because they were already present.
+function recordMcp(filePath, mcpResults) {
   if (!mcpResults) return;
-  updateManifest(SYSTEM_MANIFEST_PATH, (m) => {
+  updateManifest(filePath, (m) => {
     const now = new Date().toISOString();
     for (const [agentId, r] of Object.entries(mcpResults)) {
       const ids = r.addedIds || [];
       if (ids.length === 0) continue;
       if (!m.mcp[agentId]) m.mcp[agentId] = {};
       for (const serverId of ids) {
-        m.mcp[agentId][serverId] = {
-          addedAt: now,
-          configPath: r.path || null,
-        };
+        m.mcp[agentId][serverId] = { addedAt: now, configPath: r.path || null };
       }
       if (!m.agents.includes(agentId)) m.agents.push(agentId);
     }
@@ -86,17 +83,30 @@ export function recordSystemMcp(mcpResults) {
 
 // `skillResults.installed` holds skill IDs (which are also the on-disk
 // directory names), so manifest keys line up with what cleanup scans for.
-export function recordSystemSkills(skillResults) {
+function recordSkills(filePath, skillResults) {
   if (!skillResults || skillResults.installed.length === 0) return;
-  updateManifest(SYSTEM_MANIFEST_PATH, (m) => {
+  updateManifest(filePath, (m) => {
     const now = new Date().toISOString();
     for (const skillId of skillResults.installed) {
-      m.skills[skillId] = {
-        addedAt: now,
-        path: skillResults.directory,
-      };
+      m.skills[skillId] = { addedAt: now, path: skillResults.directory };
     }
   });
+}
+
+export function recordSystemMcp(mcpResults) {
+  recordMcp(SYSTEM_MANIFEST_PATH, mcpResults);
+}
+
+export function recordProjectMcp(mcpResults, cwd = process.cwd()) {
+  recordMcp(path.join(cwd, PROJECT_MANIFEST_PATH), mcpResults);
+}
+
+export function recordSystemSkills(skillResults) {
+  recordSkills(SYSTEM_MANIFEST_PATH, skillResults);
+}
+
+export function recordProjectSkills(skillResults, cwd = process.cwd()) {
+  recordSkills(path.join(cwd, PROJECT_MANIFEST_PATH), skillResults);
 }
 
 export function recordSystemTools(toolResults) {
@@ -106,40 +116,6 @@ export function recordSystemTools(toolResults) {
     const now = new Date().toISOString();
     for (const toolId of toolResults.installed) {
       m.tools[toolId] = { addedAt: now };
-    }
-  });
-}
-
-export function recordProjectMcp(mcpResults, cwd = process.cwd()) {
-  if (!mcpResults) return;
-  const filePath = path.join(cwd, PROJECT_MANIFEST_PATH);
-  updateManifest(filePath, (m) => {
-    const now = new Date().toISOString();
-    for (const [agentId, r] of Object.entries(mcpResults)) {
-      const ids = r.addedIds || [];
-      if (ids.length === 0) continue;
-      if (!m.mcp[agentId]) m.mcp[agentId] = {};
-      for (const serverId of ids) {
-        m.mcp[agentId][serverId] = {
-          addedAt: now,
-          configPath: r.path || null,
-        };
-      }
-      if (!m.agents.includes(agentId)) m.agents.push(agentId);
-    }
-  });
-}
-
-export function recordProjectSkills(skillResults, cwd = process.cwd()) {
-  if (!skillResults || skillResults.installed.length === 0) return;
-  const filePath = path.join(cwd, PROJECT_MANIFEST_PATH);
-  updateManifest(filePath, (m) => {
-    const now = new Date().toISOString();
-    for (const skillId of skillResults.installed) {
-      m.skills[skillId] = {
-        addedAt: now,
-        path: skillResults.directory,
-      };
     }
   });
 }

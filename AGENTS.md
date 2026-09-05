@@ -35,8 +35,8 @@ src/cleanup.js          → Manifest-aware cleanup (prunes manifest on removal)
 src/mcp-cmd.js          → Fast-path `dxai add` / `dxai remove` MCP commands
 src/rollback.js         → dxai rollback — restore files from .bak.<ts> snapshots
 src/runtime.js          → Option normalization
-src/select.js           → Shared selection resolution (flag > defaults > prompt) + catalog checkbox builder
-src/branding.js         → Banner, colors, message helpers
+src/select.js           → Shared selection resolution (flag > defaults > prompt), catalog checkbox builder, confirm()
+src/branding.js         → Banner, colors, message helpers, quiet()/startSpinner()/reportMcpResults()
 src/net.js              → fetch with per-attempt timeout + retry/backoff (shared)
 src/fs-atomic.js        → Atomic file writes (temp + rename), optional 0600 mode
 src/registry/

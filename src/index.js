@@ -1,12 +1,11 @@
 import { execFileSync } from 'child_process';
 import inquirer from 'inquirer';
-import ora from 'ora';
 import chalk from 'chalk';
 import path from 'path';
 
 import {
   printBanner, sectionHeader, successMsg, warnMsg,
-  errorMsg, infoMsg, theme,
+  errorMsg, infoMsg, theme, quiet, startSpinner, reportMcpResults,
 } from './branding.js';
 import {
   detectOS, checkPrerequisites, detectAgents,
@@ -25,19 +24,13 @@ import {
   previewMcpConfigs,
 } from './config-writer.js';
 import { normalizeOptions } from './runtime.js';
-import { resolveSelection, buildCatalogChoices } from './select.js';
+import { resolveSelection, buildCatalogChoices, confirm } from './select.js';
 import { parseSafeCommand } from './registry/validate.js';
 import { maybeRefreshCatalog } from './auto-update.js';
 import { resolveProfile, readProfile, mergeWithProfile, saveProfile, listProfiles } from './profile.js';
 import {
   recordSystemMcp, recordSystemSkills, recordSystemTools, recordProjectMcp, recordProjectSkills, recordProjectFiles,
 } from './manifest.js';
-
-// In --json mode, suppress decorative output.
-function quiet(runtime, fn) {
-  if (runtime.json) return;
-  fn();
-}
 
 // Count per-step failures captured inside a flow's result maps, so a partially
 // failed setup can exit non-zero instead of silently reporting success.
@@ -81,9 +74,7 @@ export async function collectMcpInputs(selectedMcpIds, mcpRegistry, runtime) {
   return inputs;
 }
 
-// ══════════════════════════════════════════════
-// MCP servers — shared selection (system + project flows)
-// ══════════════════════════════════════════════
+// ── MCP servers — shared selection (system + project flows) ──
 function mcpServersFor(selectedAgentIds) {
   return MCP_SERVERS.filter((s) => selectedAgentIds.some((aid) => s.configs[aid]));
 }
@@ -102,9 +93,7 @@ async function promptMcpServers(selectedAgentIds, message) {
   return picked;
 }
 
-// ══════════════════════════════════════════════
-// Shared: Banner + Detection + Agent Selection
-// ══════════════════════════════════════════════
+// ── Shared: Banner + Detection + Agent Selection ──
 async function sharedSetup(runtime) {
   const osInfo = detectOS();
   const prereqs = checkPrerequisites();
@@ -180,16 +169,7 @@ async function sharedSetup(runtime) {
       console.log();
       warnMsg(`Not installed: ${missingAgents.map((a) => a.name).join(', ')}`);
 
-      const { installMissing } = await inquirer.prompt([
-        {
-          type: 'confirm',
-          name: 'installMissing',
-          message: 'Would you like install commands for the missing tools?',
-          default: true,
-        },
-      ]);
-
-      if (installMissing) {
+      if (await confirm('Would you like install commands for the missing tools?')) {
         for (const agent of missingAgents) {
           const cmd = INSTALL_COMMANDS[agent.id]?.[osInfo.name] || 'See official documentation';
           console.log(theme.dim(`    ${agent.name}: `) + theme.accent(cmd));
@@ -197,16 +177,7 @@ async function sharedSetup(runtime) {
         console.log();
         infoMsg('Install them and re-run dxai, or continue to configure anyway.');
 
-        const { continueAnyway } = await inquirer.prompt([
-          {
-            type: 'confirm',
-            name: 'continueAnyway',
-            message: 'Continue with setup for selected tools?',
-            default: true,
-          },
-        ]);
-
-        if (!continueAnyway) {
+        if (!(await confirm('Continue with setup for selected tools?'))) {
           console.log();
           infoMsg('Run dxai again after installing your tools. Bye!');
           process.exit(0);
@@ -218,9 +189,7 @@ async function sharedSetup(runtime) {
   return { osInfo, prereqs, agents, selectedAgents, selectedAgentIds };
 }
 
-// ══════════════════════════════════════════════
-// Skills — shared selection + install (used by system and project modes)
-// ══════════════════════════════════════════════
+// ── Skills — shared selection + install (used by system and project modes) ──
 // Skills are downloaded into a project-level directory (.agents/skills, which
 // Codex reads natively, or .cursor/skills), so they're meaningful in both the
 // system and project flows. These helpers keep the two call sites consistent.
@@ -262,9 +231,7 @@ async function selectSkills(runtime, headerLabel, { recommendByDefault = true } 
 // appropriate manifest (system vs project). Mutates `result.skillResults`.
 async function installAndReportSkills(selectedSkillIds, selectedAgents, runtime, result, record) {
   if (selectedSkillIds.length === 0) return;
-  const spinner = runtime.json
-    ? null
-    : ora({ text: 'Installing agent skills...', color: 'cyan' }).start();
+  const spinner = startSpinner(runtime, 'Installing agent skills...');
   try {
     const skillResults = await installSkills(selectedSkillIds, SKILLS, selectedAgents);
     spinner?.stop();
@@ -288,9 +255,7 @@ async function installAndReportSkills(selectedSkillIds, selectedAgents, runtime,
   }
 }
 
-// ══════════════════════════════════════════════
-// System Mode — global/user-level configs
-// ══════════════════════════════════════════════
+// ── System Mode — global/user-level configs ──
 async function runSystem(ctx, runtime) {
   const { osInfo, selectedAgents, selectedAgentIds } = ctx;
 
@@ -353,7 +318,6 @@ async function runSystem(ctx, runtime) {
   // where the agents read them from) — the header says so rather than "Global".
   const selectedSkillIds = await selectSkills(runtime, 'Select Agent Skills');
 
-  // Collect required inputs.
   const mcpInputs = await collectMcpInputs(selectedMcpIds, MCP_SERVERS, runtime);
 
   // ── Summary & Confirmation ──
@@ -368,14 +332,9 @@ async function runSystem(ctx, runtime) {
     console.log();
   });
 
-  if (!runtime.nonInteractive) {
-    const { confirm } = await inquirer.prompt([
-      { type: 'confirm', name: 'confirm', message: 'Proceed with system setup?', default: true },
-    ]);
-    if (!confirm) {
-      infoMsg('Setup cancelled. Run dxai again anytime.');
-      process.exit(0);
-    }
+  if (!runtime.nonInteractive && !(await confirm('Proceed with system setup?'))) {
+    infoMsg('Setup cancelled. Run dxai again anytime.');
+    process.exit(0);
   }
 
   // ── Dry-run short-circuit ──
@@ -387,7 +346,7 @@ async function runSystem(ctx, runtime) {
     quiet(runtime, () => {
       sectionHeader('Dry run — no changes written');
       console.log();
-      for (const [_, p] of Object.entries(previews)) {
+      for (const p of Object.values(previews)) {
         const tag = p.exists ? theme.dim('(merge)') : theme.dim('(create)');
         console.log(`  ${theme.label(p.agent)} ${tag} → ${p.path}`);
         if (p.wouldAdd.length) console.log(`    ${theme.success('+ would add:')} ${p.wouldAdd.join(', ')}`);
@@ -432,28 +391,14 @@ async function runSystem(ctx, runtime) {
   const result = { mcpResults: null, skillResults: null, toolResults: null, errorCount: 0 };
 
   if (selectedMcpIds.length > 0) {
-    const spinner = runtime.json
-      ? null
-      : ora({ text: 'Writing global MCP server configs...', color: 'cyan' }).start();
+    const spinner = startSpinner(runtime, 'Writing global MCP server configs...');
     try {
       const mcpResults = writeMcpConfigs(selectedAgents, selectedMcpIds, MCP_SERVERS, mcpInputs);
       spinner?.stop();
       result.mcpResults = mcpResults;
       recordSystemMcp(mcpResults);
 
-      quiet(runtime, () => {
-        for (const r of Object.values(mcpResults)) {
-          if (r.added > 0) {
-            successMsg(`${r.agent}: ${r.added} MCP server(s) added` + (r.path ? ` → ${r.path}` : ''));
-          }
-          if (r.skipped > 0) {
-            infoMsg(`${r.agent}: ${r.skipped} already configured, skipped`);
-          }
-          for (const err of r.errors || []) {
-            warnMsg(`${r.agent}: Failed to configure ${err.id} — ${err.error}`);
-          }
-        }
-      });
+      quiet(runtime, () => reportMcpResults(mcpResults));
     } catch (err) {
       spinner?.stop();
       result.errorCount++;
@@ -466,9 +411,7 @@ async function runSystem(ctx, runtime) {
     const detectedTools = detectAutomationTools(AUTOMATION_TOOLS);
     const toolResults = { installed: [], skipped: [], errors: [] };
 
-    const spinner = runtime.json
-      ? null
-      : ora({ text: 'Installing automation tools...', color: 'cyan' }).start();
+    const spinner = startSpinner(runtime, 'Installing automation tools...');
 
     for (const toolId of selectedToolIds) {
       const tool = AUTOMATION_TOOLS.find((t) => t.id === toolId);
@@ -517,9 +460,7 @@ async function runSystem(ctx, runtime) {
   return { selectedMcpIds, selectedSkillIds, selectedToolIds, needsEnv, ...result };
 }
 
-// ══════════════════════════════════════════════
-// Project Mode — cwd project configs
-// ══════════════════════════════════════════════
+// ── Project Mode — cwd project configs ──
 async function runProject(ctx, runtime, { handleSkills = false } = {}) {
   const { selectedAgents, selectedAgentIds } = ctx;
   const hasCursor = selectedAgentIds.includes('cursor');
@@ -686,14 +627,9 @@ async function runProject(ctx, runtime, { handleSkills = false } = {}) {
     console.log();
   });
 
-  if (!runtime.nonInteractive) {
-    const { confirm } = await inquirer.prompt([
-      { type: 'confirm', name: 'confirm', message: 'Proceed with project setup?', default: true },
-    ]);
-    if (!confirm) {
-      infoMsg('Setup cancelled. Run dxai again anytime.');
-      process.exit(0);
-    }
+  if (!runtime.nonInteractive && !(await confirm('Proceed with project setup?'))) {
+    infoMsg('Setup cancelled. Run dxai again anytime.');
+    process.exit(0);
   }
 
   // ── Dry-run short-circuit ──
@@ -722,19 +658,13 @@ async function runProject(ctx, runtime, { handleSkills = false } = {}) {
   let projectMcpResults = null;
   let projectErrorCount = 0;
   if (selectedFeatures.includes('project-mcp') && projectMcpIds.length > 0) {
-    const spinner = runtime.json ? null : ora({ text: 'Writing project-level MCP configs...', color: 'cyan' }).start();
+    const spinner = startSpinner(runtime, 'Writing project-level MCP configs...');
     try {
       const mcpResults = writeProjectMcpConfigs(agentsWithProjectMcp, projectMcpIds, MCP_SERVERS, projectMcpInputs);
       spinner?.stop();
       projectMcpResults = mcpResults;
       recordProjectMcp(mcpResults);
-      quiet(runtime, () => {
-        for (const [_, r] of Object.entries(mcpResults)) {
-          if (r.added > 0) successMsg(`${r.agent}: ${r.added} project MCP server(s) added → ${r.path}`);
-          if (r.skipped > 0) infoMsg(`${r.agent}: ${r.skipped} already configured, skipped`);
-          for (const err of r.errors || []) warnMsg(`${r.agent}: ${err.id} — ${err.error}`);
-        }
-      });
+      quiet(runtime, () => reportMcpResults(mcpResults));
     } catch (err) {
       spinner?.stop();
       projectErrorCount++;
@@ -820,9 +750,7 @@ async function runProject(ctx, runtime, { handleSkills = false } = {}) {
   return projectResult;
 }
 
-// ══════════════════════════════════════════════
-// Main Entry Point
-// ══════════════════════════════════════════════
+// ── Main Entry Point ──
 export async function run(mode, opts = {}) {
   // Profile resolution. Semantics:
   //   opts.profile === false      → --no-profile, skip auto-discovery
@@ -965,9 +893,7 @@ export async function run(mode, opts = {}) {
   console.log();
 }
 
-// ══════════════════════════════════════════════
-// Apply a saved profile (sugar for run + --yes)
-// ══════════════════════════════════════════════
+// ── Apply a saved profile (sugar for run + --yes) ──
 export async function apply(nameOrPath, opts = {}) {
   const profilePath = resolveProfile(nameOrPath);
   if (!profilePath) {
@@ -984,9 +910,7 @@ export async function apply(nameOrPath, opts = {}) {
   await run(mode, { ...merged, profile: profilePath });
 }
 
-// ══════════════════════════════════════════════
-// Save current selections as a named profile
-// ══════════════════════════════════════════════
+// ── Save current selections as a named profile ──
 export async function saveProfileCmd(nameOrPath, opts = {}) {
   const data = {
     mode: opts.mode,
@@ -1019,9 +943,7 @@ export async function saveProfileCmd(nameOrPath, opts = {}) {
   return written;
 }
 
-// ══════════════════════════════════════════════
-// List discoverable profiles
-// ══════════════════════════════════════════════
+// ── List discoverable profiles ──
 export async function listProfilesCmd(opts = {}) {
   const profiles = listProfiles();
   if (opts.json) {

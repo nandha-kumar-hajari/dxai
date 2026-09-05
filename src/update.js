@@ -7,7 +7,7 @@ import {
   printBanner, sectionHeader, successMsg, warnMsg, errorMsg, infoMsg, theme,
 } from './branding.js';
 
-export const REGISTRY_FILES = [
+const REGISTRY_FILES = [
   { name: 'mcp-servers', listKey: 'servers' },
   { name: 'skills', listKey: 'skills' },
   { name: 'automation-tools', listKey: 'tools' },

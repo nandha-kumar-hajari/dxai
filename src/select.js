@@ -62,3 +62,11 @@ export function buildCatalogChoices(categories, items, { decorate } = {}) {
   }
   return choices;
 }
+
+// Yes/no prompt. Returns the boolean answer.
+export async function confirm(message, { defaultValue = true } = {}) {
+  const { answer } = await inquirer.prompt([
+    { type: 'confirm', name: 'answer', message, default: defaultValue },
+  ]);
+  return answer;
+}

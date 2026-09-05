@@ -2,9 +2,7 @@ import fs from 'fs-extra';
 import path from 'path';
 import { execFileSync } from 'child_process';
 
-// ══════════════════════════════════════════════
-// Stack Signal Mapping
-// ══════════════════════════════════════════════
+// ── Stack Signal Mapping ──
 
 const STACK_SIGNALS = {
   react:  { deps: ['react', 'next', 'react-dom', '@remix-run/react'] },
@@ -17,9 +15,7 @@ const STACK_SIGNALS = {
   mobile: { deps: ['react-native', 'expo'], files: ['pubspec.yaml'] },
 };
 
-// ══════════════════════════════════════════════
-// Manifest Detection
-// ══════════════════════════════════════════════
+// ── Manifest Detection ──
 
 function detectManifests(cwd) {
   const manifests = { found: false, pkg: null, scripts: {}, deps: {}, devDeps: {}, workspaces: null };
@@ -49,9 +45,7 @@ function detectManifests(cwd) {
   return manifests;
 }
 
-// ══════════════════════════════════════════════
-// Stack Detection
-// ══════════════════════════════════════════════
+// ── Stack Detection ──
 
 function detectStacks(cwd, manifests) {
   const allDeps = { ...manifests.deps, ...manifests.devDeps };
@@ -84,9 +78,7 @@ function detectStacks(cwd, manifests) {
   return detected;
 }
 
-// ══════════════════════════════════════════════
-// Git Info Detection
-// ══════════════════════════════════════════════
+// ── Git Info Detection ──
 
 // All git calls use execFileSync (argv form, no shell) with any line-counting
 // done in JS — the previous `| head -1` / `| wc -l` pipes silently failed under
@@ -128,9 +120,7 @@ function detectGitInfo(cwd) {
   return info;
 }
 
-// ══════════════════════════════════════════════
-// Tooling Detection
-// ══════════════════════════════════════════════
+// ── Tooling Detection ──
 
 function detectTooling(cwd, pkg) {
   const tooling = {
@@ -144,7 +134,6 @@ function detectTooling(cwd, pkg) {
 
   const exists = (f) => fs.existsSync(path.join(cwd, f));
 
-  // Linter detection
   const linterChecks = [
     { type: 'eslint', files: ['.eslintrc', '.eslintrc.js', '.eslintrc.cjs', '.eslintrc.json', '.eslintrc.yml', 'eslint.config.js', 'eslint.config.mjs', 'eslint.config.cjs', 'eslint.config.ts'] },
     { type: 'biome', files: ['biome.json', 'biome.jsonc'] },
@@ -161,7 +150,6 @@ function detectTooling(cwd, pkg) {
     if (tooling.linter) break;
   }
 
-  // Formatter detection
   const formatterChecks = [
     { type: 'prettier', files: ['.prettierrc', '.prettierrc.js', '.prettierrc.cjs', '.prettierrc.json', '.prettierrc.yml', 'prettier.config.js', 'prettier.config.mjs', 'prettier.config.cjs'] },
     { type: 'biome', files: ['biome.json', 'biome.jsonc'] },
@@ -177,7 +165,6 @@ function detectTooling(cwd, pkg) {
     if (tooling.formatter) break;
   }
 
-  // Test framework detection
   const allDeps = { ...(pkg?.dependencies || {}), ...(pkg?.devDependencies || {}) };
   if (allDeps['vitest']) {
     tooling.testFramework = { type: 'vitest' };
@@ -200,11 +187,9 @@ function detectTooling(cwd, pkg) {
     }
   }
 
-  // Test directory detection
   const testDirs = ['test', 'tests', '__tests__', 'spec'];
   tooling.hasTestDir = testDirs.some((d) => exists(d));
 
-  // CI detection
   if (exists('.github/workflows')) {
     tooling.ci = { type: 'github-actions', path: '.github/workflows/' };
   } else if (exists('.gitlab-ci.yml')) {
@@ -213,7 +198,6 @@ function detectTooling(cwd, pkg) {
     tooling.ci = { type: 'circleci', path: '.circleci/' };
   }
 
-  // Package manager detection
   if (exists('pnpm-lock.yaml')) {
     tooling.packageManager = 'pnpm';
   } else if (exists('yarn.lock')) {
@@ -227,9 +211,7 @@ function detectTooling(cwd, pkg) {
   return tooling;
 }
 
-// ══════════════════════════════════════════════
-// Command Extraction
-// ══════════════════════════════════════════════
+// ── Command Extraction ──
 
 function extractCommands(pkg, packageManager) {
   const commands = {};
@@ -264,9 +246,7 @@ function extractCommands(pkg, packageManager) {
   return commands;
 }
 
-// ══════════════════════════════════════════════
-// Maturity Classification
-// ══════════════════════════════════════════════
+// ── Maturity Classification ──
 
 function classifyMaturity(exists, git) {
   if (!exists || git.commitCount < 5) return 'greenfield';
@@ -275,9 +255,7 @@ function classifyMaturity(exists, git) {
   return 'established';
 }
 
-// ══════════════════════════════════════════════
-// Monorepo Detection
-// ══════════════════════════════════════════════
+// ── Monorepo Detection ──
 
 function detectMonorepo(cwd, manifests) {
   const result = { detected: false, type: null };
@@ -315,9 +293,7 @@ function detectMonorepo(cwd, manifests) {
   return result;
 }
 
-// ══════════════════════════════════════════════
-// Main Export
-// ══════════════════════════════════════════════
+// ── Main Export ──
 
 export function detectProject(cwd) {
   const manifests = detectManifests(cwd);

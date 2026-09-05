@@ -1,6 +1,4 @@
-// ══════════════════════════════════════════════
-// Tech Stack Registry
-// ══════════════════════════════════════════════
+// ── Tech Stack Registry ──
 
 export const TECH_STACKS = [
   { id: 'react', name: 'React', label: 'React / Next.js / TypeScript' },
@@ -13,11 +11,9 @@ export const TECH_STACKS = [
   { id: 'mobile', name: 'Mobile', label: 'React Native / Flutter' },
 ];
 
-// ══════════════════════════════════════════════
-// Agent Rules — Universal + Per-Stack
-// ══════════════════════════════════════════════
+// ── Agent Rules — Universal + Per-Stack ──
 
-export const AGENT_RULES = {
+const AGENT_RULES = {
   universal: {
     code_quality: [
       'No `any` in TypeScript. Use `unknown` + type guards.',
@@ -203,9 +199,7 @@ export const AGENT_RULES = {
   },
 };
 
-// ══════════════════════════════════════════════
-// Cursor Rules — Tightened
-// ══════════════════════════════════════════════
+// ── Cursor Rules — Tightened ──
 
 export const CURSOR_RULES = {
   general: `---
@@ -497,11 +491,9 @@ export const CURSOR_COMMANDS = {
 `,
 };
 
-// ══════════════════════════════════════════════
-// Contextual Rules — Maturity-Aware
-// ══════════════════════════════════════════════
+// ── Contextual Rules — Maturity-Aware ──
 
-export const CONTEXTUAL_RULES = {
+const CONTEXTUAL_RULES = {
   greenfield: {
     code_quality: [
       'Set up directory structure following framework conventions before writing features.',
@@ -562,11 +554,9 @@ export const CONTEXTUAL_RULES = {
   },
 };
 
-// ══════════════════════════════════════════════
-// Tooling Rules Builder
-// ══════════════════════════════════════════════
+// ── Tooling Rules Builder ──
 
-export function buildToolingRules(profile) {
+function buildToolingRules(profile) {
   const rules = [];
   if (profile.tooling.linter)
     rules.push(`Linter: ${profile.tooling.linter.type} (${profile.tooling.linter.configFile}). Run before committing.`);
@@ -589,9 +579,7 @@ export function buildToolingRules(profile) {
   return rules;
 }
 
-// ══════════════════════════════════════════════
-// Cursor Rule Builder (with optional profile)
-// ══════════════════════════════════════════════
+// ── Cursor Rule Builder (with optional profile) ──
 
 export function buildCursorRule(ruleId, profile) {
   const base = CURSOR_RULES[ruleId];
@@ -599,33 +587,34 @@ export function buildCursorRule(ruleId, profile) {
   if (!profile || ruleId !== 'general') return base;
 
   // Inject project context into general.mdc
-  const lines = [];
-  lines.push('');
-  lines.push('# Project Context');
-  lines.push('');
-
-  const maturityDescriptions = {
-    greenfield: 'This is a new/greenfield project — set up conventions early.',
-    early: 'This is an early-stage project — establish patterns before the codebase grows.',
-    established: 'This is an established codebase — match existing patterns exactly.',
-    mature: 'This is a mature codebase — match existing patterns, keep changes incremental.',
-  };
-  lines.push(`- ${maturityDescriptions[profile.maturity]}`);
-
-  const toolingRules = buildToolingRules(profile);
-  for (const rule of toolingRules) {
-    lines.push(`- ${rule}`);
-  }
-
-  return base.trimEnd() + '\n' + lines.join('\n') + '\n';
+  const lines = [MATURITY_NOTES[profile.maturity], ...buildToolingRules(profile)];
+  return `${base.trimEnd()}\n\n# Project Context\n\n${formatRules(lines)}\n`;
 }
 
-// ══════════════════════════════════════════════
-// Builder Helpers
-// ══════════════════════════════════════════════
+// ── Builder Helpers ──
+
+const MATURITY_NOTES = {
+  greenfield: 'This is a new project — set up conventions and infrastructure early.',
+  early: 'This is an early-stage project — establish patterns before the codebase grows.',
+  established: 'This is an established codebase — match existing patterns exactly.',
+  mature: 'This is a mature codebase — match existing patterns, prefer incremental changes over rewrites.',
+};
 
 function formatRules(rules) {
   return rules.map((r) => `- ${r}`).join('\n');
+}
+
+// The profile-derived fragments shared by CLAUDE.md and GEMINI.md: a maturity
+// line appended to the Behavior section, and an optional commands/tooling section.
+function profileSections(profile) {
+  if (!profile) return { behaviorNote: '', commandsSection: '' };
+  const toolingRules = buildToolingRules(profile);
+  return {
+    behaviorNote: `\n- ${MATURITY_NOTES[profile.maturity]}`,
+    commandsSection: toolingRules.length > 0
+      ? `\n## Project Commands & Tooling\n\n${formatRules(toolingRules)}\n`
+      : '',
+  };
 }
 
 function getStackNames(selectedStacks) {
@@ -650,9 +639,7 @@ function composeStackRules(selectedStacks) {
   return sections.join('\n\n');
 }
 
-// ══════════════════════════════════════════════
-// Builder Functions
-// ══════════════════════════════════════════════
+// ── Builder Functions ──
 
 export function buildAgentsMd(selectedStacks, profile = null) {
   const u = AGENT_RULES.universal;
@@ -724,22 +711,7 @@ export function buildClaudeMd(selectedStacks, profile = null) {
   const stackNames = getStackNames(selectedStacks);
   const stackRules = composeStackRules(selectedStacks);
 
-  const maturityNotes = {
-    greenfield: '- This is a new project — set up conventions and infrastructure early.',
-    early: '- This is an early-stage project — establish patterns before the codebase grows.',
-    established: '- This is an established codebase — match existing patterns exactly.',
-    mature: '- This is a mature codebase — match existing patterns, prefer incremental changes over rewrites.',
-  };
-
-  const behaviorNote = profile ? '\n' + maturityNotes[profile.maturity] : '';
-
-  let commandsSection = '';
-  if (profile) {
-    const toolingRules = buildToolingRules(profile);
-    if (toolingRules.length > 0) {
-      commandsSection = `\n## Project Commands & Tooling\n\n${formatRules(toolingRules)}\n`;
-    }
-  }
+  const { behaviorNote, commandsSection } = profileSections(profile);
 
   return `# CLAUDE.md — Instructions for Claude Code
 
@@ -770,22 +742,7 @@ export function buildGeminiMd(selectedStacks, profile = null) {
   const stackNames = getStackNames(selectedStacks);
   const stackRules = composeStackRules(selectedStacks);
 
-  const maturityNotes = {
-    greenfield: '- This is a new project — set up conventions and infrastructure early.',
-    early: '- This is an early-stage project — establish patterns before the codebase grows.',
-    established: '- This is an established codebase — match existing patterns exactly.',
-    mature: '- This is a mature codebase — match existing patterns, prefer incremental changes over rewrites.',
-  };
-
-  const behaviorNote = profile ? '\n' + maturityNotes[profile.maturity] : '';
-
-  let commandsSection = '';
-  if (profile) {
-    const toolingRules = buildToolingRules(profile);
-    if (toolingRules.length > 0) {
-      commandsSection = `\n## Project Commands & Tooling\n\n${formatRules(toolingRules)}\n`;
-    }
-  }
+  const { behaviorNote, commandsSection } = profileSections(profile);
 
   return `# GEMINI.md — Instructions for Gemini
 

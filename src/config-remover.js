@@ -14,14 +14,10 @@ function tomlHeaderRe(id) {
   return new RegExp(`^\\s*\\[mcp_servers\\.${escapeRegExp(id)}\\]`, 'm');
 }
 
-// ══════════════════════════════════════════════
-// JSON Config Scanning & Removal
-// ══════════════════════════════════════════════
+// ── JSON Config Scanning & Removal ──
 
-/**
- * Scan a JSON config file for known MCP server IDs under a given key.
- * Returns array of server IDs found.
- */
+// Scan a JSON config file for known MCP server IDs under a given key.
+// Returns array of server IDs found.
 export function scanJsonMcpConfig(filePath, mcpKey, knownIds) {
   if (!fs.existsSync(filePath)) return [];
 
@@ -36,10 +32,8 @@ export function scanJsonMcpConfig(filePath, mcpKey, knownIds) {
   }
 }
 
-/**
- * Remove specific server IDs from a JSON MCP config.
- * If the mcpKey object becomes empty, removes it entirely.
- */
+// Remove specific server IDs from a JSON MCP config.
+// If the mcpKey object becomes empty, removes it entirely.
 export function removeJsonMcpServers(filePath, mcpKey, idsToRemove) {
   if (!fs.existsSync(filePath)) return { removed: 0 };
 
@@ -61,7 +55,6 @@ export function removeJsonMcpServers(filePath, mcpKey, idsToRemove) {
     }
   }
 
-  // Clean up empty mcpKey object
   if (Object.keys(config[mcpKey]).length === 0) {
     delete config[mcpKey];
   }
@@ -70,14 +63,10 @@ export function removeJsonMcpServers(filePath, mcpKey, idsToRemove) {
   return { removed };
 }
 
-// ══════════════════════════════════════════════
-// TOML Config Scanning & Removal
-// ══════════════════════════════════════════════
+// ── TOML Config Scanning & Removal ──
 
-/**
- * Scan a TOML config file for known MCP server sections.
- * Looks for [mcp_servers.<id>] patterns.
- */
+// Scan a TOML config file for known MCP server sections.
+// Looks for [mcp_servers.<id>] patterns.
 export function scanTomlMcpConfig(filePath, knownIds) {
   if (!fs.existsSync(filePath)) return [];
 
@@ -89,10 +78,8 @@ export function scanTomlMcpConfig(filePath, knownIds) {
   }
 }
 
-/**
- * Remove TOML sections for specific server IDs.
- * Removes from [mcp_servers.<id>] to the next section header or end of file.
- */
+// Remove TOML sections for specific server IDs.
+// Removes from [mcp_servers.<id>] to the next section header or end of file.
 export function removeTomlMcpServers(filePath, idsToRemove) {
   if (!fs.existsSync(filePath)) return { removed: 0 };
 
@@ -143,9 +130,7 @@ export function removeTomlMcpServers(filePath, idsToRemove) {
   return { removed };
 }
 
-// ══════════════════════════════════════════════
-// Claude Code CLI Scanning & Removal
-// ══════════════════════════════════════════════
+// ── Claude Code CLI Scanning & Removal ──
 
 // True when `id` appears in `claude mcp list` output as a whole token — a bare
 // substring check would let "git" match "github" and skip/remove the wrong
@@ -170,9 +155,7 @@ export function listClaudeCodeMcpOutput() {
   }
 }
 
-/**
- * Remove MCP servers from Claude Code via CLI.
- */
+// Remove MCP servers from Claude Code via CLI.
 export function removeClaudeCodeMcpServers(serverIds) {
   let removed = 0;
   const errors = [];
@@ -193,9 +176,7 @@ export function removeClaudeCodeMcpServers(serverIds) {
   return { removed, errors };
 }
 
-/**
- * Scan Claude Code for known MCP server IDs.
- */
+// Scan Claude Code for known MCP server IDs.
 export function scanClaudeCodeMcpServers(knownIds) {
   const output = listClaudeCodeMcpOutput();
   if (!output) return [];
@@ -209,15 +190,11 @@ export function scanClaudeCodeMcpServers(knownIds) {
   return knownIds.filter((id) => outputHasServerId(localLines, id));
 }
 
-// ══════════════════════════════════════════════
-// Backup File Scanning
-// ══════════════════════════════════════════════
+// ── Backup File Scanning ──
 
-/**
- * Find .bak.* files alongside the given config file paths.
- * Matches siblings of the form <basename>.bak.<ts> only — avoids surfacing
- * unrelated backup files when a config sits in a shared dir like $HOME.
- */
+// Find .bak.* files alongside the given config file paths.
+// Matches siblings of the form <basename>.bak.<ts> only — avoids surfacing
+// unrelated backup files when a config sits in a shared dir like $HOME.
 export function scanBackupFiles(configFilePaths) {
   const backups = [];
 
@@ -242,13 +219,9 @@ export function scanBackupFiles(configFilePaths) {
   return backups;
 }
 
-// ══════════════════════════════════════════════
-// Skill Directory Scanning
-// ══════════════════════════════════════════════
+// ── Skill Directory Scanning ──
 
-/**
- * Find installed skill directories matching known skill IDs.
- */
+// Find installed skill directories matching known skill IDs.
 export function scanSkillDirectories(baseDirs, knownSkillIds) {
   const found = [];
 
@@ -271,9 +244,7 @@ export function scanSkillDirectories(baseDirs, knownSkillIds) {
   return found;
 }
 
-// ══════════════════════════════════════════════
-// Project File Scanning
-// ══════════════════════════════════════════════
+// ── Project File Scanning ──
 
 // Files that may contain user customizations
 const CUSTOM_EDIT_FILES = new Set([
@@ -281,10 +252,8 @@ const CUSTOM_EDIT_FILES = new Set([
   '.gitattributes', '.editorconfig',
 ]);
 
-/**
- * Known project files that dxai generates.
- */
-export const KNOWN_PROJECT_FILES = [
+// Known project files that dxai generates.
+const KNOWN_PROJECT_FILES = [
   'CLAUDE.md',
   'GEMINI.md',
   'AGENTS.md',
@@ -293,14 +262,11 @@ export const KNOWN_PROJECT_FILES = [
   '.cursorignore',
 ];
 
-/**
- * Scan for dxai-generated project files in the current working directory.
- * Returns array of { relativePath, absolutePath, mayHaveCustomEdits }.
- */
+// Scan for dxai-generated project files in the current working directory.
+// Returns array of { relativePath, absolutePath, mayHaveCustomEdits }.
 export function scanProjectFiles(cwd) {
   const found = [];
 
-  // Check root-level files
   for (const file of KNOWN_PROJECT_FILES) {
     const fullPath = path.join(cwd, file);
     if (fs.existsSync(fullPath)) {
@@ -312,7 +278,6 @@ export function scanProjectFiles(cwd) {
     }
   }
 
-  // Check .cursor/rules/*.mdc files
   const rulesDir = path.join(cwd, '.cursor', 'rules');
   if (fs.existsSync(rulesDir)) {
     try {
@@ -329,7 +294,6 @@ export function scanProjectFiles(cwd) {
     }
   }
 
-  // Check .cursor/commands/*.md files
   const commandsDir = path.join(cwd, '.cursor', 'commands');
   if (fs.existsSync(commandsDir)) {
     try {
@@ -349,9 +313,7 @@ export function scanProjectFiles(cwd) {
   return found;
 }
 
-/**
- * Check if a directory is empty (or only contains empty subdirectories).
- */
+// Check if a directory is empty (or only contains empty subdirectories).
 export function isEmptyDir(dirPath) {
   if (!fs.existsSync(dirPath)) return true;
   try {

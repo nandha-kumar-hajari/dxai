@@ -15,9 +15,7 @@ function escapeRegExp(s) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-// ══════════════════════════════════════════════
-// Input substitution
-// ══════════════════════════════════════════════
+// ── Input substitution ──
 // Resolve a user-provided path: expand ~ and $HOME.
 function resolveInputPath(value) {
   if (typeof value !== 'string') return value;
@@ -65,9 +63,7 @@ function buildReplacements(server, inputs) {
   return out;
 }
 
-// ══════════════════════════════════════════════
-// Version pinning
-// ══════════════════════════════════════════════
+// ── Version pinning ──
 // True for an npm package specifier (optionally scoped); false for paths, URLs, flags.
 function isPackageSpec(tok) {
   return /^(@[a-z0-9][\w.-]*\/)?[a-z0-9][\w.-]*$/i.test(tok);
@@ -128,9 +124,7 @@ export function pinPackageVersion(config, version) {
   return config;
 }
 
-// ══════════════════════════════════════════════
-// Backup helper
-// ══════════════════════════════════════════════
+// ── Backup helper ──
 // How many `.bak.<ts>` snapshots to keep per file. Older ones are pruned on
 // each new backup so repeated runs can't accumulate snapshots forever.
 const MAX_BACKUPS_PER_FILE = 5;
@@ -162,9 +156,7 @@ function backupFile(filePath) {
   return null;
 }
 
-// ══════════════════════════════════════════════
-// JSON Config Merge (Cursor, VS Code, Gemini, Windsurf)
-// ══════════════════════════════════════════════
+// ── JSON Config Merge (Cursor, VS Code, Gemini, Windsurf) ──
 function mergeJsonMcpConfig(filePath, mcpKey, newServers) {
   let config = {};
   if (fs.existsSync(filePath)) {
@@ -210,9 +202,7 @@ function mergeJsonMcpConfig(filePath, mcpKey, newServers) {
   return { added, skipped, addedIds };
 }
 
-// ══════════════════════════════════════════════
-// TOML Config Merge (Codex CLI)
-// ══════════════════════════════════════════════
+// ── TOML Config Merge (Codex CLI) ──
 // NOTE: Codex TOML is handled by line-anchored string surgery, not a TOML
 // parser — deliberately, so user comments and formatting survive our edits.
 // Supported grammar: the `[mcp_servers.<id>]` blocks dxai itself generates
@@ -252,9 +242,7 @@ function mergeTomlMcpConfig(filePath, newTomlBlocks) {
   return { added, skipped, addedIds };
 }
 
-// ══════════════════════════════════════════════
-// Claude Code CLI Config
-// ══════════════════════════════════════════════
+// ── Claude Code CLI Config ──
 function configureClaudeCodeMcp(servers) {
   let added = 0;
   let skipped = 0;
@@ -291,29 +279,17 @@ function configureClaudeCodeMcp(servers) {
   return { added, skipped, errors, addedIds };
 }
 
-// ══════════════════════════════════════════════
-// Dry-run preview helpers
-// ══════════════════════════════════════════════
+// ── Dry-run preview helpers ──
 // Given the same inputs writeMcpConfigs would receive, return a structured
 // preview describing exactly what *would* change for each agent: target file
 // path, server IDs that would be added, and server IDs that would be skipped
 // because they're already present.
 export function previewMcpConfigs(selectedAgents, selectedServers, mcpRegistry, inputs = {}) {
-  const HOME_DIR = HOME;
   const previews = {};
 
   for (const agent of selectedAgents) {
     const ap = { agent: agent.name, agentId: agent.id, format: agent.configFormat };
-
-    const serversForAgent = selectedServers
-      .map((serverId) => {
-        const server = mcpRegistry.find((s) => s.id === serverId);
-        if (!server || !server.configs[agent.id]) return null;
-        const replacements = buildReplacements(server, inputs);
-        const config = substitutePlaceholders(server.configs[agent.id], replacements);
-        return { id: serverId, config };
-      })
-      .filter(Boolean);
+    const serversForAgent = resolveServersForAgent(agent, selectedServers, mcpRegistry, inputs);
 
     if (serversForAgent.length === 0) {
       previews[agent.id] = { ...ap, path: null, wouldAdd: [], wouldSkip: selectedServers, exists: false };
@@ -331,7 +307,7 @@ export function previewMcpConfigs(selectedAgents, selectedServers, mcpRegistry, 
       continue;
     }
 
-    const filePath = agent.globalMcpPath(HOME_DIR);
+    const filePath = agent.globalMcpPath(HOME);
     let existing = {};
     let existingToml = '';
     const exists = fs.existsSync(filePath);
@@ -362,30 +338,39 @@ export function previewMcpConfigs(selectedAgents, selectedServers, mcpRegistry, 
   return previews;
 }
 
-// ══════════════════════════════════════════════
-// Main Config Writer — orchestrates per-agent
-// ══════════════════════════════════════════════
+// ── Main Config Writer — orchestrates per-agent ──
+
+// The per-server configs to write for one agent: registry lookup, placeholder
+// substitution, and version pinning. Servers with no config for this agent are
+// dropped. Shared by the global, project, and dry-run preview paths so they can
+// never disagree about what a server looks like.
+function resolveServersForAgent(agent, selectedServers, mcpRegistry, inputs) {
+  const out = [];
+  for (const serverId of selectedServers) {
+    const server = mcpRegistry.find((s) => s.id === serverId);
+    if (!server || !server.configs[agent.id]) continue;
+    let config = substitutePlaceholders(server.configs[agent.id], buildReplacements(server, inputs));
+    if (server.version) config = pinPackageVersion(config, server.version);
+    out.push({ id: serverId, config });
+  }
+  return out;
+}
+
+function toServerMap(serversForAgent) {
+  const map = {};
+  for (const { id, config } of serversForAgent) map[id] = config;
+  return map;
+}
+
 export function writeMcpConfigs(selectedAgents, selectedServers, mcpRegistry, inputs = {}) {
   const results = {};
 
   for (const agent of selectedAgents) {
-    const agentResult = { agent: agent.name, added: 0, skipped: 0, errors: [] };
-
-    // Build the server configs for this agent
-    const serversForAgent = selectedServers
-      .map((serverId) => {
-        const server = mcpRegistry.find((s) => s.id === serverId);
-        if (!server || !server.configs[agent.id]) return null;
-        const replacements = buildReplacements(server, inputs);
-        let config = substitutePlaceholders(server.configs[agent.id], replacements);
-        if (server.version) config = pinPackageVersion(config, server.version);
-        return { id: serverId, config };
-      })
-      .filter(Boolean);
+    const agentResult = { agent: agent.name, added: 0, skipped: 0, errors: [], addedIds: [] };
+    const serversForAgent = resolveServersForAgent(agent, selectedServers, mcpRegistry, inputs);
 
     if (serversForAgent.length === 0) {
       agentResult.skipped = selectedServers.length;
-      agentResult.addedIds = [];
       results[agent.id] = agentResult;
       continue;
     }
@@ -393,41 +378,24 @@ export function writeMcpConfigs(selectedAgents, selectedServers, mcpRegistry, in
     try {
       switch (agent.configFormat) {
         case 'json': {
-          // Build JSON server map
-          const serverMap = {};
-          for (const { id, config } of serversForAgent) {
-            serverMap[id] = config;
-          }
           const configPath = agent.globalMcpPath(HOME);
-          const { added, skipped, addedIds } = mergeJsonMcpConfig(configPath, agent.mcpKey, serverMap);
-          agentResult.added = added;
-          agentResult.skipped = skipped;
-          agentResult.addedIds = addedIds;
-          agentResult.path = configPath;
+          const merged = mergeJsonMcpConfig(configPath, agent.mcpKey, toServerMap(serversForAgent));
+          Object.assign(agentResult, merged, { path: configPath });
           break;
         }
 
         case 'toml': {
-          // Build TOML blocks
           const tomlBlocks = serversForAgent
             .filter(({ config }) => config.toml)
             .map(({ id, config }) => ({ id, toml: config.toml }));
           const configPath = agent.globalMcpPath(HOME);
-          const { added, skipped, addedIds } = mergeTomlMcpConfig(configPath, tomlBlocks);
-          agentResult.added = added;
-          agentResult.skipped = skipped;
-          agentResult.addedIds = addedIds;
-          agentResult.path = configPath;
+          const merged = mergeTomlMcpConfig(configPath, tomlBlocks);
+          Object.assign(agentResult, merged, { path: configPath });
           break;
         }
 
         case 'cli': {
-          // Claude Code uses CLI commands
-          const { added, skipped, errors, addedIds } = configureClaudeCodeMcp(serversForAgent);
-          agentResult.added = added;
-          agentResult.skipped = skipped;
-          agentResult.addedIds = addedIds;
-          agentResult.errors = errors;
+          Object.assign(agentResult, configureClaudeCodeMcp(serversForAgent));
           break;
         }
       }
@@ -441,42 +409,28 @@ export function writeMcpConfigs(selectedAgents, selectedServers, mcpRegistry, in
   return results;
 }
 
-// ══════════════════════════════════════════════
-// Cursor Rules Writer
-// ══════════════════════════════════════════════
+// ── Cursor Rules Writer ──
 export function writeCursorRules(selectedStacks, rulesMap, profile = null) {
   const rulesDir = path.join(process.cwd(), '.cursor', 'rules');
   fs.ensureDirSync(rulesDir);
 
   const written = [];
 
-  // Always write general rules (with optional profile injection)
+  // General rules always, with project context injected when a profile is known.
   if (rulesMap.general) {
-    const filePath = path.join(rulesDir, 'general.mdc');
-    if (!fs.existsSync(filePath)) {
-      const content = buildCursorRule('general', profile) || rulesMap.general;
-      fs.writeFileSync(filePath, content, 'utf-8');
-      written.push('general.mdc');
-    }
+    const content = buildCursorRule('general', profile) || rulesMap.general;
+    if (writeIfAbsent(path.join(rulesDir, 'general.mdc'), content)) written.push('general.mdc');
   }
 
-  // Write stack-specific rules
   for (const stackId of selectedStacks) {
-    if (rulesMap[stackId]) {
-      const filePath = path.join(rulesDir, `${stackId}.mdc`);
-      if (!fs.existsSync(filePath)) {
-        fs.writeFileSync(filePath, rulesMap[stackId], 'utf-8');
-        written.push(`${stackId}.mdc`);
-      }
-    }
+    if (!rulesMap[stackId]) continue;
+    if (writeIfAbsent(path.join(rulesDir, `${stackId}.mdc`), rulesMap[stackId])) written.push(`${stackId}.mdc`);
   }
 
   return written;
 }
 
-// ══════════════════════════════════════════════
-// Cursor Commands Writer
-// ══════════════════════════════════════════════
+// ── Cursor Commands Writer ──
 export function writeCursorCommands(commandsMap) {
   const commandsDir = path.join(process.cwd(), '.cursor', 'commands');
   fs.ensureDirSync(commandsDir);
@@ -484,21 +438,21 @@ export function writeCursorCommands(commandsMap) {
   const written = [];
 
   for (const [name, content] of Object.entries(commandsMap)) {
-    const filePath = path.join(commandsDir, `${name}.md`);
-    if (!fs.existsSync(filePath)) {
-      fs.writeFileSync(filePath, content, 'utf-8');
-      written.push(`${name}.md`);
-    }
+    if (writeIfAbsent(path.join(commandsDir, `${name}.md`), content)) written.push(`${name}.md`);
   }
 
   return written;
 }
 
-// ══════════════════════════════════════════════
-// Cursorignore Writer
-// ══════════════════════════════════════════════
-export function writeCursorIgnore() {
-  const CURSORIGNORE_CONTENT = `# Dependencies
+// ── Static project files ──
+// Written only when absent; never overwrite a file the user may have edited.
+function writeIfAbsent(filePath, content) {
+  if (fs.existsSync(filePath)) return false;
+  fs.writeFileSync(filePath, content, 'utf-8');
+  return true;
+}
+
+const CURSORIGNORE_CONTENT = `# Dependencies
 node_modules/
 .pnp/
 .pnp.js
@@ -531,95 +485,7 @@ yarn.lock
 pnpm-lock.yaml
 `;
 
-  const filePath = path.join(process.cwd(), '.cursorignore');
-  if (!fs.existsSync(filePath)) {
-    fs.writeFileSync(filePath, CURSORIGNORE_CONTENT, 'utf-8');
-    return true;
-  }
-  return false;
-}
-
-// ══════════════════════════════════════════════
-// CLAUDE.md / GEMINI.md Writer
-// ══════════════════════════════════════════════
-export function writeProjectInstructions(selectedAgents, selectedStacks, profile = null) {
-  const written = [];
-
-  const hasClaudeCode = selectedAgents.some((a) => a.id === 'claude-code');
-  const hasGemini = selectedAgents.some((a) => a.id === 'gemini');
-
-  if (hasClaudeCode) {
-    const filePath = path.join(process.cwd(), 'CLAUDE.md');
-    if (!fs.existsSync(filePath)) {
-      fs.writeFileSync(filePath, buildClaudeMd(selectedStacks, profile), 'utf-8');
-      written.push('CLAUDE.md');
-    }
-  }
-
-  if (hasGemini) {
-    const filePath = path.join(process.cwd(), 'GEMINI.md');
-    if (!fs.existsSync(filePath)) {
-      fs.writeFileSync(filePath, buildGeminiMd(selectedStacks, profile), 'utf-8');
-      written.push('GEMINI.md');
-    }
-  }
-
-  return written;
-}
-
-// ══════════════════════════════════════════════
-// Project-Level MCP Config Writer
-// ══════════════════════════════════════════════
-export function writeProjectMcpConfigs(agentsWithProjectMcp, selectedServers, mcpRegistry, inputs = {}) {
-  const results = {};
-
-  for (const agent of agentsWithProjectMcp) {
-    const agentResult = { agent: agent.name, added: 0, skipped: 0, errors: [] };
-
-    const serversForAgent = selectedServers
-      .map((serverId) => {
-        const server = mcpRegistry.find((s) => s.id === serverId);
-        if (!server || !server.configs[agent.id]) return null;
-        const replacements = buildReplacements(server, inputs);
-        let config = substitutePlaceholders(server.configs[agent.id], replacements);
-        if (server.version) config = pinPackageVersion(config, server.version);
-        return { id: serverId, config };
-      })
-      .filter(Boolean);
-
-    if (serversForAgent.length === 0) {
-      agentResult.skipped = selectedServers.length;
-      agentResult.addedIds = [];
-      results[agent.id] = agentResult;
-      continue;
-    }
-
-    try {
-      const serverMap = {};
-      for (const { id, config } of serversForAgent) {
-        serverMap[id] = config;
-      }
-      const configPath = path.join(process.cwd(), agent.projectMcpPath());
-      const { added, skipped, addedIds } = mergeJsonMcpConfig(configPath, agent.mcpKey, serverMap);
-      agentResult.added = added;
-      agentResult.skipped = skipped;
-      agentResult.addedIds = addedIds;
-      agentResult.path = configPath;
-    } catch (err) {
-      agentResult.errors.push({ id: 'general', error: err.message });
-    }
-
-    results[agent.id] = agentResult;
-  }
-
-  return results;
-}
-
-// ══════════════════════════════════════════════
-// .gitattributes Writer
-// ══════════════════════════════════════════════
-export function writeGitattributes() {
-  const GITATTRIBUTES_CONTENT = `# Auto detect text files and ensure LF line endings
+const GITATTRIBUTES_CONTENT = `# Auto detect text files and ensure LF line endings
 * text=auto eol=lf
 
 # Denote generated files that AI agents can skip
@@ -655,19 +521,7 @@ yarn.lock         merge=ours
 pnpm-lock.yaml    merge=ours
 `;
 
-  const filePath = path.join(process.cwd(), '.gitattributes');
-  if (!fs.existsSync(filePath)) {
-    fs.writeFileSync(filePath, GITATTRIBUTES_CONTENT, 'utf-8');
-    return true;
-  }
-  return false;
-}
-
-// ══════════════════════════════════════════════
-// .editorconfig Writer
-// ══════════════════════════════════════════════
-export function writeEditorconfig() {
-  const EDITORCONFIG_CONTENT = `# EditorConfig — consistent formatting across editors and AI agents
+const EDITORCONFIG_CONTENT = `# EditorConfig — consistent formatting across editors and AI agents
 # https://editorconfig.org
 
 root = true
@@ -696,29 +550,68 @@ indent_size = 4
 indent_style = tab
 `;
 
-  const filePath = path.join(process.cwd(), '.editorconfig');
-  if (!fs.existsSync(filePath)) {
-    fs.writeFileSync(filePath, EDITORCONFIG_CONTENT, 'utf-8');
-    return true;
-  }
-  return false;
+export function writeCursorIgnore() {
+  return writeIfAbsent(path.join(process.cwd(), '.cursorignore'), CURSORIGNORE_CONTENT);
 }
 
-// ══════════════════════════════════════════════
-// AGENTS.md Writer
-// ══════════════════════════════════════════════
+export function writeGitattributes() {
+  return writeIfAbsent(path.join(process.cwd(), '.gitattributes'), GITATTRIBUTES_CONTENT);
+}
+
+export function writeEditorconfig() {
+  return writeIfAbsent(path.join(process.cwd(), '.editorconfig'), EDITORCONFIG_CONTENT);
+}
+
 export function writeAgentsMd(selectedStacks, profile = null) {
-  const filePath = path.join(process.cwd(), 'AGENTS.md');
-  if (!fs.existsSync(filePath)) {
-    fs.writeFileSync(filePath, buildAgentsMd(selectedStacks, profile), 'utf-8');
-    return true;
-  }
-  return false;
+  return writeIfAbsent(path.join(process.cwd(), 'AGENTS.md'), buildAgentsMd(selectedStacks, profile));
 }
 
-// ══════════════════════════════════════════════
-// Skills Installer
-// ══════════════════════════════════════════════
+// ── CLAUDE.md / GEMINI.md Writer ──
+export function writeProjectInstructions(selectedAgents, selectedStacks, profile = null) {
+  const written = [];
+
+  const hasClaudeCode = selectedAgents.some((a) => a.id === 'claude-code');
+  const hasGemini = selectedAgents.some((a) => a.id === 'gemini');
+
+  if (hasClaudeCode && writeIfAbsent(path.join(process.cwd(), 'CLAUDE.md'), buildClaudeMd(selectedStacks, profile))) {
+    written.push('CLAUDE.md');
+  }
+  if (hasGemini && writeIfAbsent(path.join(process.cwd(), 'GEMINI.md'), buildGeminiMd(selectedStacks, profile))) {
+    written.push('GEMINI.md');
+  }
+
+  return written;
+}
+
+// ── Project-Level MCP Config Writer ──
+export function writeProjectMcpConfigs(agentsWithProjectMcp, selectedServers, mcpRegistry, inputs = {}) {
+  const results = {};
+
+  for (const agent of agentsWithProjectMcp) {
+    const agentResult = { agent: agent.name, added: 0, skipped: 0, errors: [], addedIds: [] };
+    const serversForAgent = resolveServersForAgent(agent, selectedServers, mcpRegistry, inputs);
+
+    if (serversForAgent.length === 0) {
+      agentResult.skipped = selectedServers.length;
+      results[agent.id] = agentResult;
+      continue;
+    }
+
+    try {
+      const configPath = path.join(process.cwd(), agent.projectMcpPath());
+      const merged = mergeJsonMcpConfig(configPath, agent.mcpKey, toServerMap(serversForAgent));
+      Object.assign(agentResult, merged, { path: configPath });
+    } catch (err) {
+      agentResult.errors.push({ id: 'general', error: err.message });
+    }
+
+    results[agent.id] = agentResult;
+  }
+
+  return results;
+}
+
+// ── Skills Installer ──
 // Download a skill's SKILL.md from its raw GitHub URL. Returns the markdown text.
 // A non-2xx (e.g. a missing file → 404) rejects inside fetchText, and an empty
 // body is treated as "not found" — so a failed download never writes a bogus

@@ -75,7 +75,7 @@ export function restoreBackup(original, backup, { dryRun = false } = {}) {
 
 // The files dxai may have backed up: file-based agent global configs (CLI agents
 // write no files) plus dxai-generated project files in the cwd.
-export function candidateOriginals(home, cwd) {
+function candidateOriginals(home, cwd) {
   const agentPaths = AGENT_DEFINITIONS
     .filter((a) => a.configFormat !== 'cli')
     .map((a) => { try { return a.globalMcpPath(home); } catch { return null; } })

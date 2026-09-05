@@ -1,12 +1,11 @@
 import inquirer from 'inquirer';
 import chalk from 'chalk';
-import ora from 'ora';
 import fs from 'fs-extra';
 import path from 'path';
 
 import {
   printBanner, sectionHeader, successMsg, warnMsg,
-  errorMsg, infoMsg,
+  errorMsg, infoMsg, quiet, startSpinner,
 } from './branding.js';
 import { detectOS, AGENT_DEFINITIONS } from './detect.js';
 import { MCP_SERVERS } from './registry/mcp-servers.js';
@@ -19,8 +18,8 @@ import {
   scanProjectFiles, isEmptyDir,
 } from './config-remover.js';
 import { normalizeOptions } from './runtime.js';
-
-import { readManifest, SYSTEM_MANIFEST_PATH, PROJECT_MANIFEST_PATH, writeManifest } from './manifest.js';
+import { confirm } from './select.js';
+import { readManifest, SYSTEM_MANIFEST_PATH, PROJECT_MANIFEST_PATH, writeManifest, unrecordMcp } from './manifest.js';
 
 const KNOWN_MCP_IDS = MCP_SERVERS.map((s) => s.id);
 const KNOWN_SKILL_IDS = SKILLS.map((s) => s.id);
@@ -41,22 +40,33 @@ function candidateSkillIds(manifest) {
   return fromManifest.length > 0 ? fromManifest : KNOWN_SKILL_IDS;
 }
 
-// ══════════════════════════════════════════════
-// System Cleanup
-// ══════════════════════════════════════════════
+// Checkbox values are `${agentId}::${serverId}` so one prompt can span agents;
+// regroup the picks into { [agentId]: [serverId] }.
+function groupPicks(picks) {
+  const out = {};
+  for (const pick of picks) {
+    const [agentId, serverId] = pick.split('::');
+    (out[agentId] ||= []).push(serverId);
+  }
+  return out;
+}
+
+function countIds(byAgent) {
+  return Object.values(byAgent).reduce((sum, ids) => sum + ids.length, 0);
+}
+
+// ── System Cleanup ──
 
 // ctx: { nonInteractive, dryRun, json, includeBackups }
 // Returns a structured report of what was (or would be) removed.
 async function runSystemCleanup(home, ctx) {
-  const { nonInteractive, dryRun, json } = ctx;
-  const say = (fn) => { if (!json) fn(); };
+  const { nonInteractive, dryRun } = ctx;
 
-  say(() => sectionHeader('System Cleanup — Scanning'));
+  quiet(ctx, () => sectionHeader('System Cleanup — Scanning'));
 
-  const spinner = json ? null : ora({ text: 'Scanning global configs...', color: 'cyan' }).start();
+  const spinner = startSpinner(ctx, 'Scanning global configs...');
   const manifest = readManifest(SYSTEM_MANIFEST_PATH);
 
-  // 1. Scan MCP servers across all agents — prefer manifest IDs when present
   const agentFindings = [];
   for (const agent of AGENT_DEFINITIONS) {
     const finding = { agent, foundServers: [] };
@@ -86,7 +96,6 @@ async function runSystemCleanup(home, ctx) {
     }
   }
 
-  // 2. Scan skills directories
   const skillIds = candidateSkillIds(manifest);
   const skillBaseDirs = [
     path.join(home, '.cursor', 'skills'),
@@ -96,7 +105,7 @@ async function runSystemCleanup(home, ctx) {
   ];
   const foundSkills = scanSkillDirectories(skillBaseDirs, skillIds);
 
-  // 3. Scan backup files (only for file-based agents — CLI agents don't write backups,
+  // Scan backup files (only for file-based agents — CLI agents don't write backups,
   // and their globalMcpPath sits in $HOME which would surface unrelated .bak files)
   const backupTargets = AGENT_DEFINITIONS
     .filter((a) => a.configFormat !== 'cli')
@@ -108,14 +117,13 @@ async function runSystemCleanup(home, ctx) {
 
   spinner?.stop();
 
-  // Check if anything was found
   const totalMcpServers = agentFindings.reduce((sum, f) => sum + f.foundServers.length, 0);
   if (totalMcpServers === 0 && foundSkills.length === 0 && foundBackups.length === 0) {
-    say(() => infoMsg('No dxai-managed system configurations found.'));
+    quiet(ctx, () => infoMsg('No dxai-managed system configurations found.'));
     return { mcp: {}, skills: [], backups: [] };
   }
 
-  // 4. Select MCP servers to remove — everything found in non-interactive mode.
+  // Select MCP servers to remove — everything found in non-interactive mode.
   let mcpToRemove = {};
   if (totalMcpServers > 0) {
     if (nonInteractive) {
@@ -126,7 +134,6 @@ async function runSystemCleanup(home, ctx) {
       console.log();
       sectionHeader('MCP Servers Found');
 
-      // Build unified choices grouped by agent
       const mcpChoices = [];
       for (const finding of agentFindings) {
         mcpChoices.push(new inquirer.Separator(chalk.cyan(`\n  ${finding.agent.name}`)));
@@ -153,16 +160,11 @@ async function runSystemCleanup(home, ctx) {
         },
       ]);
 
-      // Parse selections into { agentId: [serverIds] }
-      for (const sel of selectedMcp) {
-        const [agentId, serverId] = sel.split('::');
-        if (!mcpToRemove[agentId]) mcpToRemove[agentId] = [];
-        mcpToRemove[agentId].push(serverId);
-      }
+      mcpToRemove = groupPicks(selectedMcp);
     }
   }
 
-  // 5. Select skills to remove — everything found in non-interactive mode.
+  // Select skills to remove — everything found in non-interactive mode.
   let skillsToRemove = [];
   if (foundSkills.length > 0) {
     if (nonInteractive) {
@@ -192,34 +194,25 @@ async function runSystemCleanup(home, ctx) {
     }
   }
 
-  // 6. Backup files — non-interactive keeps them unless --backups was passed.
+  // Backup files — non-interactive keeps them unless --backups was passed.
   let deleteBackups = false;
   if (foundBackups.length > 0) {
     if (nonInteractive) {
       deleteBackups = !!ctx.includeBackups;
     } else {
       console.log();
-      const { confirmBackups } = await inquirer.prompt([
-        {
-          type: 'confirm',
-          name: 'confirmBackups',
-          message: `Delete ${foundBackups.length} backup file(s)?`,
-          default: false,
-        },
-      ]);
-      deleteBackups = confirmBackups;
+      deleteBackups = await confirm(`Delete ${foundBackups.length} backup file(s)?`, { defaultValue: false });
     }
   }
 
-  // Check if anything was selected
-  const mcpCount = Object.values(mcpToRemove).reduce((sum, ids) => sum + ids.length, 0);
+  const mcpCount = countIds(mcpToRemove);
   if (mcpCount === 0 && skillsToRemove.length === 0 && !deleteBackups) {
-    say(() => infoMsg('Nothing selected for removal.'));
+    quiet(ctx, () => infoMsg('Nothing selected for removal.'));
     return { mcp: {}, skills: [], backups: [] };
   }
 
-  // 7. Summary & confirm (interactive only)
-  say(() => {
+  // Summary & confirm (interactive only)
+  quiet(ctx, () => {
     console.log();
     sectionHeader(dryRun ? 'Cleanup Summary (dry run)' : 'Cleanup Summary');
     if (mcpCount > 0) infoMsg(`MCP servers to remove: ${mcpCount}`);
@@ -229,16 +222,7 @@ async function runSystemCleanup(home, ctx) {
 
   if (!nonInteractive && !dryRun) {
     console.log();
-    const { confirmCleanup } = await inquirer.prompt([
-      {
-        type: 'confirm',
-        name: 'confirmCleanup',
-        message: 'Proceed with cleanup?',
-        default: false,
-      },
-    ]);
-
-    if (!confirmCleanup) {
+    if (!(await confirm('Proceed with cleanup?', { defaultValue: false }))) {
       warnMsg('Cleanup cancelled.');
       return { mcp: {}, skills: [], backups: [], cancelled: true };
     }
@@ -250,20 +234,19 @@ async function runSystemCleanup(home, ctx) {
     backups: deleteBackups ? [...foundBackups] : [],
   };
 
-  // 8. Execute (skipped entirely on --dry-run)
+  // Execute (skipped entirely on --dry-run)
   if (dryRun) return report;
 
-  say(() => {
+  quiet(ctx, () => {
     console.log();
     sectionHeader('Removing');
   });
 
-  // Remove MCP servers
   for (const [agentId, serverIds] of Object.entries(mcpToRemove)) {
     const agent = AGENT_DEFINITIONS.find((a) => a.id === agentId);
     if (!agent) continue;
 
-    const spin = json ? null : ora({ text: `Removing from ${agent.name}...`, color: 'cyan' }).start();
+    const spin = startSpinner(ctx, `Removing from ${agent.name}...`);
 
     try {
       switch (agent.configFormat) {
@@ -271,52 +254,48 @@ async function runSystemCleanup(home, ctx) {
           const configPath = agent.globalMcpPath(home);
           const { removed } = removeJsonMcpServers(configPath, agent.mcpKey, serverIds);
           spin?.stop();
-          say(() => successMsg(`Removed ${removed} server(s) from ${agent.name}`));
+          quiet(ctx, () => successMsg(`Removed ${removed} server(s) from ${agent.name}`));
           break;
         }
         case 'toml': {
           const configPath = agent.globalMcpPath(home);
           const { removed } = removeTomlMcpServers(configPath, serverIds);
           spin?.stop();
-          say(() => successMsg(`Removed ${removed} server(s) from ${agent.name}`));
+          quiet(ctx, () => successMsg(`Removed ${removed} server(s) from ${agent.name}`));
           break;
         }
         case 'cli': {
           const { removed, errors } = removeClaudeCodeMcpServers(serverIds);
           spin?.stop();
-          say(() => successMsg(`Removed ${removed} server(s) from ${agent.name}`));
+          quiet(ctx, () => successMsg(`Removed ${removed} server(s) from ${agent.name}`));
           for (const err of errors) {
-            say(() => warnMsg(`Failed to remove "${err.id}": ${err.error}`));
+            quiet(ctx, () => warnMsg(`Failed to remove "${err.id}": ${err.error}`));
           }
           break;
         }
       }
     } catch (err) {
       spin?.stop();
-      say(() => errorMsg(`Failed to clean ${agent.name}: ${err.message}`));
+      quiet(ctx, () => errorMsg(`Failed to clean ${agent.name}: ${err.message}`));
     }
   }
 
-  // Remove skills
   for (const skillPath of skillsToRemove) {
     try {
       fs.removeSync(skillPath);
-      say(() => successMsg(`Removed skill: ${path.basename(skillPath)}`));
+      quiet(ctx, () => successMsg(`Removed skill: ${path.basename(skillPath)}`));
     } catch (err) {
-      say(() => errorMsg(`Failed to remove ${skillPath}: ${err.message}`));
+      quiet(ctx, () => errorMsg(`Failed to remove ${skillPath}: ${err.message}`));
     }
   }
 
-  // Remove backup files
   if (deleteBackups) {
     for (const backupPath of foundBackups) {
       try {
         fs.removeSync(backupPath);
-      } catch {
-        // Skip individual backup errors
-      }
+      } catch { /* best-effort */ }
     }
-    say(() => successMsg(`Deleted ${foundBackups.length} backup file(s)`));
+    quiet(ctx, () => successMsg(`Deleted ${foundBackups.length} backup file(s)`));
   }
 
   // Prune the manifest so `list`/`status` reflect what was just removed —
@@ -329,17 +308,12 @@ async function runSystemCleanup(home, ctx) {
 // Remove cleaned-up entries from the system manifest. `mcpToRemove` is
 // { [agentId]: [serverId] }; `skillPaths` are the removed skill directories.
 function pruneSystemManifest(mcpToRemove, skillPaths) {
-  const m = readManifest(SYSTEM_MANIFEST_PATH);
-  let changed = false;
-
   for (const [agentId, serverIds] of Object.entries(mcpToRemove)) {
-    if (!m.mcp[agentId]) continue;
-    for (const id of serverIds) {
-      if (m.mcp[agentId][id]) { delete m.mcp[agentId][id]; changed = true; }
-    }
-    if (Object.keys(m.mcp[agentId]).length === 0) delete m.mcp[agentId];
+    unrecordMcp(SYSTEM_MANIFEST_PATH, agentId, serverIds);
   }
 
+  const m = readManifest(SYSTEM_MANIFEST_PATH);
+  let changed = false;
   for (const skillPath of skillPaths) {
     const skillId = path.basename(skillPath);
     const skill = SKILLS.find((s) => s.id === skillId);
@@ -353,24 +327,19 @@ function pruneSystemManifest(mcpToRemove, skillPaths) {
   if (changed) writeManifest(SYSTEM_MANIFEST_PATH, m);
 }
 
-// ══════════════════════════════════════════════
-// Project Cleanup
-// ══════════════════════════════════════════════
+// ── Project Cleanup ──
 
 // ctx: { nonInteractive, dryRun, json }
 async function runProjectCleanup(ctx) {
-  const { nonInteractive, dryRun, json } = ctx;
-  const say = (fn) => { if (!json) fn(); };
+  const { nonInteractive, dryRun } = ctx;
   const cwd = process.cwd();
 
-  say(() => sectionHeader('Project Cleanup — Scanning'));
+  quiet(ctx, () => sectionHeader('Project Cleanup — Scanning'));
 
-  const spinner = json ? null : ora({ text: 'Scanning project files...', color: 'cyan' }).start();
+  const spinner = startSpinner(ctx, 'Scanning project files...');
 
-  // 1. Scan project files
   const foundFiles = scanProjectFiles(cwd);
 
-  // 2. Scan project-level MCP configs
   const projectMcpFindings = [];
   for (const agent of AGENT_DEFINITIONS) {
     if (!agent.projectMcpPath) continue;
@@ -386,11 +355,11 @@ async function runProjectCleanup(ctx) {
   spinner?.stop();
 
   if (foundFiles.length === 0 && projectMcpFindings.length === 0) {
-    say(() => infoMsg('No dxai-managed project files found in current directory.'));
+    quiet(ctx, () => infoMsg('No dxai-managed project files found in current directory.'));
     return { files: [], skippedFiles: [], mcp: {} };
   }
 
-  // 3. Select project files to remove. Non-interactive mirrors the interactive
+  // Select project files to remove. Non-interactive mirrors the interactive
   // defaults: files that may carry custom edits (CLAUDE.md, AGENTS.md, ...) are
   // NOT removed automatically — they're reported as skipped instead.
   let filesToRemove = [];
@@ -425,7 +394,7 @@ async function runProjectCleanup(ctx) {
     }
   }
 
-  // 4. Select project MCP servers to remove — everything found when non-interactive.
+  // Select project MCP servers to remove — everything found when non-interactive.
   let projectMcpToRemove = {};
   if (projectMcpFindings.length > 0) {
     if (nonInteractive) {
@@ -462,23 +431,18 @@ async function runProjectCleanup(ctx) {
         },
       ]);
 
-      for (const sel of selectedProjectMcp) {
-        const [agentId, serverId] = sel.split('::');
-        if (!projectMcpToRemove[agentId]) projectMcpToRemove[agentId] = [];
-        projectMcpToRemove[agentId].push(serverId);
-      }
+      projectMcpToRemove = groupPicks(selectedProjectMcp);
     }
   }
 
-  // Check if anything selected
-  const projectMcpCount = Object.values(projectMcpToRemove).reduce((sum, ids) => sum + ids.length, 0);
+  const projectMcpCount = countIds(projectMcpToRemove);
   if (filesToRemove.length === 0 && projectMcpCount === 0) {
-    say(() => infoMsg('Nothing selected for removal.'));
+    quiet(ctx, () => infoMsg('Nothing selected for removal.'));
     return { files: [], skippedFiles, mcp: {} };
   }
 
-  // 5. Summary & confirm (interactive only)
-  say(() => {
+  // Summary & confirm (interactive only)
+  quiet(ctx, () => {
     console.log();
     sectionHeader(dryRun ? 'Cleanup Summary (dry run)' : 'Cleanup Summary');
     if (filesToRemove.length > 0) infoMsg(`Files to remove: ${filesToRemove.length}`);
@@ -488,16 +452,7 @@ async function runProjectCleanup(ctx) {
 
   if (!nonInteractive && !dryRun) {
     console.log();
-    const { confirmCleanup } = await inquirer.prompt([
-      {
-        type: 'confirm',
-        name: 'confirmCleanup',
-        message: 'Proceed with cleanup?',
-        default: false,
-      },
-    ]);
-
-    if (!confirmCleanup) {
+    if (!(await confirm('Proceed with cleanup?', { defaultValue: false }))) {
       warnMsg('Cleanup cancelled.');
       return { files: [], skippedFiles, mcp: {}, cancelled: true };
     }
@@ -509,25 +464,23 @@ async function runProjectCleanup(ctx) {
     mcp: projectMcpToRemove,
   };
 
-  // 6. Execute (skipped entirely on --dry-run)
+  // Execute (skipped entirely on --dry-run)
   if (dryRun) return report;
 
-  say(() => {
+  quiet(ctx, () => {
     console.log();
     sectionHeader('Removing');
   });
 
-  // Remove project files
   for (const filePath of filesToRemove) {
     try {
       fs.removeSync(filePath);
-      say(() => successMsg(`Removed: ${path.relative(cwd, filePath)}`));
+      quiet(ctx, () => successMsg(`Removed: ${path.relative(cwd, filePath)}`));
     } catch (err) {
-      say(() => errorMsg(`Failed to remove ${path.relative(cwd, filePath)}: ${err.message}`));
+      quiet(ctx, () => errorMsg(`Failed to remove ${path.relative(cwd, filePath)}: ${err.message}`));
     }
   }
 
-  // Remove project MCP server entries
   for (const [agentId, serverIds] of Object.entries(projectMcpToRemove)) {
     const agent = AGENT_DEFINITIONS.find((a) => a.id === agentId);
     if (!agent) continue;
@@ -535,13 +488,12 @@ async function runProjectCleanup(ctx) {
     const projectConfigPath = path.join(cwd, agent.projectMcpPath());
     try {
       const { removed } = removeJsonMcpServers(projectConfigPath, agent.mcpKey, serverIds);
-      say(() => successMsg(`Removed ${removed} server(s) from project ${agent.name} config`));
+      quiet(ctx, () => successMsg(`Removed ${removed} server(s) from project ${agent.name} config`));
     } catch (err) {
-      say(() => errorMsg(`Failed to clean project ${agent.name} config: ${err.message}`));
+      quiet(ctx, () => errorMsg(`Failed to clean project ${agent.name} config: ${err.message}`));
     }
   }
 
-  // Clean up empty directories
   const dirsToCheck = [
     path.join(cwd, '.cursor', 'rules'),
     path.join(cwd, '.cursor', 'commands'),
@@ -554,9 +506,7 @@ async function runProjectCleanup(ctx) {
     if (isEmptyDir(dir)) {
       try {
         fs.removeSync(dir);
-      } catch {
-        // Skip
-      }
+      } catch { /* best-effort */ }
     }
   }
 
@@ -569,30 +519,20 @@ async function runProjectCleanup(ctx) {
 function pruneProjectManifest(cwd, filePaths, projectMcpToRemove) {
   const manifestPath = path.join(cwd, PROJECT_MANIFEST_PATH);
   if (!fs.existsSync(manifestPath)) return;
-  const m = readManifest(manifestPath);
-  let changed = false;
-
-  if (filePaths.length) {
-    const removedRel = new Set(filePaths.map((f) => path.relative(cwd, f)));
-    const before = m.files.length;
-    m.files = m.files.filter((f) => !removedRel.has(f.relativePath));
-    if (m.files.length !== before) changed = true;
-  }
 
   for (const [agentId, serverIds] of Object.entries(projectMcpToRemove)) {
-    if (!m.mcp[agentId]) continue;
-    for (const id of serverIds) {
-      if (m.mcp[agentId][id]) { delete m.mcp[agentId][id]; changed = true; }
-    }
-    if (Object.keys(m.mcp[agentId]).length === 0) delete m.mcp[agentId];
+    unrecordMcp(manifestPath, agentId, serverIds);
   }
 
-  if (changed) writeManifest(manifestPath, m);
+  if (filePaths.length === 0) return;
+  const m = readManifest(manifestPath);
+  const removedRel = new Set(filePaths.map((f) => path.relative(cwd, f)));
+  const before = m.files.length;
+  m.files = m.files.filter((f) => !removedRel.has(f.relativePath));
+  if (m.files.length !== before) writeManifest(manifestPath, m);
 }
 
-// ══════════════════════════════════════════════
-// Main Cleanup Entry Point
-// ══════════════════════════════════════════════
+// ── Main Cleanup Entry Point ──
 
 const CLEANUP_SCOPES = ['system', 'project', 'both'];
 

@@ -21,7 +21,7 @@ export function detectOS() {
 }
 
 // ── Command existence check ──
-function commandExists(cmd) {
+export function commandExists(cmd) {
   // `cmd` is interpolated into a shell string below. Agent detect commands are
   // hardcoded, but automation-tool detect commands come from the (untrusted,
   // network-refreshed) registry — so even though the payload is validated at
@@ -56,47 +56,12 @@ function getVersion(cmd, flag = '--version') {
 
 // ── Prerequisites ──
 export function checkPrerequisites() {
-  const results = {};
-
-  // Node.js
-  results.node = {
-    installed: commandExists('node'),
-    version: getVersion('node'),
-  };
-
-  // npm
-  results.npm = {
-    installed: commandExists('npm'),
-    version: getVersion('npm'),
-  };
-
-  // git
-  results.git = {
-    installed: commandExists('git'),
-    version: getVersion('git'),
-  };
-
-  // Python
   const pyCmd = commandExists('python3') ? 'python3' : (commandExists('python') ? 'python' : null);
-  results.python = {
-    installed: !!pyCmd,
-    command: pyCmd,
-    version: pyCmd ? getVersion(pyCmd) : null,
+  return {
+    node: { installed: commandExists('node'), version: getVersion('node') },
+    git: { installed: commandExists('git'), version: getVersion('git') },
+    python: { installed: !!pyCmd, command: pyCmd, version: pyCmd ? getVersion(pyCmd) : null },
   };
-
-  // pip
-  const pipCmd = commandExists('pip3') ? 'pip3' : (commandExists('pip') ? 'pip' : null);
-  results.pip = {
-    installed: !!pipCmd,
-    command: pipCmd,
-  };
-
-  // npx
-  results.npx = {
-    installed: commandExists('npx'),
-  };
-
-  return results;
 }
 
 // ── Agent Detection ──
@@ -298,10 +263,8 @@ export function detectAgents(home) {
 }
 
 export function printDetectionResults(osInfo, prereqs, agents) {
-  // OS
   successMsg(`${osInfo.name} ${osInfo.arch}`);
 
-  // Prerequisites
   if (prereqs.node.installed) {
     successMsg(`Node.js ${prereqs.node.version}`);
   } else {
@@ -316,7 +279,6 @@ export function printDetectionResults(osInfo, prereqs, agents) {
     successMsg(`Python ${prereqs.python.version}`);
   }
 
-  // Agents
   const found = agents.filter((a) => a.installed);
   if (found.length > 0) {
     successMsg(`Detected: ${found.map((a) => a.name).join(', ')}`);

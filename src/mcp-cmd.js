@@ -7,7 +7,7 @@ import os from 'os';
 import path from 'path';
 
 import {
-  printBanner, sectionHeader, successMsg, warnMsg, infoMsg, theme,
+  printBanner, sectionHeader, successMsg, warnMsg, infoMsg, theme, reportMcpResults,
 } from './branding.js';
 import { detectAgents, AGENT_DEFINITIONS } from './detect.js';
 import { MCP_SERVERS } from './registry/mcp-servers.js';
@@ -50,15 +50,6 @@ function resolveTargetAgents(runtime, home, { project = false } = {}) {
   }
   if (project) agents = agents.filter((a) => typeof a.projectMcpPath === 'function');
   return agents;
-}
-
-function reportMcpResults(results, runtime, verb) {
-  if (runtime.json) return;
-  for (const r of Object.values(results)) {
-    if (r.added > 0) successMsg(`${r.agent}: ${r.added} MCP server(s) ${verb}` + (r.path ? ` → ${r.path}` : ''));
-    if (r.skipped > 0) infoMsg(`${r.agent}: ${r.skipped} already present, skipped`);
-    for (const err of r.errors || []) warnMsg(`${r.agent}: ${err.id} — ${err.error}`);
-  }
 }
 
 // ── dxai add <id...> ──
@@ -124,7 +115,7 @@ export async function addMcp(serverIds = [], opts = {}) {
     process.stdout.write(JSON.stringify({ ok: errorCount === 0, added: ids, project, results }, null, 2) + '\n');
     return;
   }
-  reportMcpResults(results, runtime, 'added');
+  reportMcpResults(results);
   console.log();
 }
 

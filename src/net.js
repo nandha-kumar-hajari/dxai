@@ -8,7 +8,7 @@ const DEFAULT_RETRIES = 2; // total attempts = retries + 1
 const DEFAULT_BACKOFF_MS = 300; // base delay, doubled each retry
 
 // Injectable so tests can advance "time" without real waits.
-export function sleep(ms) {
+function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
