@@ -47,11 +47,11 @@ Tracking gaps and missing features for a modern AI dev-environment CLI. Items ar
 - [x] Cache lookup at `~/.dxai/cache/<name>.json`; bundled JSON is the offline fallback. Reads stay synchronous so consumers don't need top-level await.
 - [x] `dxai update` (`src/update.js`) — fetches remote registry, validates shape, writes cache, surfaces added/removed entries.
 - [x] `DXAI_REGISTRY_URL` env var overrides the default remote base URL.
-- [x] Unit tests via `node:test` covering: JSON/TOML merge, placeholder substitution, malformed-JSON refusal, backup-scan specificity, project detection (react/python/monorepo/scripts/eslint), profile resolve+merge+save+keys, manifest read/write/round-trip, runtime normalization, registry shape, `diffRegistry`, version pinning, `registryBaseFor`, the stdio handshake, and a CLI end-to-end spawn suite, and the catalog auto-refresh. **81 tests, all passing.**
+- [x] Unit tests via `node:test` covering: JSON/TOML merge, placeholder substitution, malformed-JSON refusal, backup-scan specificity, project detection (react/python/monorepo/scripts/eslint), profile resolve+merge+save+keys, manifest read/write/round-trip, runtime normalization, registry shape, `diffRegistry`, version pinning, `registryBaseFor`, the stdio handshake, and a CLI end-to-end spawn suite, and the catalog auto-refresh. All tests pass (run `npm test` for the current count).
 - [x] GitHub Actions CI (`.github/workflows/ci.yml`): syntax check + tests + smoke run across **Ubuntu/macOS/Windows × Node 18/20/22**.
 - [x] `--dry-run` now reports concrete previews (`previewMcpConfigs`): for each agent, the target file path, server IDs that would be added, and IDs already present. JSON output includes `previews`.
 - [x] **Pinned MCP package versions + `--registry-version` flag.** Servers may carry an optional `version` field; `pinPackageVersion` (`src/config-writer.js`) appends `@<version>` to the npm specifier at write time across JSON/CLI/TOML configs (no-op when absent, so existing entries are unchanged). `filesystem`/`memory`/`sequential-thinking` are pinned. `dxai update` gained `--registry-version <ref>` (swaps the branch segment of the registry URL) and `--registry-url <url>` (overrides `DXAI_REGISTRY_URL`), resolved by `registryBaseFor` in `src/registry/loader.js`.
-- [x] **End-to-end spawn integration test.** `test/cli.e2e.test.js` spawns `bin/cli.js` as a subprocess (`--version`, `--help`, `list --json`, `doctor --json`) in an isolated HOME/cwd; `test/handshake.test.js` exercises the JSON-RPC handshake against a fake stdio MCP fixture (ok / garbage / timeout / missing-binary paths). **81 tests, all passing** (was 42).
+- [x] **End-to-end spawn integration test.** `test/cli.e2e.test.js` spawns `bin/cli.js` as a subprocess (`--version`, `--help`, `list --json`, `doctor --json`) in an isolated HOME/cwd; `test/handshake.test.js` exercises the JSON-RPC handshake against a fake stdio MCP fixture (ok / garbage / timeout / missing-binary paths). All tests pass (run `npm test` for the current count).
 
 > **Top 5 complete.** All five workstreams (and their deferred sub-items) are now shipped.
 
@@ -102,7 +102,7 @@ Tracking gaps and missing features for a modern AI dev-environment CLI. Items ar
 - [ ] Hooks: pre-setup / post-setup scripts defined in profile.
 - [ ] Telemetry opt-in for anonymous usage stats (only if it informs the registry).
 - [ ] i18n scaffolding (English-only today).
-- [ ] Post-setup verification — actually launch each MCP server in a subprocess and confirm it speaks the protocol.
+- [x] Post-setup verification — shipped as `dxai doctor --handshake` (`src/handshake.js`): spawns each installed stdio MCP server, sends a JSON-RPC `initialize`, and verifies the reply.
 - [ ] `dxai diff` — show what would change in user files before applying.
 - [ ] Snapshot/restore: `dxai snapshot` + `dxai restore <id>` for whole-environment rollback.
 - [ ] Web UI / TUI alternative to inquirer prompts (e.g. Ink-based).
