@@ -65,7 +65,10 @@ function updateManifest(filePath, mutator) {
 // `mcpResults` is { [agentId]: { agent, added, skipped, errors, path, addedIds } }.
 // Only the IDs each agent actually merged (r.addedIds) are recorded, so the
 // manifest never claims servers that were skipped because they were already present.
-function recordMcp(filePath, mcpResults) {
+// `meta` ({ [serverId]: { registry, requiresEnv } }) carries provenance for servers
+// that are not in the bundled catalogue (added live by registry name), so
+// `doctor`/`status` can still reason about them later.
+function recordMcp(filePath, mcpResults, meta = {}) {
   if (!mcpResults) return;
   updateManifest(filePath, (m) => {
     const now = new Date().toISOString();
@@ -74,7 +77,7 @@ function recordMcp(filePath, mcpResults) {
       if (ids.length === 0) continue;
       if (!m.mcp[agentId]) m.mcp[agentId] = {};
       for (const serverId of ids) {
-        m.mcp[agentId][serverId] = { addedAt: now, configPath: r.path || null };
+        m.mcp[agentId][serverId] = { addedAt: now, configPath: r.path || null, ...(meta[serverId] || {}) };
       }
       if (!m.agents.includes(agentId)) m.agents.push(agentId);
     }
@@ -93,12 +96,12 @@ function recordSkills(filePath, skillResults) {
   });
 }
 
-export function recordSystemMcp(mcpResults) {
-  recordMcp(SYSTEM_MANIFEST_PATH, mcpResults);
+export function recordSystemMcp(mcpResults, meta) {
+  recordMcp(SYSTEM_MANIFEST_PATH, mcpResults, meta);
 }
 
-export function recordProjectMcp(mcpResults, cwd = process.cwd()) {
-  recordMcp(path.join(cwd, PROJECT_MANIFEST_PATH), mcpResults);
+export function recordProjectMcp(mcpResults, cwd = process.cwd(), meta) {
+  recordMcp(path.join(cwd, PROJECT_MANIFEST_PATH), mcpResults, meta);
 }
 
 export function recordSystemSkills(skillResults) {

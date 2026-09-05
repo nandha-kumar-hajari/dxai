@@ -2,6 +2,9 @@
 // No wizard — resolve target agents (from --agents or detection), validate the
 // server IDs, and write/remove directly. Honours --project, --dry-run, --json,
 // and --yes, matching the setup flow's conventions.
+//
+// `add` also accepts official MCP Registry names (`io.github.owner/server`):
+// the record is resolved live and becomes a catalogue entry for this run.
 
 import os from 'os';
 import path from 'path';
@@ -10,7 +13,9 @@ import {
   printBanner, sectionHeader, successMsg, warnMsg, infoMsg, theme, reportMcpResults,
 } from './branding.js';
 import { detectAgents, AGENT_DEFINITIONS } from './detect.js';
-import { MCP_SERVERS } from './registry/mcp-servers.js';
+import { MCP_SERVERS, deriveConfigs } from './registry/mcp-servers.js';
+import { fetchRegistryServer, pickTransport, slugForRegistryName } from './registry/mcp-registry.js';
+import { isValidRegistryName, validateRegistryPayload } from './registry/validate.js';
 import {
   writeMcpConfigs, writeProjectMcpConfigs, previewMcpConfigs,
 } from './config-writer.js';
@@ -37,6 +42,62 @@ function requireKnown(ids, knownIds, label) {
   return valid;
 }
 
+const KNOWN_MCP_IDS = MCP_SERVERS.map((s) => s.id);
+
+// Turn a live registry record into a catalogue entry for this invocation only.
+// Validated like fetched catalogue data before its configs are derived.
+function entryFromRegistry(name, record) {
+  const r = pickTransport(record);
+  if (!r.transport) throw new Error(`${name}: no usable transport (${r.warnings.join('; ')})`);
+  const entry = {
+    id: slugForRegistryName(name),
+    name: r.title || slugForRegistryName(name),
+    description: r.description || '',
+    category: 'registry',
+    registry: { name, resolved: { version: r.registryVersion, at: new Date().toISOString(), fields: ['transport'] } },
+    transport: r.transport,
+  };
+  if (Object.keys(r.requiresEnv).length) entry.requiresEnv = r.requiresEnv;
+  if (Object.keys(r.requiresInput).length) entry.requiresInput = r.requiresInput;
+  if (r.stale) Object.assign(entry, { stale: true, staleReason: r.staleReason });
+  const problems = validateRegistryPayload('servers', [entry]);
+  if (problems.length) throw new Error(`${name}: ${problems.join('; ')}`);
+  return { ...entry, configs: deriveConfigs(entry) };
+}
+
+// Resolve the requested servers to catalogue ids plus the server list to use.
+// Catalogue ids pass through. A registry name maps to the catalogue entry that
+// links to it, or is looked up live and appended as a synthetic entry. Anything
+// else is unknown.
+async function resolveServerList(requested) {
+  const servers = [...MCP_SERVERS];
+  const ids = [];
+  const unknown = [];
+  const live = {};
+  for (const raw of requested) {
+    if (KNOWN_MCP_IDS.includes(raw)) { ids.push(raw); continue; }
+    if (!isValidRegistryName(raw)) { unknown.push(raw); continue; }
+    const linked = MCP_SERVERS.find((s) => s.registry?.name === raw);
+    if (linked) { ids.push(linked.id); continue; }
+    const slug = slugForRegistryName(raw);
+    if (KNOWN_MCP_IDS.includes(slug)) {
+      throw new Error(`${raw} would use the id "${slug}", which already names a different catalogue server. Use the catalogue id instead.`);
+    }
+    if (live[slug]) { ids.push(slug); continue; }
+    const record = await fetchRegistryServer(raw);
+    if (!record) throw new Error(`Not found in the MCP Registry: ${raw}`);
+    const entry = entryFromRegistry(raw, record);
+    servers.push(entry);
+    live[slug] = { registry: raw, requiresEnv: Object.keys(entry.requiresEnv || {}) };
+    ids.push(slug);
+  }
+  if (unknown.length) {
+    throw new Error(`Unknown MCP server(s): ${unknown.join(', ')}. Known: ${KNOWN_MCP_IDS.join(', ')} (or an MCP Registry name like io.github.owner/server)`);
+  }
+  if (ids.length === 0) throw new Error('No MCP server(s) given.');
+  return { ids: [...new Set(ids)], servers, live };
+}
+
 // Which agents to target: --agents wins (validated); otherwise detected+installed.
 // For --project, keep only agents that support a project-level MCP path.
 function resolveTargetAgents(runtime, home, { project = false } = {}) {
@@ -58,7 +119,7 @@ export async function addMcp(serverIds = [], opts = {}) {
   const project = !!opts.project;
   const home = os.homedir();
 
-  const ids = requireKnown(serverIds, MCP_SERVERS.map((s) => s.id), 'MCP server(s)');
+  const { ids, servers, live } = await resolveServerList(serverIds);
   const agents = resolveTargetAgents(runtime, home, { project });
   if (agents.length === 0) {
     throw new Error(project
@@ -66,7 +127,7 @@ export async function addMcp(serverIds = [], opts = {}) {
       : 'No target agents detected. Pass --agents <ids> or install a supported agent.');
   }
 
-  const inputs = await collectMcpInputs(ids, MCP_SERVERS, runtime);
+  const inputs = await collectMcpInputs(ids, servers, runtime);
 
   if (!runtime.json) {
     printBanner();
@@ -74,7 +135,7 @@ export async function addMcp(serverIds = [], opts = {}) {
   }
 
   if (runtime.dryRun && !project) {
-    const previews = previewMcpConfigs(agents, ids, MCP_SERVERS, inputs);
+    const previews = previewMcpConfigs(agents, ids, servers, inputs);
     if (runtime.json) {
       process.stdout.write(JSON.stringify({ ok: true, dryRun: true, previews }, null, 2) + '\n');
       return;
@@ -102,9 +163,9 @@ export async function addMcp(serverIds = [], opts = {}) {
   }
 
   const results = project
-    ? writeProjectMcpConfigs(agents, ids, MCP_SERVERS, inputs)
-    : writeMcpConfigs(agents, ids, MCP_SERVERS, inputs);
-  if (project) recordProjectMcp(results); else recordSystemMcp(results);
+    ? writeProjectMcpConfigs(agents, ids, servers, inputs)
+    : writeMcpConfigs(agents, ids, servers, inputs);
+  if (project) recordProjectMcp(results, undefined, live); else recordSystemMcp(results, live);
 
   // Per-agent write failures land in results[*].errors — exit non-zero so
   // scripted callers can detect a partial failure.
@@ -159,7 +220,10 @@ export async function removeMcp(serverIds = [], opts = {}) {
   const project = !!opts.project;
   const home = os.homedir();
 
-  const ids = requireKnown(serverIds, MCP_SERVERS.map((s) => s.id), 'MCP server(s)');
+  // Removal is by catalogue id or the slug a registry name was added under;
+  // no live lookup is needed to take something out of a config.
+  const ids = serverIds.map((raw) => (isValidRegistryName(raw) ? slugForRegistryName(raw) : raw));
+  if (ids.length === 0) throw new Error('No MCP server(s) given.');
   const agents = resolveTargetAgents(runtime, home, { project });
   if (agents.length === 0) {
     throw new Error('No target agents detected. Pass --agents <ids> or install a supported agent.');

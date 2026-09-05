@@ -66,21 +66,23 @@ export async function listCmd(opts = {}) {
 
 // ── status ──
 // Diff manifest vs actual config files. Reports drift.
-function readActualMcp(agent, home, cwd) {
+// `ids` is the catalogue plus whatever the manifest recorded — servers added
+// live by registry name are not in the catalogue but must still be scanned.
+function readActualMcp(agent, home, cwd, ids = KNOWN_MCP_IDS) {
   const out = { global: [], project: [] };
 
   if (agent.configFormat === 'json' && typeof agent.globalMcpPath === 'function') {
-    out.global = scanJsonMcpConfig(agent.globalMcpPath(home), agent.mcpKey, KNOWN_MCP_IDS);
+    out.global = scanJsonMcpConfig(agent.globalMcpPath(home), agent.mcpKey, ids);
   } else if (agent.configFormat === 'toml' && typeof agent.globalMcpPath === 'function') {
-    out.global = scanTomlMcpConfig(agent.globalMcpPath(home), KNOWN_MCP_IDS);
+    out.global = scanTomlMcpConfig(agent.globalMcpPath(home), ids);
   } else if (agent.configFormat === 'cli') {
-    out.global = scanClaudeCodeMcpServers(KNOWN_MCP_IDS);
+    out.global = scanClaudeCodeMcpServers(ids);
   }
 
   if (typeof agent.projectMcpPath === 'function') {
     const projPath = path.join(cwd, agent.projectMcpPath());
     if (fs.existsSync(projPath)) {
-      out.project = scanJsonMcpConfig(projPath, agent.mcpKey, KNOWN_MCP_IDS);
+      out.project = scanJsonMcpConfig(projPath, agent.mcpKey, ids);
     }
   }
 
@@ -99,7 +101,7 @@ export async function statusCmd(opts = {}) {
     const recordedProject = Object.keys(project.mcp[agent.id] || {});
     if (recordedSystem.length === 0 && recordedProject.length === 0) continue;
 
-    const actual = readActualMcp(agent, home, cwd);
+    const actual = readActualMcp(agent, home, cwd, [...new Set([...KNOWN_MCP_IDS, ...recordedSystem, ...recordedProject])]);
 
     // Missing: in manifest but not in config (someone removed it).
     // Extra: in config but not in manifest (added outside dxai or by another tool).
@@ -200,17 +202,22 @@ export async function doctorCmd(opts = {}) {
     }
   }
 
-  // Env vars for installed servers.
-  const installedIds = new Set();
-  for (const servers of Object.values(system.mcp)) Object.keys(servers).forEach((id) => installedIds.add(id));
-  for (const servers of Object.values(project.mcp)) Object.keys(servers).forEach((id) => installedIds.add(id));
+  // Env vars for installed servers. Catalogue entries carry requiresEnv; servers
+  // added live by registry name carry the env var names in their manifest record.
+  const installed = new Map();
+  for (const servers of [...Object.values(system.mcp), ...Object.values(project.mcp)]) {
+    for (const [id, rec] of Object.entries(servers)) if (!installed.has(id)) installed.set(id, rec);
+  }
 
-  for (const id of installedIds) {
+  for (const [id, rec] of installed) {
     const meta = MCP_SERVERS.find((s) => s.id === id);
-    if (!meta || !meta.requiresEnv) continue;
-    for (const [envVar, desc] of Object.entries(meta.requiresEnv)) {
-      if (process.env[envVar]) ok(`env: ${envVar} set (${meta.name})`);
-      else warn(`env: ${envVar} not set — needed by ${meta.name} (${desc})`);
+    const label = meta?.name || rec.registry || id;
+    const envEntries = meta?.requiresEnv
+      ? Object.entries(meta.requiresEnv)
+      : (rec.requiresEnv || []).map((v) => [v, `required by ${label}`]);
+    for (const [envVar, desc] of envEntries) {
+      if (process.env[envVar]) ok(`env: ${envVar} set (${label})`);
+      else warn(`env: ${envVar} not set — needed by ${label} (${desc})`);
     }
   }
 
@@ -227,9 +234,9 @@ export async function doctorCmd(opts = {}) {
 
   // Handshake (opt-in) — spawn each installed MCP server and verify JSON-RPC.
   if (opts.handshake) {
-    for (const id of installedIds) {
+    for (const id of installed.keys()) {
       const meta = MCP_SERVERS.find((s) => s.id === id);
-      if (!meta) continue;
+      if (!meta) { info(`handshake: ${id} is not in the catalogue — skipped`); continue; }
       const spec = resolveSpawnSpec(meta);
       if (!spec) {
         info(`handshake: ${meta.name} is a remote/URL server — skipped`);
