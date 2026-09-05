@@ -24,3 +24,4 @@ dxai update [options]
 | `--json` | emit machine-readable JSON output | — |
 | `--registry-version <ref>` | registry tag/branch to fetch (default: main) | required |
 | `--registry-url <url>` | registry base URL (overrides DXAI_REGISTRY_URL) | required |
+| `--no-resolve` | skip re-resolving registry-linked MCP servers live from the official MCP Registry | — |

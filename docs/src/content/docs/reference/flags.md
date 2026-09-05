@@ -31,6 +31,7 @@ Auto-generated flag reference. Pulled from every subcommand registered in `bin/c
 | `--mcp <list>` | comma-separated MCP server IDs | `both`, `project`, `save-profile`, `system` | — |
 | `--mode <mode>` | mode to record: system \| project \| both | `save-profile` | — |
 | `--no-profile` | skip auto-discovery of project/user profiles | `both`, `project`, `system` | — |
+| `--no-resolve` | skip re-resolving registry-linked MCP servers live from the official MCP Registry | `update` | — |
 | `--no-update` | skip the periodic catalog refresh check | `both`, `project`, `system` | — |
 | `--path <path>` | save to an explicit file path | `save-profile` | — |
 | `--profile <nameOrPath>` | load a saved profile (name or path) | `both`, `project`, `system` | — |

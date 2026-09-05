@@ -193,6 +193,7 @@ export function buildProgram() {
     .addOption(new Option('--json', 'emit machine-readable JSON output'))
     .addOption(new Option('--registry-version <ref>', 'registry tag/branch to fetch (default: main)'))
     .addOption(new Option('--registry-url <url>', 'registry base URL (overrides DXAI_REGISTRY_URL)'))
+    .addOption(new Option('--no-resolve', 'skip re-resolving registry-linked MCP servers live from the official MCP Registry'))
     .action(async (opts) => {
       await updateCmd(opts);
     });
@@ -243,6 +244,7 @@ Environment:
   DXAI_UPDATE_TTL_DAYS=N   Days between catalog refresh checks (default 7)
   DXAI_UPDATE_TIMEOUT_MS=N Network timeout for the background refresh (default 4000)
   DXAI_REGISTRY_URL=<url>  Override the registry base URL (host a fork)
+  DXAI_MCP_REGISTRY_URL=<url>  Override the official MCP Registry base URL
 `
   );
 
