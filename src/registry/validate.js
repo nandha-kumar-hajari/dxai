@@ -23,6 +23,15 @@ const PACKAGE_SPEC_VERSIONED_RE = /^(@[a-z0-9][\w.-]*\/)?[a-z0-9][\w.-]*(@[\w.-]
 // traversal — a "../.." here would repoint the fetch at a different repo.
 const VERSION_REF_RE = /^[A-Za-z0-9._-]+$/;
 
+// Official MCP Registry server name: reverse-DNS namespace, one slash, name
+// (schema pattern). E.g. "io.github.upstash/context7", "com.supabase/mcp".
+const REGISTRY_NAME_RE = /^[a-zA-Z0-9.-]+\/[a-zA-Z0-9._-]+$/;
+
+// Catalog fields the registry resolver may own (see mcp-registry.js). Anything
+// else on an entry is curated by hand and never touched by a sync.
+export const RESOLVABLE_FIELDS = ['transport', 'requiresEnv', 'requiresInput', 'version', 'stale', 'staleReason'];
+const PREFER_TRANSPORTS = new Set(['remote', 'package']);
+
 // A bare binary name (no path separators, no shell metacharacters). Used for
 // registry fields that name a command to *probe* for (e.g. a tool's
 // `detectCommand`) — probing must never be able to execute anything else.
@@ -59,6 +68,53 @@ export function isSafeVersionRef(v) {
 
 export function isSafeBinaryName(name) {
   return typeof name === 'string' && BINARY_NAME_RE.test(name);
+}
+
+export function isValidRegistryName(name) {
+  return typeof name === 'string' && REGISTRY_NAME_RE.test(name);
+}
+
+// Registry-supplied remote URLs are written into user configs and probed by
+// catalog-health; only accept https so a poisoned record can't point a client
+// at a plaintext endpoint.
+export function isHttpsUrl(value) {
+  if (typeof value !== 'string') return false;
+  try {
+    return new URL(value).protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
+// Shape-check an entry's optional `registry` block (the link to the official
+// MCP Registry). Returns problem strings; empty when clean or absent.
+export function validateRegistryBlock(id, block) {
+  if (block === undefined) return [];
+  const problems = [];
+  if (!block || typeof block !== 'object') return [`server ${id}: registry must be an object`];
+  if (!isValidRegistryName(block.name)) problems.push(`server ${id}: invalid registry name "${block.name}"`);
+  const { prefer, resolved } = block;
+  if (prefer !== undefined) {
+    if (!prefer || typeof prefer !== 'object') problems.push(`server ${id}: registry.prefer must be an object`);
+    else {
+      if (prefer.transport !== undefined && !PREFER_TRANSPORTS.has(prefer.transport)) {
+        problems.push(`server ${id}: registry.prefer.transport must be remote|package`);
+      }
+      if (prefer.remote !== undefined && typeof prefer.remote !== 'string') {
+        problems.push(`server ${id}: registry.prefer.remote must be a string`);
+      }
+    }
+  }
+  if (resolved !== undefined) {
+    if (!resolved || typeof resolved !== 'object' || !Array.isArray(resolved.fields)) {
+      problems.push(`server ${id}: registry.resolved must carry a fields array`);
+    } else {
+      for (const f of resolved.fields) {
+        if (!RESOLVABLE_FIELDS.includes(f)) problems.push(`server ${id}: registry.resolved.fields has unknown field "${f}"`);
+      }
+    }
+  }
+  return problems;
 }
 
 // Reject registry ids that could pollute Object.prototype when used as a map key.
@@ -118,6 +174,7 @@ export function validateRegistryPayload(listKey, items) {
         problems.push(`tool ${id}: detectCommand is not a bare binary name "${item.detectCommand}"`);
       }
     } else if (listKey === 'servers') {
+      problems.push(...validateRegistryBlock(id, item.registry));
       const cmd = item.transport?.command;
       if (cmd !== undefined && !isAllowedCommand(cmd)) {
         problems.push(`server ${id}: transport command not allowlisted "${cmd}"`);
