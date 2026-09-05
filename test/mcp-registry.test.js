@@ -23,7 +23,7 @@ test('pickTransport: remote wins over package by default', () => {
   }));
   assert.deepEqual(r.transport, { type: 'http', url: 'https://mcp.context7.com/mcp' });
   assert.equal(r.source, 'remote');
-  assert.equal(r.version, '4.0.5');
+  assert.equal(r.version, undefined, 'remotes are never pinned');
   assert.deepEqual(r.requiresEnv, {});
 });
 
@@ -37,8 +37,13 @@ test('pickTransport: prefer.transport=package picks the package', () => {
   }), { transport: 'package' });
   assert.deepEqual(r.transport, { type: 'stdio', command: 'npx', args: ['-y', '@supabase/mcp-server-supabase'] });
   assert.equal(r.source, 'package');
-  assert.equal(r.version, '1.2.3');
+  assert.equal(r.version, undefined, 'packages float unless prefer.pin is set');
   assert.deepEqual(r.requiresEnv, { SUPABASE_ACCESS_TOKEN: 'Personal access token' });
+});
+
+test('pickTransport: prefer.pin writes the package version as a pin', () => {
+  const r = pickTransport(record({ name: 'x/y', packages: [npmPkg('pkg')] }), { pin: true });
+  assert.equal(r.version, '1.2.3');
 });
 
 test('pickTransport: streamable-http beats sse, prefer.remote selects among many', () => {
@@ -85,7 +90,14 @@ test('pickTransport: pypi maps to uvx; oci/mcpb are reported unsupported', () =>
     ],
   }));
   assert.deepEqual(r.transport, { type: 'stdio', command: 'uvx', args: ['my-server'] });
-  assert.equal(r.warnings.filter((w) => w.includes('not supported')).length, 2);
+  assert.equal(r.warnings.length, 0, 'skipped package types are not worth a warning once a transport was found');
+
+  const ociOnly = pickTransport(record({
+    name: 'x/y',
+    packages: [{ registryType: 'oci', identifier: 'ghcr.io/x/y:1', transport: { type: 'stdio' } }],
+  }));
+  assert.equal(ociOnly.transport, null);
+  assert.equal(ociOnly.warnings.filter((w) => w.includes('not supported')).length, 1);
 });
 
 test('pickTransport: package identifier with shell metacharacters is rejected', () => {

@@ -103,6 +103,9 @@ export function validateRegistryBlock(id, block) {
       if (prefer.remote !== undefined && typeof prefer.remote !== 'string') {
         problems.push(`server ${id}: registry.prefer.remote must be a string`);
       }
+      if (prefer.pin !== undefined && typeof prefer.pin !== 'boolean') {
+        problems.push(`server ${id}: registry.prefer.pin must be a boolean`);
+      }
     }
   }
   if (resolved !== undefined) {

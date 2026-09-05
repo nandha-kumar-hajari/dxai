@@ -79,11 +79,11 @@ function usableRemotes(remotes, prefer, warnings) {
   return valid;
 }
 
-function usablePackages(packages, warnings) {
+function usablePackages(packages, warnings, unsupported) {
   const valid = [];
   for (const p of packages || []) {
     if (!PACKAGE_LAUNCHERS[p?.registryType]) {
-      if (p?.registryType) warnings.push(`package type "${p.registryType}" (${p.identifier}) is not supported yet`);
+      if (p?.registryType) unsupported.push(`package type "${p.registryType}" (${p.identifier}) is not supported yet`);
       continue;
     }
     if (!isPackageSpec(p.identifier)) { warnings.push(`package identifier "${p.identifier}" rejected`); continue; }
@@ -134,7 +134,10 @@ function requiredHeaders(remote) {
 
 // Map a registry record (the `{ server, _meta }` envelope or a bare server.json)
 // onto dxai catalog fields. Remote-first unless `prefer.transport` says
-// otherwise; never throws — problems land in `warnings`.
+// otherwise; never throws — problems land in `warnings`. `version` (a pin, in
+// catalog terms) is only written when `prefer.pin` is set — the policy is to
+// pin minimally and let npx float; the record's version is kept in
+// `registry.resolved.version` for provenance either way.
 export function pickTransport(record, prefer = {}) {
   const server = record?.server || record || {};
   const official = record?._meta?.[OFFICIAL_META_KEY] || {};
@@ -156,7 +159,8 @@ export function pickTransport(record, prefer = {}) {
   };
 
   const remotes = usableRemotes(server.remotes, prefer, warnings);
-  const packages = usablePackages(server.packages, warnings);
+  const unsupported = [];
+  const packages = usablePackages(server.packages, warnings, unsupported);
   const wantPackage = prefer.transport === 'package';
 
   let useRemote = wantPackage ? (packages.length === 0 && remotes.length > 0) : remotes.length > 0;
@@ -169,7 +173,6 @@ export function pickTransport(record, prefer = {}) {
     const remote = remotes[0];
     out.transport = { type: 'http', url: remote.url };
     out.source = 'remote';
-    out.version = server.version;
     if (remote.type === 'sse') warnings.push(`remote ${remote.url} is SSE; some clients need a transport hint`);
     const headers = requiredHeaders(remote);
     if (headers.length) warnings.push(`remote ${remote.url} requires header(s) ${headers.join(', ')} (not rendered)`);
@@ -179,10 +182,12 @@ export function pickTransport(record, prefer = {}) {
     const argv = packageArgv(pkg.packageArguments, out.requiresInput);
     out.transport = { type: 'stdio', command: launch.command, args: [...launch.args, ...argv] };
     out.source = 'package';
-    out.version = pkg.version || server.version;
+    if (prefer.pin) out.version = pkg.version || server.version;
     out.requiresEnv = requiredEnv(pkg);
   } else {
-    warnings.push('no usable transport (no https remote, no npm/pypi package)');
+    // Only worth mentioning the package types we skipped when they were the
+    // only option — a picked remote makes them irrelevant.
+    warnings.push(...unsupported, 'no usable transport (no https remote, no npm/pypi package)');
   }
 
   if (official.status === 'deprecated' || official.status === 'deleted') {

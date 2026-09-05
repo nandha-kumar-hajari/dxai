@@ -28,7 +28,7 @@ Source control and code intelligence
 | ID | Name | Description | Agents | Required env | Required input |
 | --- | --- | --- | --- | --- | --- |
 | `github` | ★ GitHub | PRs, issues, repos, code search (official remote MCP, OAuth) | `cursor`, `claude-code`, `vscode`, `codex`, `gemini`, `windsurf`, `antigravity-ide`, `antigravity-cli` | — | — |
-| `gitlab` | GitLab | Merge requests, issues, pipelines | `cursor`, `claude-code`, `vscode`, `codex`, `gemini`, `windsurf`, `antigravity-ide`, `antigravity-cli` | `GITLAB_TOKEN` | — |
+| `gitlab` | GitLab | Merge requests, issues, pipelines (official remote MCP) | `cursor`, `claude-code`, `vscode`, `codex`, `gemini`, `windsurf`, `antigravity-ide`, `antigravity-cli` | — | — |
 | `claude-code-mcp` | Claude Code as MCP | Use Claude Code as a sub-agent inside other editors | `cursor`, `vscode`, `gemini`, `windsurf`, `antigravity-ide`, `antigravity-cli` | — | — |
 
 ## 🎨 Design
@@ -55,7 +55,7 @@ Database access and management
 
 | ID | Name | Description | Agents | Required env | Required input |
 | --- | --- | --- | --- | --- | --- |
-| `supabase` | Supabase | Supabase database, auth, storage | `cursor`, `claude-code`, `vscode`, `codex`, `gemini`, `windsurf`, `antigravity-ide`, `antigravity-cli` | `SUPABASE_ACCESS_TOKEN` | — |
+| `supabase` | Supabase | Supabase database, auth, storage (official remote MCP) | `cursor`, `claude-code`, `vscode`, `codex`, `gemini`, `windsurf`, `antigravity-ide`, `antigravity-cli` | — | — |
 | `neon` | Neon Postgres | Serverless Postgres database | `cursor`, `claude-code`, `vscode`, `codex`, `gemini`, `windsurf`, `antigravity-ide`, `antigravity-cli` | `NEON_API_KEY` | — |
 
 ## 🌐 Browser & Testing
@@ -65,7 +65,7 @@ Browser automation and testing
 | ID | Name | Description | Agents | Required env | Required input |
 | --- | --- | --- | --- | --- | --- |
 | `playwright` | ★ Playwright | Browser automation, E2E testing, screenshots | `cursor`, `claude-code`, `vscode`, `codex`, `gemini`, `windsurf`, `antigravity-ide`, `antigravity-cli` | — | — |
-| `browserbase` | Browserbase | Cloud browser sessions for testing | `cursor`, `claude-code`, `vscode`, `codex`, `gemini`, `windsurf`, `antigravity-ide`, `antigravity-cli` | `BROWSERBASE_API_KEY` | — |
+| `browserbase` | Browserbase | Cloud browser sessions for testing | `cursor`, `claude-code`, `vscode`, `codex`, `gemini`, `windsurf`, `antigravity-ide`, `antigravity-cli` | `BROWSERBASE_API_KEY`, `BROWSERBASE_PROJECT_ID`, `GEMINI_API_KEY` | — |
 
 ## ☁️  Cloud & Deploy
 
@@ -73,8 +73,8 @@ Deployment and infrastructure
 
 | ID | Name | Description | Agents | Required env | Required input |
 | --- | --- | --- | --- | --- | --- |
-| `vercel` | Vercel | Deploy, manage projects, domains | `cursor`, `claude-code`, `vscode`, `codex`, `gemini`, `windsurf`, `antigravity-ide`, `antigravity-cli` | `VERCEL_TOKEN` | — |
-| `cloudflare` | Cloudflare | Workers, Pages, DNS, R2 storage | `cursor`, `claude-code`, `vscode`, `codex`, `gemini`, `windsurf`, `antigravity-ide`, `antigravity-cli` | — | — |
+| `vercel` | Vercel | Deploy, manage projects, domains (official remote MCP) | `cursor`, `claude-code`, `vscode`, `codex`, `gemini`, `windsurf`, `antigravity-ide`, `antigravity-cli` | — | — |
+| `cloudflare` | Cloudflare | Workers bindings: KV, D1, R2, Durable Objects (official remote MCP) | `cursor`, `claude-code`, `vscode`, `codex`, `gemini`, `windsurf`, `antigravity-ide`, `antigravity-cli` | — | — |
 
 ## ⚡ Advanced
 

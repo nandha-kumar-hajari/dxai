@@ -83,3 +83,54 @@ jobs:
                 labels: ['catalog-health'],
               });
             }
+
+  sync:
+    name: registry sync
+    # Resolve every registry-linked catalogue entry from the official MCP
+    # Registry and open/update a PR when something changed. A PR opened with
+    # GITHUB_TOKEN does not trigger CI on its own; tests and docs are run here
+    # first so the PR is known-good, and CI runs again on any human push.
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    env:
+      SYNC_BRANCH: bot/registry-sync
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+
+      - name: Resolve catalogue from the MCP Registry
+        id: sync
+        run: node scripts/registry-sync.mjs
+
+      - name: Verify the synced catalogue
+        if: steps.sync.outputs.has_changes == 'true'
+        run: |
+          npm test
+          npm run docs:generate
+
+      - name: Open or update the sync PR
+        if: steps.sync.outputs.has_changes == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B "$SYNC_BRANCH"
+          git add src/registry/data/mcp-servers.json docs/src/content/docs
+          git commit -m "chore(registry): sync catalogue from the MCP Registry"
+          git push --force origin "$SYNC_BRANCH"
+          title="chore(registry): sync catalogue from the MCP Registry"
+          if gh pr view "$SYNC_BRANCH" --json number >/dev/null 2>&1; then
+            gh pr edit "$SYNC_BRANCH" --title "$title" --body-file registry-sync-report.md
+          else
+            gh pr create --base main --head "$SYNC_BRANCH" --title "$title" --body-file registry-sync-report.md --label catalog-health
+          fi

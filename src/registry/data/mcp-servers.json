@@ -48,6 +48,21 @@
       "description": "Live, version-specific library documentation",
       "category": "essential",
       "recommended": true,
+      "registry": {
+        "name": "io.github.upstash/context7",
+        "resolved": {
+          "version": "4.0.5",
+          "at": "2026-09-05T13:19:09.627Z",
+          "fields": [
+            "transport",
+            "requiresEnv",
+            "requiresInput",
+            "version",
+            "stale",
+            "staleReason"
+          ]
+        }
+      },
       "transport": {
         "type": "http",
         "url": "https://mcp.context7.com/mcp"
@@ -75,114 +90,52 @@
       "description": "PRs, issues, repos, code search (official remote MCP, OAuth)",
       "category": "code-git",
       "recommended": true,
-      "configs": {
-        "cursor": {
-          "url": "https://api.githubcopilot.com/mcp/"
+      "registry": {
+        "name": "io.github.github/github-mcp-server",
+        "prefer": {
+          "transport": "remote"
         },
-        "claude-code": {
-          "command": "claude",
-          "args": [
-            "mcp",
-            "add",
-            "github",
-            "--transport",
-            "http",
-            "https://api.githubcopilot.com/mcp/"
+        "resolved": {
+          "version": "1.12.0",
+          "at": "2026-09-05T13:19:09.627Z",
+          "fields": [
+            "transport",
+            "requiresEnv",
+            "requiresInput",
+            "version",
+            "stale",
+            "staleReason"
           ]
-        },
-        "codex": {
-          "toml": "[mcp_servers.github]\nurl = \"https://api.githubcopilot.com/mcp/\""
-        },
-        "gemini": {
-          "httpUrl": "https://api.githubcopilot.com/mcp/"
-        },
-        "vscode": {
-          "url": "https://api.githubcopilot.com/mcp/"
-        },
-        "windsurf": {
-          "serverUrl": "https://api.githubcopilot.com/mcp/"
-        },
-        "antigravity": {
-          "serverUrl": "https://api.githubcopilot.com/mcp/"
         }
+      },
+      "transport": {
+        "type": "http",
+        "url": "https://api.githubcopilot.com/mcp/"
       }
     },
     {
       "id": "gitlab",
       "name": "GitLab",
-      "description": "Merge requests, issues, pipelines",
+      "description": "Merge requests, issues, pipelines (official remote MCP)",
       "category": "code-git",
-      "stale": true,
-      "staleReason": "Upstream @modelcontextprotocol/server-gitlab is archived; no official remote MCP yet. Kept working for now.",
-      "requiresEnv": {
-        "GITLAB_TOKEN": "GitLab Personal Access Token"
-      },
-      "configs": {
-        "cursor": {
-          "command": "npx",
-          "args": [
-            "-y",
-            "@modelcontextprotocol/server-gitlab"
-          ],
-          "env": {
-            "GITLAB_TOKEN": "${GITLAB_TOKEN}"
-          }
-        },
-        "claude-code": {
-          "command": "claude",
-          "args": [
-            "mcp",
-            "add",
-            "gitlab",
-            "--",
-            "npx",
-            "-y",
-            "@modelcontextprotocol/server-gitlab"
+      "registry": {
+        "name": "com.gitlab/mcp",
+        "resolved": {
+          "version": "0.0.1",
+          "at": "2026-09-05T13:19:09.627Z",
+          "fields": [
+            "transport",
+            "requiresEnv",
+            "requiresInput",
+            "version",
+            "stale",
+            "staleReason"
           ]
-        },
-        "codex": {
-          "toml": "[mcp_servers.gitlab]\ncommand = \"npx\"\nargs = [\"-y\", \"@modelcontextprotocol/server-gitlab\"]\n\n[mcp_servers.gitlab.env]\nGITLAB_TOKEN = \"$GITLAB_TOKEN\""
-        },
-        "gemini": {
-          "command": "npx",
-          "args": [
-            "-y",
-            "@modelcontextprotocol/server-gitlab"
-          ],
-          "env": {
-            "GITLAB_TOKEN": "${GITLAB_TOKEN}"
-          }
-        },
-        "vscode": {
-          "command": "npx",
-          "args": [
-            "-y",
-            "@modelcontextprotocol/server-gitlab"
-          ],
-          "env": {
-            "GITLAB_TOKEN": "${GITLAB_TOKEN}"
-          }
-        },
-        "windsurf": {
-          "command": "npx",
-          "args": [
-            "-y",
-            "@modelcontextprotocol/server-gitlab"
-          ],
-          "env": {
-            "GITLAB_TOKEN": "${GITLAB_TOKEN}"
-          }
-        },
-        "antigravity": {
-          "command": "npx",
-          "args": [
-            "-y",
-            "@modelcontextprotocol/server-gitlab"
-          ],
-          "env": {
-            "GITLAB_TOKEN": "${GITLAB_TOKEN}"
-          }
         }
+      },
+      "transport": {
+        "type": "http",
+        "url": "https://gitlab.com/api/v4/mcp"
       }
     },
     {
@@ -233,36 +186,24 @@
       "name": "Figma",
       "description": "Design-to-code from Figma components",
       "category": "design",
-      "configs": {
-        "cursor": {
-          "url": "https://mcp.figma.com/mcp"
-        },
-        "claude-code": {
-          "command": "claude",
-          "args": [
-            "mcp",
-            "add",
-            "figma",
-            "--transport",
-            "http",
-            "https://mcp.figma.com/mcp"
+      "registry": {
+        "name": "com.figma.mcp/mcp",
+        "resolved": {
+          "version": "1.0.3",
+          "at": "2026-09-05T13:19:09.627Z",
+          "fields": [
+            "transport",
+            "requiresEnv",
+            "requiresInput",
+            "version",
+            "stale",
+            "staleReason"
           ]
-        },
-        "codex": {
-          "toml": "[mcp_servers.figma]\nurl = \"https://mcp.figma.com/mcp\""
-        },
-        "gemini": {
-          "httpUrl": "https://mcp.figma.com/mcp"
-        },
-        "vscode": {
-          "url": "https://mcp.figma.com/mcp"
-        },
-        "windsurf": {
-          "serverUrl": "https://mcp.figma.com/mcp"
-        },
-        "antigravity": {
-          "serverUrl": "https://mcp.figma.com/mcp"
         }
+      },
+      "transport": {
+        "type": "http",
+        "url": "https://mcp.figma.com/mcp"
       }
     },
     {
@@ -270,36 +211,24 @@
       "name": "Notion",
       "description": "Read/write Notion pages and databases",
       "category": "productivity",
-      "configs": {
-        "cursor": {
-          "url": "https://mcp.notion.com/mcp"
-        },
-        "claude-code": {
-          "command": "claude",
-          "args": [
-            "mcp",
-            "add",
-            "notion",
-            "--transport",
-            "http",
-            "https://mcp.notion.com/mcp"
+      "registry": {
+        "name": "com.notion/mcp",
+        "resolved": {
+          "version": "1.0.1",
+          "at": "2026-09-05T13:19:09.627Z",
+          "fields": [
+            "transport",
+            "requiresEnv",
+            "requiresInput",
+            "version",
+            "stale",
+            "staleReason"
           ]
-        },
-        "codex": {
-          "toml": "[mcp_servers.notion]\nurl = \"https://mcp.notion.com/mcp\""
-        },
-        "gemini": {
-          "httpUrl": "https://mcp.notion.com/mcp"
-        },
-        "vscode": {
-          "url": "https://mcp.notion.com/mcp"
-        },
-        "windsurf": {
-          "serverUrl": "https://mcp.notion.com/mcp"
-        },
-        "antigravity": {
-          "serverUrl": "https://mcp.notion.com/mcp"
         }
+      },
+      "transport": {
+        "type": "http",
+        "url": "https://mcp.notion.com/mcp"
       }
     },
     {
@@ -385,109 +314,49 @@
       "name": "Linear",
       "description": "Issues, projects, cycles management (official remote MCP, OAuth)",
       "category": "productivity",
-      "configs": {
-        "cursor": {
-          "url": "https://mcp.linear.app/mcp"
-        },
-        "claude-code": {
-          "command": "claude",
-          "args": [
-            "mcp",
-            "add",
-            "linear",
-            "--transport",
-            "http",
-            "https://mcp.linear.app/mcp"
+      "registry": {
+        "name": "app.linear/linear",
+        "resolved": {
+          "version": "1.0.1",
+          "at": "2026-09-05T13:19:09.627Z",
+          "fields": [
+            "transport",
+            "requiresEnv",
+            "requiresInput",
+            "version",
+            "stale",
+            "staleReason"
           ]
-        },
-        "codex": {
-          "toml": "[mcp_servers.linear]\nurl = \"https://mcp.linear.app/mcp\""
-        },
-        "gemini": {
-          "httpUrl": "https://mcp.linear.app/mcp"
-        },
-        "vscode": {
-          "url": "https://mcp.linear.app/mcp"
-        },
-        "windsurf": {
-          "serverUrl": "https://mcp.linear.app/mcp"
-        },
-        "antigravity": {
-          "serverUrl": "https://mcp.linear.app/mcp"
         }
+      },
+      "transport": {
+        "type": "http",
+        "url": "https://mcp.linear.app/mcp"
       }
     },
     {
       "id": "supabase",
       "name": "Supabase",
-      "description": "Supabase database, auth, storage",
+      "description": "Supabase database, auth, storage (official remote MCP)",
       "category": "database",
-      "requiresEnv": {
-        "SUPABASE_ACCESS_TOKEN": "Supabase Access Token"
-      },
-      "configs": {
-        "cursor": {
-          "command": "npx",
-          "args": [
-            "-y",
-            "supabase",
-            "--experimental",
-            "mcp"
-          ]
-        },
-        "claude-code": {
-          "command": "claude",
-          "args": [
-            "mcp",
-            "add",
-            "supabase",
-            "--",
-            "npx",
-            "-y",
-            "supabase",
-            "--experimental",
-            "mcp"
-          ]
-        },
-        "codex": {
-          "toml": "[mcp_servers.supabase]\ncommand = \"npx\"\nargs = [\"-y\", \"supabase\", \"--experimental\", \"mcp\"]"
-        },
-        "gemini": {
-          "command": "npx",
-          "args": [
-            "-y",
-            "supabase",
-            "--experimental",
-            "mcp"
-          ]
-        },
-        "vscode": {
-          "command": "npx",
-          "args": [
-            "-y",
-            "supabase",
-            "--experimental",
-            "mcp"
-          ]
-        },
-        "windsurf": {
-          "command": "npx",
-          "args": [
-            "-y",
-            "supabase",
-            "--experimental",
-            "mcp"
-          ]
-        },
-        "antigravity": {
-          "command": "npx",
-          "args": [
-            "-y",
-            "supabase",
-            "--experimental",
-            "mcp"
+      "registry": {
+        "name": "com.supabase/mcp",
+        "resolved": {
+          "version": "0.12.0",
+          "at": "2026-09-05T13:19:09.627Z",
+          "fields": [
+            "transport",
+            "requiresEnv",
+            "requiresInput",
+            "version",
+            "stale",
+            "staleReason"
           ]
         }
+      },
+      "transport": {
+        "type": "http",
+        "url": "https://mcp.supabase.com/mcp"
       }
     },
     {
@@ -572,57 +441,28 @@
       "description": "Browser automation, E2E testing, screenshots",
       "category": "browser",
       "recommended": true,
-      "configs": {
-        "cursor": {
-          "command": "npx",
-          "args": [
-            "-y",
-            "@playwright/mcp@latest"
-          ]
-        },
-        "claude-code": {
-          "command": "claude",
-          "args": [
-            "mcp",
-            "add",
-            "playwright",
-            "--",
-            "npx",
-            "-y",
-            "@playwright/mcp@latest"
-          ]
-        },
-        "codex": {
-          "toml": "[mcp_servers.playwright]\ncommand = \"npx\"\nargs = [\"-y\", \"@playwright/mcp@latest\"]"
-        },
-        "gemini": {
-          "command": "npx",
-          "args": [
-            "-y",
-            "@playwright/mcp@latest"
-          ]
-        },
-        "vscode": {
-          "command": "npx",
-          "args": [
-            "-y",
-            "@playwright/mcp@latest"
-          ]
-        },
-        "windsurf": {
-          "command": "npx",
-          "args": [
-            "-y",
-            "@playwright/mcp@latest"
-          ]
-        },
-        "antigravity": {
-          "command": "npx",
-          "args": [
-            "-y",
-            "@playwright/mcp@latest"
+      "registry": {
+        "name": "io.github.microsoft/playwright-mcp",
+        "resolved": {
+          "version": "0.0.79",
+          "at": "2026-09-05T13:19:09.627Z",
+          "fields": [
+            "transport",
+            "requiresEnv",
+            "requiresInput",
+            "version",
+            "stale",
+            "staleReason"
           ]
         }
+      },
+      "transport": {
+        "type": "stdio",
+        "command": "npx",
+        "args": [
+          "-y",
+          "@playwright/mcp"
+        ]
       }
     },
     {
@@ -630,209 +470,86 @@
       "name": "Browserbase",
       "description": "Cloud browser sessions for testing",
       "category": "browser",
-      "requiresEnv": {
-        "BROWSERBASE_API_KEY": "Browserbase API Key"
-      },
-      "configs": {
-        "cursor": {
-          "command": "npx",
-          "args": [
-            "-y",
-            "@browserbasehq/mcp-server-browserbase"
-          ],
-          "env": {
-            "BROWSERBASE_API_KEY": "${BROWSERBASE_API_KEY}"
-          }
-        },
-        "claude-code": {
-          "command": "claude",
-          "args": [
-            "mcp",
-            "add",
-            "browserbase",
-            "--",
-            "npx",
-            "-y",
-            "@browserbasehq/mcp-server-browserbase"
+      "registry": {
+        "name": "io.github.browserbase/mcp-server-browserbase",
+        "resolved": {
+          "version": "2.1.1",
+          "at": "2026-09-05T13:19:09.627Z",
+          "fields": [
+            "transport",
+            "requiresEnv",
+            "requiresInput",
+            "version",
+            "stale",
+            "staleReason"
           ]
-        },
-        "codex": {
-          "toml": "[mcp_servers.browserbase]\ncommand = \"npx\"\nargs = [\"-y\", \"@browserbasehq/mcp-server-browserbase\"]"
-        },
-        "gemini": {
-          "command": "npx",
-          "args": [
-            "-y",
-            "@browserbasehq/mcp-server-browserbase"
-          ],
-          "env": {
-            "BROWSERBASE_API_KEY": "${BROWSERBASE_API_KEY}"
-          }
-        },
-        "vscode": {
-          "command": "npx",
-          "args": [
-            "-y",
-            "@browserbasehq/mcp-server-browserbase"
-          ],
-          "env": {
-            "BROWSERBASE_API_KEY": "${BROWSERBASE_API_KEY}"
-          }
-        },
-        "windsurf": {
-          "command": "npx",
-          "args": [
-            "-y",
-            "@browserbasehq/mcp-server-browserbase"
-          ],
-          "env": {
-            "BROWSERBASE_API_KEY": "${BROWSERBASE_API_KEY}"
-          }
-        },
-        "antigravity": {
-          "command": "npx",
-          "args": [
-            "-y",
-            "@browserbasehq/mcp-server-browserbase"
-          ],
-          "env": {
-            "BROWSERBASE_API_KEY": "${BROWSERBASE_API_KEY}"
-          }
         }
+      },
+      "requiresEnv": {
+        "BROWSERBASE_API_KEY": "Your Browserbase API key",
+        "BROWSERBASE_PROJECT_ID": "Your Browserbase Project ID",
+        "GEMINI_API_KEY": "Your Gemini API key (default model)"
+      },
+      "transport": {
+        "type": "stdio",
+        "command": "npx",
+        "args": [
+          "-y",
+          "@browserbasehq/mcp-server-browserbase"
+        ]
       }
     },
     {
       "id": "vercel",
       "name": "Vercel",
-      "description": "Deploy, manage projects, domains",
+      "description": "Deploy, manage projects, domains (official remote MCP)",
       "category": "cloud",
-      "requiresEnv": {
-        "VERCEL_TOKEN": "Vercel Access Token"
-      },
-      "configs": {
-        "cursor": {
-          "command": "npx",
-          "args": [
-            "-y",
-            "@vercel/mcp"
-          ],
-          "env": {
-            "VERCEL_TOKEN": "${VERCEL_TOKEN}"
-          }
-        },
-        "claude-code": {
-          "command": "claude",
-          "args": [
-            "mcp",
-            "add",
-            "vercel",
-            "--",
-            "npx",
-            "-y",
-            "@vercel/mcp"
+      "registry": {
+        "name": "com.vercel/vercel-mcp",
+        "resolved": {
+          "version": "0.0.3",
+          "at": "2026-09-05T13:19:09.627Z",
+          "fields": [
+            "transport",
+            "requiresEnv",
+            "requiresInput",
+            "version",
+            "stale",
+            "staleReason"
           ]
-        },
-        "codex": {
-          "toml": "[mcp_servers.vercel]\ncommand = \"npx\"\nargs = [\"-y\", \"@vercel/mcp\"]\n\n[mcp_servers.vercel.env]\nVERCEL_TOKEN = \"$VERCEL_TOKEN\""
-        },
-        "gemini": {
-          "command": "npx",
-          "args": [
-            "-y",
-            "@vercel/mcp"
-          ],
-          "env": {
-            "VERCEL_TOKEN": "${VERCEL_TOKEN}"
-          }
-        },
-        "vscode": {
-          "command": "npx",
-          "args": [
-            "-y",
-            "@vercel/mcp"
-          ],
-          "env": {
-            "VERCEL_TOKEN": "${VERCEL_TOKEN}"
-          }
-        },
-        "windsurf": {
-          "command": "npx",
-          "args": [
-            "-y",
-            "@vercel/mcp"
-          ],
-          "env": {
-            "VERCEL_TOKEN": "${VERCEL_TOKEN}"
-          }
-        },
-        "antigravity": {
-          "command": "npx",
-          "args": [
-            "-y",
-            "@vercel/mcp"
-          ],
-          "env": {
-            "VERCEL_TOKEN": "${VERCEL_TOKEN}"
-          }
         }
+      },
+      "transport": {
+        "type": "http",
+        "url": "https://mcp.vercel.com"
       }
     },
     {
       "id": "cloudflare",
       "name": "Cloudflare",
-      "description": "Workers, Pages, DNS, R2 storage",
+      "description": "Workers bindings: KV, D1, R2, Durable Objects (official remote MCP)",
       "category": "cloud",
-      "configs": {
-        "cursor": {
-          "command": "npx",
-          "args": [
-            "-y",
-            "@cloudflare/mcp-server-cloudflare"
-          ]
+      "registry": {
+        "name": "com.cloudflare.mcp/mcp",
+        "prefer": {
+          "remote": "bindings.mcp.cloudflare.com"
         },
-        "claude-code": {
-          "command": "claude",
-          "args": [
-            "mcp",
-            "add",
-            "cloudflare",
-            "--",
-            "npx",
-            "-y",
-            "@cloudflare/mcp-server-cloudflare"
-          ]
-        },
-        "codex": {
-          "toml": "[mcp_servers.cloudflare]\ncommand = \"npx\"\nargs = [\"-y\", \"@cloudflare/mcp-server-cloudflare\"]"
-        },
-        "gemini": {
-          "command": "npx",
-          "args": [
-            "-y",
-            "@cloudflare/mcp-server-cloudflare"
-          ]
-        },
-        "vscode": {
-          "command": "npx",
-          "args": [
-            "-y",
-            "@cloudflare/mcp-server-cloudflare"
-          ]
-        },
-        "windsurf": {
-          "command": "npx",
-          "args": [
-            "-y",
-            "@cloudflare/mcp-server-cloudflare"
-          ]
-        },
-        "antigravity": {
-          "command": "npx",
-          "args": [
-            "-y",
-            "@cloudflare/mcp-server-cloudflare"
+        "resolved": {
+          "version": "1.0.0",
+          "at": "2026-09-05T13:19:09.627Z",
+          "fields": [
+            "transport",
+            "requiresEnv",
+            "requiresInput",
+            "version",
+            "stale",
+            "staleReason"
           ]
         }
+      },
+      "transport": {
+        "type": "http",
+        "url": "https://bindings.mcp.cloudflare.com/mcp"
       }
     },
     {
