@@ -40,6 +40,7 @@ const tmpOut = path.join(tmpRoot, 'docs', 'src', 'content', 'docs');
 fs.cpSync(committedDocs, tmpOut, { recursive: true });
 
 process.env.DXAI_DOCS_OUT = tmpOut;
+process.env.DXAI_REGISTRY_SOURCE = 'bundled';
 
 let failed = 0;
 for (const f of generators) {

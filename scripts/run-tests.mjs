@@ -28,6 +28,8 @@ if (files.length === 0) {
 const res = spawnSync(process.execPath, ['--test', ...files], {
   stdio: 'inherit',
   cwd: repoRoot,
+  // Tests must exercise the catalogue in the repo, not a developer's ~/.dxai cache.
+  env: { ...process.env, DXAI_REGISTRY_SOURCE: 'bundled' },
 });
 
 if (res.error) {

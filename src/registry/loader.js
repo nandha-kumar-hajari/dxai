@@ -59,6 +59,9 @@ function readJsonOr(filePath, fallback) {
 }
 
 // Synchronously load a registry file: cache > bundled. Returns parsed JSON.
+// DXAI_REGISTRY_SOURCE=bundled skips the cache — the test runner, doc
+// generators and catalogue scripts set it so a developer's stale ~/.dxai cache
+// can never stand in for the JSON that is actually in the repo.
 export function loadRegistry(name) {
   const cachePath = path.join(CACHE_DIR, `${name}.json`);
   const bundledPath = path.join(BUNDLED_DIR, `${name}.json`);
@@ -68,6 +71,7 @@ export function loadRegistry(name) {
     throw new Error(`Bundled registry missing: ${bundledPath}`);
   }
 
+  if (process.env.DXAI_REGISTRY_SOURCE === 'bundled') return bundled;
   const cached = readJsonOr(cachePath, null);
   return cached ?? bundled;
 }

@@ -11,7 +11,11 @@
 // Always exits 0 — health drift is reported, not a build failure.
 
 import fs from 'node:fs';
-import { MCP_SERVERS } from '../src/registry/mcp-servers.js';
+
+// Check the catalogue in the repo, never a local ~/.dxai cache. The registry
+// module reads the env at import time, so import it dynamically after setting it.
+process.env.DXAI_REGISTRY_SOURCE = 'bundled';
+const { MCP_SERVERS } = await import('../src/registry/mcp-servers.js');
 
 const TIMEOUT_MS = 10000;
 

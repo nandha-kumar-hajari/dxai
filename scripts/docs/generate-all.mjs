@@ -6,6 +6,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 
+// Generators must document the catalogue in the repo, never a local cache.
+// Set before the generators are (dynamically) imported.
+process.env.DXAI_REGISTRY_SOURCE = 'bundled';
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
