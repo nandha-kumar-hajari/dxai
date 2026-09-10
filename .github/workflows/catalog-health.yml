@@ -2,8 +2,10 @@ name: Catalog Health
 
 # Self-running guardrail for the catalogue (see AGENTS.md → Release & Versioning).
 # Validates entry shape on every change, and weekly checks pinned versions vs npm
-# `latest` and that server URLs resolve — opening an issue when something drifts,
-# so the maintainer acts on a notification rather than babysitting upstream.
+# `latest`, that server URLs resolve, and that the agent definitions in
+# src/detect.js are still current (review window, install channels, docs URLs) —
+# opening an issue when something drifts, so the maintainer acts on a
+# notification rather than babysitting upstream.
 
 on:
   schedule:
@@ -15,6 +17,8 @@ on:
       - 'src/detect.js'
       - 'test/registry-schema.test.js'
       - 'scripts/catalog-health.mjs'
+      - 'scripts/agent-health.mjs'
+      - 'test/detect.test.js'
   workflow_dispatch:
 
 permissions:
@@ -33,7 +37,7 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Validate registry schema + derivation
-        run: node --test test/registry-schema.test.js
+        run: node --test test/registry-schema.test.js test/detect.test.js
 
   health:
     name: pin + URL drift
@@ -81,6 +85,60 @@ jobs:
                 title,
                 body,
                 labels: ['catalog-health'],
+              });
+            }
+
+  agent-health:
+    name: agent definition drift
+    # The tools dxai configures rename themselves, move config files and retire
+    # install channels far more often than dxai ships. Every AGENT_DEFINITIONS
+    # entry carries the docs it was verified against and when; this job flags
+    # entries past the review window, vanished/deprecated brew casks and winget
+    # packages, and docs URLs that moved — so a Windsurf→Devin style rename
+    # opens an issue instead of silently breaking detection.
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+
+      - name: Run agent definition health check
+        id: agents
+        run: node scripts/agent-health.mjs
+
+      - name: Open issue on drift
+        if: steps.agents.outputs.has_findings == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const body = fs.readFileSync('agent-health-report.md', 'utf8');
+            const title = 'Agent definitions: re-verify against vendor docs';
+            const existing = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'agent-health',
+            });
+            const found = existing.data.find((i) => i.title === title);
+            if (found) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: found.number,
+                body,
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body,
+                labels: ['agent-health'],
               });
             }
 

@@ -3,8 +3,12 @@ import assert from 'node:assert/strict';
 import fs from 'fs-extra';
 import path from 'path';
 import os from 'os';
-import { writeMcpConfigs, pinPackageVersion, installSkills, downloadSkillMarkdown } from '../src/config-writer.js';
+import {
+  writeMcpConfigs, writeProjectMcpConfigs, pinPackageVersion, installSkills, downloadSkillMarkdown,
+  resolveClaudeEnvArgs, commandAsSkill, writeCursorCommands,
+} from '../src/config-writer.js';
 import { MCP_SERVERS } from '../src/registry/mcp-servers.js';
+import { AGENT_DEFINITIONS } from '../src/detect.js';
 
 let tmp;
 beforeEach(() => { tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'dxai-cw-')); });
@@ -153,37 +157,100 @@ test('pinPackageVersion: no-op when version is absent', () => {
   assert.equal(pinPackageVersion(cfg, undefined), cfg);
 });
 
-// ── installSkills target directory (Codex reads .agents/skills natively) ──
-// An empty skill list does no network work but still resolves the target dir,
-// so we can assert the directory selection in isolation.
+// ── installSkills target directories ──
+// `.agents/skills` is the cross-tool location (Codex, Cursor, Devin, Antigravity
+// read it natively); Claude Code only reads `.claude/skills`, so it gets a mirror.
+// An empty skill list does no network work but still resolves the target dirs.
 const agent = (id) => ({ id, name: id });
 // process.cwd() may resolve macOS /var → /private/var symlinks, so compare the
 // trailing path segments rather than the absolute path.
 const tail = (p) => p.split(path.sep).slice(-2).join(path.sep);
-const dirFor = async (agents) => {
+const inTmp = async (fn) => {
   const cwd = process.cwd();
-  try {
-    process.chdir(tmp);
-    return (await installSkills([], [], agents)).directory;
-  } finally {
-    process.chdir(cwd);
-  }
+  try { process.chdir(tmp); return await fn(); } finally { process.chdir(cwd); }
 };
-
-test('installSkills: Codex selected → .agents/skills (Codex native path)', async () => {
-  assert.equal(tail(await dirFor([agent('codex')])), path.join('.agents', 'skills'));
+const dirsFor = (agents) => inTmp(async () => {
+  const r = await installSkills([], [], agents);
+  return { primary: tail(r.directory), extra: r.extraDirectories.map(tail) };
 });
 
-test('installSkills: Cursor + Codex → .agents/skills so Codex still finds them', async () => {
-  assert.equal(tail(await dirFor([agent('cursor'), agent('codex')])), path.join('.agents', 'skills'));
+test('installSkills: Cursor only → .agents/skills (Cursor reads it natively now)', async () => {
+  assert.deepEqual(await dirsFor([agent('cursor')]), { primary: path.join('.agents', 'skills'), extra: [] });
 });
 
-test('installSkills: Cursor only (no Codex) → .cursor/skills', async () => {
-  assert.equal(tail(await dirFor([agent('cursor')])), path.join('.cursor', 'skills'));
+test('installSkills: Claude Code selected → .agents/skills plus a .claude/skills mirror', async () => {
+  assert.deepEqual(await dirsFor([agent('cursor'), agent('claude-code')]), {
+    primary: path.join('.agents', 'skills'),
+    extra: [path.join('.claude', 'skills')],
+  });
 });
 
-test('installSkills: neither Cursor nor Codex → .agents/skills fallback', async () => {
-  assert.equal(tail(await dirFor([agent('claude-code')])), path.join('.agents', 'skills'));
+test('installSkills: an already-installed skill is mirrored to .claude/skills for Claude Code', async () => {
+  await inTmp(async () => {
+    fs.outputFileSync(path.join('.agents', 'skills', 'pdf', 'SKILL.md'), '# pdf');
+    await installSkills(['pdf'], [{ id: 'pdf', name: 'PDF', repo: 'o/r', path: '.' }], [agent('claude-code')]);
+    assert.equal(fs.readFileSync(path.join('.claude', 'skills', 'pdf', 'SKILL.md'), 'utf-8'), '# pdf');
+  });
+});
+
+// ── Claude Code env resolution ──
+test('resolveClaudeEnvArgs: fills --env from the environment and drops unset pairs', () => {
+  const args = ['mcp', 'add', '--scope', 'user', '--env', 'A=${A}', '--env', 'B=${B}', '--transport', 'stdio', 'x', '--', 'npx', 'pkg'];
+  assert.deepEqual(resolveClaudeEnvArgs(args, { A: 'secret' }), [
+    'mcp', 'add', '--scope', 'user', '--env', 'A=secret', '--transport', 'stdio', 'x', '--', 'npx', 'pkg',
+  ]);
+  // Literal --env values (not placeholders) pass through untouched.
+  assert.deepEqual(resolveClaudeEnvArgs(['--env', 'K=v'], {}), ['--env', 'K=v']);
+});
+
+// ── Cursor commands are written as skills ──
+test('commandAsSkill: wraps a command body in SKILL.md frontmatter that blocks auto-invocation', () => {
+  const md = commandAsSkill('pr', '# Create Pull Request\n\n1. Do it');
+  assert.match(md, /^---\nname: pr\ndescription: Create Pull Request\. Invoke with \/pr\.\ndisable-model-invocation: true\n---\n/);
+  assert.match(md, /# Create Pull Request/);
+});
+
+test('writeCursorCommands: lands in .cursor/skills/<name>/SKILL.md and never overwrites', async () => {
+  await inTmp(() => {
+    const first = writeCursorCommands({ pr: '# PR', review: '# Review' });
+    assert.deepEqual(first.sort(), [path.join('pr', 'SKILL.md'), path.join('review', 'SKILL.md')]);
+    assert.ok(fs.existsSync(path.join('.cursor', 'skills', 'pr', 'SKILL.md')));
+    assert.ok(!fs.existsSync(path.join('.cursor', 'commands')));
+    assert.deepEqual(writeCursorCommands({ pr: '# changed' }), []);
+    assert.match(fs.readFileSync(path.join('.cursor', 'skills', 'pr', 'SKILL.md'), 'utf-8'), /# PR/);
+  });
+});
+
+// ── Project-level writers ──
+test('writeProjectMcpConfigs: Claude Code gets .mcp.json with type/url, Codex gets .codex/config.toml', async () => {
+  await inTmp(() => {
+    const claude = AGENT_DEFINITIONS.find((a) => a.id === 'claude-code');
+    const codex = AGENT_DEFINITIONS.find((a) => a.id === 'codex');
+    const r = writeProjectMcpConfigs([claude, codex], ['context7'], MCP_SERVERS);
+    assert.equal(r['claude-code'].added, 1);
+    assert.equal(r.codex.added, 1);
+    const mcpJson = fs.readJsonSync('.mcp.json');
+    assert.deepEqual(mcpJson.mcpServers.context7, { type: 'http', url: 'https://mcp.context7.com/mcp' });
+    assert.match(fs.readFileSync(path.join('.codex', 'config.toml'), 'utf-8'), /\[mcp_servers\.context7\]/);
+  });
+});
+
+test('writeMcpConfigs: agents with no interpolation get env values substituted at write time', () => {
+  const p = path.join(tmp, 'mcp_config.json');
+  const literalAgent = { ...fakeJsonAgent(p), id: 'antigravity', mcpDialect: { kind: 'json', urlKey: 'serverUrl', envRef: 'literal' } };
+  process.env.DXAI_TEST_GITLAB = 'tok-123';
+  try {
+    const gitlab = MCP_SERVERS.find((s) => s.id === 'gitlab');
+    const server = { ...gitlab, requiresEnv: { DXAI_TEST_GITLAB: 'x', DXAI_TEST_UNSET: 'y' }, configs: {
+      antigravity: { command: 'npx', args: ['-y', 'pkg'], env: { DXAI_TEST_GITLAB: '${DXAI_TEST_GITLAB}', DXAI_TEST_UNSET: '${DXAI_TEST_UNSET}' } },
+    } };
+    writeMcpConfigs([literalAgent], ['gitlab'], [server]);
+    const env = fs.readJsonSync(p).mcpServers.gitlab.env;
+    assert.equal(env.DXAI_TEST_GITLAB, 'tok-123');
+    assert.equal(env.DXAI_TEST_UNSET, '${DXAI_TEST_UNSET}');
+  } finally {
+    delete process.env.DXAI_TEST_GITLAB;
+  }
 });
 
 // ── downloadSkillMarkdown (the native-fetch SKILL.md fallback) ──

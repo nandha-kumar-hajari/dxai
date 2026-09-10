@@ -5,7 +5,7 @@ description: What dxai is, what it configures, and the shortest path to a workin
 
 `dxai` is an interactive CLI that configures **MCP servers**, **agent skills**, **Cursor rules and commands**, **project instruction files** (`CLAUDE.md`, `GEMINI.md`, `AGENTS.md`), and **AI-friendly project scaffolding** across all major AI coding tools — simultaneously and in the correct format for each.
 
-It works with **Cursor, Claude Code, VS Code / GitHub Copilot, OpenAI Codex CLI, Gemini CLI, Windsurf, and Google Antigravity**.
+It works with **Cursor, Claude Code, VS Code / Copilot, OpenAI Codex, Gemini CLI, Google Antigravity, and Devin Desktop (formerly Windsurf)** — see [Supported Agents](/reference/agents/) for exactly what is detected and where each config is written.
 
 ## What you get
 

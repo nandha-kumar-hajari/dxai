@@ -707,15 +707,21 @@ ${projectContext}
 `;
 }
 
-export function buildClaudeMd(selectedStacks, profile = null) {
+// Claude Code does not read AGENTS.md; its documented pattern is a CLAUDE.md
+// that imports it with `@AGENTS.md` so the two never drift. The import is only
+// emitted when dxai is also writing AGENTS.md.
+export function buildClaudeMd(selectedStacks, profile = null, { importAgentsMd = false } = {}) {
   const stackNames = getStackNames(selectedStacks);
   const stackRules = composeStackRules(selectedStacks);
 
   const { behaviorNote, commandsSection } = profileSections(profile);
+  const agentsImport = importAgentsMd
+    ? '@AGENTS.md\n\n<!-- Shared project context lives in AGENTS.md (imported above). Keep Claude-specific guidance below. -->\n\n'
+    : '';
 
   return `# CLAUDE.md — Instructions for Claude Code
 
-## Behavior
+${agentsImport}## Behavior
 
 - Read the full file before editing. Do not assume structure from names.
 - To fix a bug: find the failing test first. No test? Write one that reproduces it before fixing.

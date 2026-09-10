@@ -22,7 +22,7 @@ dxai system [options]
 | Flag | Description | Notes |
 | --- | --- | --- |
 | `-y, --yes` | skip prompts; use defaults / values from flags | — |
-| `--agents <list>` | comma-separated agent IDs (cursor,claude-code,vscode,codex,gemini,windsurf,antigravity-ide,antigravity-cli) | required |
+| `--agents <list>` | comma-separated agent IDs (cursor,claude-code,vscode,vscode-insiders,codex,gemini,antigravity,antigravity-ide,antigravity-cli,devin-desktop,devin-cli; former ids like windsurf still work) | required |
 | `--mcp <list>` | comma-separated MCP server IDs | required |
 | `--skills <list>` | comma-separated skill IDs | required |
 | `--tools <list>` | comma-separated automation tool IDs (agent-browser,agent-device) | required |

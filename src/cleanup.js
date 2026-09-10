@@ -27,6 +27,11 @@ const KNOWN_SKILL_IDS = SKILLS.map((s) => s.id);
 // Build the candidate ID list for scanning. If the manifest has entries,
 // prefer it (precise — we only target what dxai installed). Otherwise fall
 // back to the full known set (legacy behavior for installs predating manifest).
+function globalMcpPaths(agent, home) {
+  const legacy = typeof agent.legacyGlobalMcpPaths === 'function' ? agent.legacyGlobalMcpPaths(home) : [];
+  return [agent.globalMcpPath(home), ...legacy];
+}
+
 function candidateMcpIds(manifest, agentId) {
   if (manifest && manifest.mcp[agentId]) {
     const ids = Object.keys(manifest.mcp[agentId]);
@@ -74,9 +79,10 @@ async function runSystemCleanup(home, ctx) {
 
     switch (agent.configFormat) {
       case 'json': {
-        const configPath = agent.globalMcpPath(home);
-        finding.foundServers = scanJsonMcpConfig(configPath, agent.mcpKey, ids);
-        finding.configPath = configPath;
+        // Scan the current file plus any former location dxai used to write to.
+        const paths = globalMcpPaths(agent, home);
+        finding.foundServers = [...new Set(paths.flatMap((p) => scanJsonMcpConfig(p, agent.mcpKey, ids)))];
+        finding.configPath = paths[0];
         break;
       }
       case 'toml': {
@@ -100,8 +106,10 @@ async function runSystemCleanup(home, ctx) {
   const skillBaseDirs = [
     path.join(home, '.cursor', 'skills'),
     path.join(home, '.agents', 'skills'),
+    path.join(home, '.claude', 'skills'),
     path.join(process.cwd(), '.cursor', 'skills'),
     path.join(process.cwd(), '.agents', 'skills'),
+    path.join(process.cwd(), '.claude', 'skills'),
   ];
   const foundSkills = scanSkillDirectories(skillBaseDirs, skillIds);
 
@@ -251,8 +259,10 @@ async function runSystemCleanup(home, ctx) {
     try {
       switch (agent.configFormat) {
         case 'json': {
-          const configPath = agent.globalMcpPath(home);
-          const { removed } = removeJsonMcpServers(configPath, agent.mcpKey, serverIds);
+          let removed = 0;
+          for (const configPath of globalMcpPaths(agent, home)) {
+            if (fs.existsSync(configPath)) removed += removeJsonMcpServers(configPath, agent.mcpKey, serverIds).removed;
+          }
           spin?.stop();
           quiet(ctx, () => successMsg(`Removed ${removed} server(s) from ${agent.name}`));
           break;
@@ -346,7 +356,9 @@ async function runProjectCleanup(ctx) {
     const projectConfigPath = path.join(cwd, agent.projectMcpPath());
     if (!fs.existsSync(projectConfigPath)) continue;
 
-    const foundServers = scanJsonMcpConfig(projectConfigPath, agent.mcpKey, KNOWN_MCP_IDS);
+    const foundServers = (agent.projectConfigFormat || agent.configFormat) === 'toml'
+      ? scanTomlMcpConfig(projectConfigPath, KNOWN_MCP_IDS)
+      : scanJsonMcpConfig(projectConfigPath, agent.projectMcpKey || agent.mcpKey, KNOWN_MCP_IDS);
     if (foundServers.length > 0) {
       projectMcpFindings.push({ agent, configPath: projectConfigPath, foundServers });
     }
@@ -487,7 +499,9 @@ async function runProjectCleanup(ctx) {
 
     const projectConfigPath = path.join(cwd, agent.projectMcpPath());
     try {
-      const { removed } = removeJsonMcpServers(projectConfigPath, agent.mcpKey, serverIds);
+      const { removed } = (agent.projectConfigFormat || agent.configFormat) === 'toml'
+        ? removeTomlMcpServers(projectConfigPath, serverIds)
+        : removeJsonMcpServers(projectConfigPath, agent.projectMcpKey || agent.mcpKey, serverIds);
       quiet(ctx, () => successMsg(`Removed ${removed} server(s) from project ${agent.name} config`));
     } catch (err) {
       quiet(ctx, () => errorMsg(`Failed to clean project ${agent.name} config: ${err.message}`));

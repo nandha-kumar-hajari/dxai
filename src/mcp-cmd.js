@@ -123,7 +123,7 @@ export async function addMcp(serverIds = [], opts = {}) {
   const agents = resolveTargetAgents(runtime, home, { project });
   if (agents.length === 0) {
     throw new Error(project
-      ? 'No project-capable agents. Pass --agents cursor,vscode,gemini.'
+      ? `No project-capable agents. Pass --agents with one of: ${AGENT_DEFINITIONS.filter((a) => a.projectMcpPath).map((a) => a.id).join(', ')}.`
       : 'No target agents detected. Pass --agents <ids> or install a supported agent.');
   }
 
@@ -182,14 +182,19 @@ export async function addMcp(serverIds = [], opts = {}) {
 
 // Scan one agent for which of `ids` are actually present in its config.
 function scanPresent(agent, ids, home, project) {
+  if (project) {
+    const p = path.join(process.cwd(), agent.projectMcpPath());
+    const format = agent.projectConfigFormat || agent.configFormat;
+    return format === 'toml'
+      ? { path: p, present: scanTomlMcpConfig(p, ids) }
+      : { path: p, present: scanJsonMcpConfig(p, agent.projectMcpKey || agent.mcpKey, ids) };
+  }
   switch (agent.configFormat) {
     case 'json': {
-      const p = project ? path.join(process.cwd(), agent.projectMcpPath()) : agent.globalMcpPath(home);
+      const p = agent.globalMcpPath(home);
       return { path: p, present: scanJsonMcpConfig(p, agent.mcpKey, ids) };
     }
     case 'toml': {
-      // TOML agents (Codex) have no project-level MCP path, so they're filtered
-      // out of --project mode upstream — this branch only ever runs for global.
       const p = agent.globalMcpPath(home);
       return { path: p, present: scanTomlMcpConfig(p, ids) };
     }

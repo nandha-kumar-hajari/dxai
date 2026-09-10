@@ -17,15 +17,7 @@ description: Where dxai reads from and writes to on your filesystem.
 
 ## Per-tool config files dxai writes
 
-| Tool | Format | Global path | Project path |
-|---|---|---|---|
-| Cursor | JSON | `~/.cursor/mcp.json` | `./.cursor/mcp.json` |
-| Claude Code | CLI (`claude mcp add`) | n/a | n/a |
-| VS Code / Copilot | JSON | `~/Library/Application Support/Code/User/mcp.json` (macOS) · `~/.config/Code/User/mcp.json` (Linux) · `%APPDATA%\Code\User\mcp.json` (Windows) | `./.vscode/mcp.json` |
-| OpenAI Codex CLI | TOML | `~/.codex/config.toml` | n/a |
-| Gemini CLI | JSON | `~/.gemini/settings.json` | `./.gemini/settings.json` |
-| Windsurf | JSON | `~/.codeium/windsurf/mcp_config.json` | n/a |
-| Google Antigravity | JSON | `~/.gemini/antigravity/mcp_config.json` | n/a |
+The global and project MCP files, JSON keys and dialect for every agent are generated from the agent definitions on the [Supported Agents](/reference/agents/) page, so they never drift from what the CLI actually writes.
 
 ## Backups
 

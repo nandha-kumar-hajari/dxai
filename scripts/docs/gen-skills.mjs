@@ -9,7 +9,7 @@ export default function generate() {
     '',
     'Pick skills in the wizard, or pass `--skills <id1>,<id2>` to `dxai system`. ★ marks recommended (pre-checked) entries.',
     '',
-    'Skills are installed into `.cursor/skills/` if Cursor is selected, otherwise `.agents/skills/` in the project directory.',
+    'Skills are installed into `.agents/skills/` (read natively by Codex, Cursor, Devin and Antigravity) and mirrored into `.claude/skills/` when Claude Code is selected — the only location it discovers.',
     '',
   );
 

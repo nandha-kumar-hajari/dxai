@@ -14,20 +14,29 @@ Auto-generated from git history. Conventional-commit prefixes (`feat:`, `fix:`, 
 
 ### Features
 
+- accept official MCP Registry names in `dxai add` ([`8b7bbfd`](https://github.com/nandha-kumar-hajari/dxai/commit/8b7bbfd7b9ce85f7f8e4bbaa3ede53941c6719f3))
+- re-resolve registry-linked servers live from the MCP Registry ([`d9a84d8`](https://github.com/nandha-kumar-hajari/dxai/commit/d9a84d8c19cbe7d0a60d34c72c171a935c87e95d))
+- sync the bundled catalogue from the MCP Registry ([`8d1b4be`](https://github.com/nandha-kumar-hajari/dxai/commit/8d1b4be6a61482d53308a88354789264dffd9cb7))
+- resolver for the official MCP Registry ([`c9dd326`](https://github.com/nandha-kumar-hajari/dxai/commit/c9dd3269cbcec6331c62e6dd583fdf51639b4082))
 - add fast-path `dxai add`/`remove` commands and `init` alias ([`7ae3f2e`](https://github.com/nandha-kumar-hajari/dxai/commit/7ae3f2e032e846b0355219aea33e579f6628050d))
 - add dxai rollback to restore config backups ([`16d2978`](https://github.com/nandha-kumar-hajari/dxai/commit/16d29786b42876b51672a2dd390081dbce942139))
 - centralize network timeout + retry/backoff in src/net.js ([`0a89340`](https://github.com/nandha-kumar-hajari/dxai/commit/0a893403039d10ba295ec46a82fe73806072b8c5))
 
 ### Bug fixes
 
+- read the bundled catalogue, not ~/.dxai cache, in tests and scripts ([`3630933`](https://github.com/nandha-kumar-hajari/dxai/commit/3630933ad71c2342beaf90c2986cd7a5d07221bf))
+- make syntax check portable to Windows ([`0dae63b`](https://github.com/nandha-kumar-hajari/dxai/commit/0dae63b735435887a45935d964a088d1d55fbb49))
 - portable test runner; exclude changelog from docs drift gate ([`21a6df8`](https://github.com/nandha-kumar-hajari/dxai/commit/21a6df8e31f615e1c9c6b302b6703fe3486487eb))
 
 ### Refactor
 
+- collapse duplicated system/project paths into shared helpers ([`137babe`](https://github.com/nandha-kumar-hajari/dxai/commit/137babe51715b7a2581a6be36f876a1e3aae39c8))
 - replace curl shell-out with native fetch in installSkills ([`539411e`](https://github.com/nandha-kumar-hajari/dxai/commit/539411e8dbc2d5ef7ef5edabcf91fb3dd2ca20d8))
 
 ### Documentation
 
+- describe the MCP Registry integration ([`70c19b2`](https://github.com/nandha-kumar-hajari/dxai/commit/70c19b2902d9936425f8b5a78ad96472600808a5))
+- serve site at apex domain dxai.dev ([`0928156`](https://github.com/nandha-kumar-hajari/dxai/commit/0928156c81410938baa5a56fdf4035bf90df9825))
 - document add/remove/init fast-path commands ([`5117469`](https://github.com/nandha-kumar-hajari/dxai/commit/51174697f09e1b9ffb2b2699d3832d5f516cac55))
 - mark security & robustness items shipped; add rollback docs ([`81231ec`](https://github.com/nandha-kumar-hajari/dxai/commit/81231ec23b147d8b5a29f318e450b5038042e759))
 
@@ -35,8 +44,13 @@ Auto-generated from git history. Conventional-commit prefixes (`feat:`, `fix:`, 
 
 - cover installSkills fetch fallback; tighten SKILL.md guard ([`72783dc`](https://github.com/nandha-kumar-hajari/dxai/commit/72783dcb9e0f939e2a94dd23416ed16b9d8e69f1))
 
+### Chores
+
+- sync package description and roadmap with current state ([`e670e1a`](https://github.com/nandha-kumar-hajari/dxai/commit/e670e1ab1be6cb8fa065bf45869a84d72dbe6dea))
+
 ### Other changes
 
+- Merge pull request #4 from nandha-kumar-hajari/sfixesfable-docs-and-landing-updates ([`5281ebd`](https://github.com/nandha-kumar-hajari/dxai/commit/5281ebdf256cc7cbc252ab7baa7f34d322b0282a))
 - Update AGENTS.md with architecture and command enhancements; add ESLint configuration and CI linting job. Introduce new automation tools catalog and improve cleanup command options. Revise README for clarity and update documentation components. ([`eec7b29`](https://github.com/nandha-kumar-hajari/dxai/commit/eec7b297bd0bf382f8dcc552ca0a8c5b6dbadd4e))
 - Merge pull request #3 from nandha-kumar-hajari/audit-fixes ([`13630d9`](https://github.com/nandha-kumar-hajari/dxai/commit/13630d931e3c4d60665c3f75eaf875eaa7e56716))
 - Refactor registry for security  handling and enhance validation. Introduce atomic file write operations for safer config and manifest updates. Implement comprehensive validation for registry data to prevent command injection and ensure safe execution. Update AGENTS.md to document new features and clarify registry data handling. Improve cleanup processes to maintain accurate system and project manifests. Enhance tests for atomic file operations and registry validation. ([`f4e6188`](https://github.com/nandha-kumar-hajari/dxai/commit/f4e6188ce30a2761d86b3ac7c5c17fde5fae7c1b))

@@ -243,6 +243,25 @@ function mergeTomlMcpConfig(filePath, newTomlBlocks) {
 }
 
 // ── Claude Code CLI Config ──
+// Claude Code expands no variables at user scope, so `--env VAR=${VAR}` pairs are
+// resolved from dxai's own environment here; pairs whose variable is unset are
+// dropped (the needs-env summary tells the user what to export and re-run).
+export function resolveClaudeEnvArgs(args, env = process.env) {
+  const out = [];
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === '--env' && i + 1 < args.length) {
+      const m = /^([A-Z_][A-Z0-9_]*)=\$\{([A-Z_][A-Z0-9_]*)\}$/.exec(args[i + 1]);
+      if (m) {
+        if (env[m[2]] !== undefined) out.push('--env', `${m[1]}=${env[m[2]]}`);
+        i++;
+        continue;
+      }
+    }
+    out.push(args[i]);
+  }
+  return out;
+}
+
 function configureClaudeCodeMcp(servers) {
   let added = 0;
   let skipped = 0;
@@ -264,7 +283,7 @@ function configureClaudeCodeMcp(servers) {
 
       // Pass argv directly (no shell) so registry-derived args can never be
       // interpreted as shell metacharacters. config.args is already ['mcp','add',…].
-      execFileSync('claude', config.args, {
+      execFileSync('claude', resolveClaudeEnvArgs(config.args), {
         stdio: 'pipe',
         timeout: 15000,
         env: { ...process.env },
@@ -344,13 +363,32 @@ export function previewMcpConfigs(selectedAgents, selectedServers, mcpRegistry, 
 // substitution, and version pinning. Servers with no config for this agent are
 // dropped. Shared by the global, project, and dry-run preview paths so they can
 // never disagree about what a server looks like.
-function resolveServersForAgent(agent, selectedServers, mcpRegistry, inputs) {
+// Agents whose config file has no documented variable interpolation get the
+// real value from dxai's own environment at write time; unset variables keep the
+// ${VAR} placeholder so the user can see what to fill in.
+function substituteEnvLiterals(config) {
+  if (typeof config === 'string') {
+    return config.replace(/\$\{([A-Z_][A-Z0-9_]*)\}/g, (m, name) => (process.env[name] !== undefined ? process.env[name] : m));
+  }
+  if (Array.isArray(config)) return config.map(substituteEnvLiterals);
+  if (config && typeof config === 'object') {
+    const out = {};
+    for (const [k, v] of Object.entries(config)) out[k] = substituteEnvLiterals(v);
+    return out;
+  }
+  return config;
+}
+
+function resolveServersForAgent(agent, selectedServers, mcpRegistry, inputs, { project = false } = {}) {
+  const dialect = project ? (agent.projectMcpDialect || agent.mcpDialect) : agent.mcpDialect;
   const out = [];
   for (const serverId of selectedServers) {
     const server = mcpRegistry.find((s) => s.id === serverId);
-    if (!server || !server.configs[agent.id]) continue;
-    let config = substitutePlaceholders(server.configs[agent.id], buildReplacements(server, inputs));
+    const block = project ? server?.projectConfigs?.[agent.id] : server?.configs?.[agent.id];
+    if (!server || !block) continue;
+    let config = substitutePlaceholders(block, buildReplacements(server, inputs));
     if (server.version) config = pinPackageVersion(config, server.version);
+    if (dialect?.envRef === 'literal') config = substituteEnvLiterals(config);
     out.push({ id: serverId, config });
   }
   return out;
@@ -431,14 +469,33 @@ export function writeCursorRules(selectedStacks, rulesMap, profile = null) {
 }
 
 // ── Cursor Commands Writer ──
-export function writeCursorCommands(commandsMap) {
-  const commandsDir = path.join(process.cwd(), '.cursor', 'commands');
-  fs.ensureDirSync(commandsDir);
+// Cursor retired `.cursor/commands/*.md` in favour of skills: a slash command is
+// now `.cursor/skills/<name>/SKILL.md` with `disable-model-invocation: true`
+// (see https://cursor.com/help/customization/skills). Returns the relative
+// paths written, under `.cursor/skills/`.
+export function commandAsSkill(name, body) {
+  const title = body.split('\n').find((l) => l.startsWith('# '))?.replace(/^#\s+/, '').trim() || name;
+  return [
+    '---',
+    `name: ${name}`,
+    `description: ${title}. Invoke with /${name}.`,
+    'disable-model-invocation: true',
+    '---',
+    '',
+    body.trimEnd(),
+    '',
+  ].join('\n');
+}
 
+export function writeCursorCommands(commandsMap) {
+  const skillsDir = path.join(process.cwd(), '.cursor', 'skills');
   const written = [];
 
   for (const [name, content] of Object.entries(commandsMap)) {
-    if (writeIfAbsent(path.join(commandsDir, `${name}.md`), content)) written.push(`${name}.md`);
+    const target = path.join(skillsDir, name, 'SKILL.md');
+    if (fs.existsSync(target)) continue;
+    fs.ensureDirSync(path.dirname(target));
+    if (writeIfAbsent(target, commandAsSkill(name, content))) written.push(path.join(name, 'SKILL.md'));
   }
 
   return written;
@@ -567,13 +624,13 @@ export function writeAgentsMd(selectedStacks, profile = null) {
 }
 
 // ── CLAUDE.md / GEMINI.md Writer ──
-export function writeProjectInstructions(selectedAgents, selectedStacks, profile = null) {
+export function writeProjectInstructions(selectedAgents, selectedStacks, profile = null, { importAgentsMd = false } = {}) {
   const written = [];
 
   const hasClaudeCode = selectedAgents.some((a) => a.id === 'claude-code');
   const hasGemini = selectedAgents.some((a) => a.id === 'gemini');
 
-  if (hasClaudeCode && writeIfAbsent(path.join(process.cwd(), 'CLAUDE.md'), buildClaudeMd(selectedStacks, profile))) {
+  if (hasClaudeCode && writeIfAbsent(path.join(process.cwd(), 'CLAUDE.md'), buildClaudeMd(selectedStacks, profile, { importAgentsMd }))) {
     written.push('CLAUDE.md');
   }
   if (hasGemini && writeIfAbsent(path.join(process.cwd(), 'GEMINI.md'), buildGeminiMd(selectedStacks, profile))) {
@@ -589,7 +646,7 @@ export function writeProjectMcpConfigs(agentsWithProjectMcp, selectedServers, mc
 
   for (const agent of agentsWithProjectMcp) {
     const agentResult = { agent: agent.name, added: 0, skipped: 0, errors: [], addedIds: [] };
-    const serversForAgent = resolveServersForAgent(agent, selectedServers, mcpRegistry, inputs);
+    const serversForAgent = resolveServersForAgent(agent, selectedServers, mcpRegistry, inputs, { project: true });
 
     if (serversForAgent.length === 0) {
       agentResult.skipped = selectedServers.length;
@@ -599,7 +656,10 @@ export function writeProjectMcpConfigs(agentsWithProjectMcp, selectedServers, mc
 
     try {
       const configPath = path.join(process.cwd(), agent.projectMcpPath());
-      const merged = mergeJsonMcpConfig(configPath, agent.mcpKey, toServerMap(serversForAgent));
+      const format = agent.projectConfigFormat || agent.configFormat;
+      const merged = format === 'toml'
+        ? mergeTomlMcpConfig(configPath, serversForAgent.filter(({ config }) => config.toml).map(({ id, config }) => ({ id, toml: config.toml })))
+        : mergeJsonMcpConfig(configPath, agent.projectMcpKey || agent.mcpKey, toServerMap(serversForAgent));
       Object.assign(agentResult, merged, { path: configPath });
     } catch (err) {
       agentResult.errors.push({ id: 'general', error: err.message });
@@ -630,20 +690,23 @@ export async function installSkills(selectedSkills, skillRegistry, selectedAgent
   const installed = [];
   const errors = [];
 
-  // Determine target directory.
-  // `.agents/skills` is OpenAI Codex CLI's native repository-level skills path
-  // (Codex scans it from cwd up to the repo root) and is the cross-tool
-  // convention, so we prefer it whenever Codex is among the selected agents —
-  // even alongside Cursor — so Codex discovers the skills without extra config.
-  // Cursor's own location (`.cursor/skills`) is used only when Cursor is
-  // selected and Codex is not.
-  const hasCodex = selectedAgents.some((a) => a.id === 'codex');
-  const hasCursor = selectedAgents.some((a) => a.id === 'cursor');
-  const skillsBaseDir = (hasCursor && !hasCodex)
-    ? path.join(process.cwd(), '.cursor', 'skills')
-    : path.join(process.cwd(), '.agents', 'skills');
+  // Target directories. `.agents/skills` is the cross-tool convention read
+  // natively by Codex, Cursor, Devin and Antigravity, so it is always the
+  // primary location. Claude Code only discovers `.claude/skills`, so when it is
+  // selected each skill is mirrored there as well.
+  const skillsBaseDir = path.join(process.cwd(), '.agents', 'skills');
+  const extraDirs = selectedAgents.some((a) => a.id === 'claude-code')
+    ? [path.join(process.cwd(), '.claude', 'skills')]
+    : [];
 
   fs.ensureDirSync(skillsBaseDir);
+
+  const mirror = (skillId) => {
+    for (const dir of extraDirs) {
+      const dest = path.join(dir, skillId);
+      if (!fs.existsSync(path.join(dest, 'SKILL.md'))) fs.copySync(path.join(skillsBaseDir, skillId), dest);
+    }
+  };
 
   // A skill counts as installed only once its SKILL.md is actually on disk —
   // never trust an installer's exit code alone.
@@ -663,6 +726,7 @@ export async function installSkills(selectedSkills, skillRegistry, selectedAgent
 
     const targetDir = path.join(skillsBaseDir, skillId);
     if (hasSkillContent(targetDir)) {
+      mirror(skillId);
       infoMsg(`Skill "${skill.name}" already installed, skipping`);
       continue;
     }
@@ -686,6 +750,7 @@ export async function installSkills(selectedSkills, skillRegistry, selectedAgent
           { stdio: 'pipe', timeout: 180000 }
         );
         if (hasSkillContent(targetDir)) {
+          mirror(skillId);
           installed.push(skillId);
           continue;
         }
@@ -701,6 +766,7 @@ export async function installSkills(selectedSkills, skillRegistry, selectedAgent
       try {
         const content = await downloadSkillMarkdown(skill);
         fs.writeFileSync(path.join(targetDir, 'SKILL.md'), content, 'utf-8');
+        mirror(skillId);
         installed.push(skillId);
       } catch (err) {
         fs.removeSync(targetDir);
@@ -711,5 +777,5 @@ export async function installSkills(selectedSkills, skillRegistry, selectedAgent
     }
   }
 
-  return { installed, errors, directory: skillsBaseDir };
+  return { installed, errors, directory: skillsBaseDir, extraDirectories: extraDirs };
 }

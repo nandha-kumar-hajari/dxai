@@ -3,6 +3,7 @@ import path from 'path';
 import os from 'os';
 import { warnMsg } from './branding.js';
 import { writeJsonAtomic } from './fs-atomic.js';
+import { AGENT_ID_ALIASES } from './detect.js';
 
 const HOME = os.homedir();
 
@@ -28,7 +29,7 @@ export function readManifest(filePath) {
   try {
     const data = fs.readJsonSync(filePath);
     // Future migrations would go here, gated on data.version.
-    return { ...emptyManifest(), ...data };
+    return migrateAgentIds({ ...emptyManifest(), ...data });
   } catch (err) {
     // A corrupt manifest must not silently read as "nothing installed" — that
     // would hide real installs from `list`/`status` and let a subsequent write
@@ -40,6 +41,22 @@ export function readManifest(filePath) {
     } catch { /* best-effort salvage */ }
     return emptyManifest();
   }
+}
+
+// Fold entries recorded under a former agent id (e.g. `windsurf`) into the
+// current id so list/status/cleanup keep seeing them after a rename. The next
+// write persists the migrated shape.
+function migrateAgentIds(manifest) {
+  for (const [alias, target] of Object.entries(AGENT_ID_ALIASES)) {
+    if (manifest.mcp && manifest.mcp[alias]) {
+      manifest.mcp[target] = { ...(manifest.mcp[alias]), ...(manifest.mcp[target] || {}) };
+      delete manifest.mcp[alias];
+    }
+    if (Array.isArray(manifest.agents) && manifest.agents.includes(alias)) {
+      manifest.agents = [...new Set(manifest.agents.map((id) => (id === alias ? target : id)))];
+    }
+  }
+  return manifest;
 }
 
 export function writeManifest(filePath, manifest) {

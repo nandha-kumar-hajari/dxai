@@ -2,6 +2,7 @@ import { execFileSync } from 'child_process';
 import inquirer from 'inquirer';
 import chalk from 'chalk';
 import path from 'path';
+import fs from 'fs-extra';
 
 import {
   printBanner, sectionHeader, successMsg, warnMsg,
@@ -135,8 +136,9 @@ async function sharedSetup(runtime) {
       const agentChoices = AGENT_DEFINITIONS.map((def) => {
         const detected = agents.find((a) => a.id === def.id);
         const status = detected?.installed ? chalk.green(' (detected)') : '';
+        const notice = def.notice ? chalk.yellow(` ⚠ ${def.notice}`) : '';
         return {
-          name: `${def.name}${status} — ${def.description}`,
+          name: `${def.name}${status} — ${def.description}${notice}`,
           value: def.id,
           checked: detected?.installed || false,
         };
@@ -190,9 +192,9 @@ async function sharedSetup(runtime) {
 }
 
 // ── Skills — shared selection + install (used by system and project modes) ──
-// Skills are downloaded into a project-level directory (.agents/skills, which
-// Codex reads natively, or .cursor/skills), so they're meaningful in both the
-// system and project flows. These helpers keep the two call sites consistent.
+// Skills are downloaded into a project-level directory (.agents/skills, read
+// natively by Codex, Cursor, Devin and Antigravity; mirrored to .claude/skills
+// for Claude Code), so they're meaningful in both the system and project flows. These helpers keep the two call sites consistent.
 async function selectSkills(runtime, headerLabel, { recommendByDefault = true } = {}) {
   return resolveSelection({
     flag: runtime.skills,
@@ -207,7 +209,7 @@ async function selectSkills(runtime, headerLabel, { recommendByDefault = true } 
         console.log();
         sectionHeader(headerLabel);
         console.log();
-        infoMsg('Skills are downloaded into this project\'s skills folder (.agents/skills or .cursor/skills)');
+        infoMsg('Skills are downloaded into this project\'s .agents/skills folder (mirrored to .claude/skills for Claude Code)');
         console.log();
       });
 
@@ -553,7 +555,7 @@ async function runProject(ctx, runtime, { handleSkills = false } = {}) {
       if (hasCursor) {
         featureChoices.push(
           { name: 'Cursor Rules — stack-specific .mdc rule files', value: 'cursor-rules', checked: true },
-          { name: 'Cursor Commands — /pr, /fix-issue, /review, /test-all, /refactor', value: 'cursor-commands', checked: true },
+          { name: 'Cursor Commands — /pr, /fix-issue, /review, /test-all, /refactor (as .cursor/skills)', value: 'cursor-commands', checked: true },
           { name: '.cursorignore — exclude noise from AI context', value: 'cursor-ignore', checked: true },
         );
       }
@@ -686,7 +688,7 @@ async function runProject(ctx, runtime, { handleSkills = false } = {}) {
 
   if (selectedFeatures.includes('cursor-commands')) {
     const written = writeCursorCommands(CURSOR_COMMANDS);
-    for (const name of written) writtenFiles.push(path.join('.cursor', 'commands', name));
+    for (const name of written) writtenFiles.push(path.join('.cursor', 'skills', name));
     quiet(runtime, () => {
       if (written.length > 0) successMsg(`Cursor commands created: ${written.join(', ')}`);
       else infoMsg('Cursor commands already exist, skipped');
@@ -703,7 +705,9 @@ async function runProject(ctx, runtime, { handleSkills = false } = {}) {
   }
 
   if (selectedFeatures.includes('agent-instructions')) {
-    const instructionFiles = writeProjectInstructions(selectedAgents, selectedStackIds, profile);
+    const instructionFiles = writeProjectInstructions(selectedAgents, selectedStackIds, profile, {
+      importAgentsMd: selectedFeatures.includes('agents-md') || fs.existsSync(path.join(process.cwd(), 'AGENTS.md')),
+    });
     for (const name of instructionFiles) writtenFiles.push(name);
     quiet(runtime, () => {
       if (instructionFiles.length > 0) successMsg(`Project instructions created: ${instructionFiles.join(', ')}`);

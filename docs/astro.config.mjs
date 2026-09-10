@@ -24,7 +24,7 @@ export default defineConfig({
     starlight({
       title: 'dxai',
       description:
-        'Interactive CLI to bootstrap your AI-powered dev environment — MCP servers, agent skills, cursor rules and more across Cursor, Claude Code, Codex, Gemini CLI, VS Code, Windsurf, and Antigravity.',
+        'Interactive CLI to bootstrap your AI-powered dev environment — MCP servers, agent skills, cursor rules and more across Cursor, Claude Code, Codex, Gemini CLI, VS Code, Antigravity, and Devin Desktop.',
       logo: { src: './src/assets/dxai-logo.png', alt: 'dxai' },
       favicon: '/favicon-512.png',
       head: [
@@ -89,6 +89,7 @@ export default defineConfig({
             { label: 'Commands', autogenerate: { directory: 'reference/commands' } },
             { slug: 'reference/flags' },
             { slug: 'reference/env-vars' },
+            { slug: 'reference/agents' },
             { slug: 'reference/config-files' },
             { slug: 'reference/profile-schema' },
             { slug: 'reference/manifest-schema' },

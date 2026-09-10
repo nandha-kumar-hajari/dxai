@@ -20,7 +20,7 @@ Auto-generated flag reference. Pulled from every subcommand registered in `bin/c
 
 | Flag | Description | Available on | Default |
 | --- | --- | --- | --- |
-| `--agents <list>` | comma-separated agent IDs (cursor,claude-code,vscode,codex,gemini,windsurf,antigravity-ide,antigravity-cli) | `add`, `both`, `project`, `remove`, `save-profile`, `system` | — |
+| `--agents <list>` | comma-separated agent IDs (cursor,claude-code,vscode,vscode-insiders,codex,gemini,antigravity,antigravity-ide,antigravity-cli,devin-desktop,devin-cli; former ids like windsurf still work) | `add`, `both`, `project`, `remove`, `save-profile`, `system` | — |
 | `--backups` | with --yes/--json: also delete .bak.<ts> backup files | `cleanup` | — |
 | `--dry-run` | preview changes without writing | `add`, `apply`, `both`, `cleanup`, `project`, `remove`, `rollback`, `system` | — |
 | `--features <list>` | comma-separated project feature IDs | `both`, `project`, `save-profile`, `system` | — |

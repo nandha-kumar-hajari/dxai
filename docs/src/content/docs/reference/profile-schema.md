@@ -17,7 +17,7 @@ Auto-discovery: `./.dxai/profile.json` → `~/.dxai/config.json` → `~/.dxairc`
 | Key | Type | Description |
 | --- | --- | --- |
 | `mode` | `"system"` \| `"project"` \| `"both"` | Default mode `dxai apply` runs when this profile is active. |
-| `agents` | `string[]` | Agent IDs to configure (cursor, claude-code, vscode, codex, gemini, windsurf, antigravity). |
+| `agents` | `string[]` | Agent IDs to configure — see [Supported Agents](/reference/agents/) for the list; former ids (e.g. windsurf) are accepted. |
 | `mcp` | `string[]` | MCP server IDs to install. See [Registry / MCP servers](/registry/mcp-servers/). |
 | `skills` | `string[]` | Skill IDs to install. See [Registry / Skills](/registry/skills/). |
 | `features` | `string[]` | Project features to generate (cursor-rules, agents-md, editorconfig, etc.). |

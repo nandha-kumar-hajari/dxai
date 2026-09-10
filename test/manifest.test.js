@@ -87,3 +87,15 @@ test('unrecordMcp never creates a missing manifest file', () => {
   assert.equal(unrecordMcp(p, 'cursor', ['context7']), 0);
   assert.ok(!fs.existsSync(p));
 });
+
+test('readManifest: entries recorded under a former agent id are folded into the current id', () => {
+  const p = path.join(tmp, 'manifest.json');
+  fs.writeJsonSync(p, {
+    version: 1, agents: ['windsurf', 'cursor'],
+    mcp: { windsurf: { context7: { addedAt: 't', configPath: '/old' } }, 'devin-desktop': { github: { addedAt: 't' } } },
+  });
+  const m = readManifest(p);
+  assert.deepEqual(m.agents, ['devin-desktop', 'cursor']);
+  assert.deepEqual(Object.keys(m.mcp), ['devin-desktop']);
+  assert.deepEqual(Object.keys(m.mcp['devin-desktop']).sort(), ['context7', 'github']);
+});

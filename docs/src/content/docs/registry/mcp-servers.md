@@ -20,8 +20,8 @@ Core tools every developer should have
 
 | ID | Name | Description | Agents | Required env | Required input | Source |
 | --- | --- | --- | --- | --- | --- | --- |
-| `context7` | ★ Context7 | Live, version-specific library documentation | `cursor`, `claude-code`, `vscode`, `codex`, `gemini`, `windsurf`, `antigravity-ide`, `antigravity-cli` | — | — | `io.github.upstash/context7` |
-| `sequential-thinking` | ★ Sequential Thinking | Multi-step structured reasoning for complex problems | `cursor`, `claude-code`, `vscode`, `codex`, `gemini`, `windsurf`, `antigravity-ide`, `antigravity-cli` | — | — | bundled |
+| `context7` | ★ Context7 | Live, version-specific library documentation | `cursor`, `claude-code`, `vscode`, `vscode-insiders`, `codex`, `gemini`, `antigravity`, `antigravity-ide`, `antigravity-cli`, `devin-desktop`, `devin-cli` | — | — | `io.github.upstash/context7` |
+| `sequential-thinking` | ★ Sequential Thinking | Multi-step structured reasoning for complex problems | `cursor`, `claude-code`, `vscode`, `vscode-insiders`, `codex`, `gemini`, `antigravity`, `antigravity-ide`, `antigravity-cli`, `devin-desktop`, `devin-cli` | — | — | bundled |
 
 ## 💻 Code & Git
 
@@ -29,9 +29,9 @@ Source control and code intelligence
 
 | ID | Name | Description | Agents | Required env | Required input | Source |
 | --- | --- | --- | --- | --- | --- | --- |
-| `github` | ★ GitHub | PRs, issues, repos, code search (official remote MCP, OAuth) | `cursor`, `claude-code`, `vscode`, `codex`, `gemini`, `windsurf`, `antigravity-ide`, `antigravity-cli` | — | — | `io.github.github/github-mcp-server` |
-| `gitlab` | GitLab | Merge requests, issues, pipelines (official remote MCP) | `cursor`, `claude-code`, `vscode`, `codex`, `gemini`, `windsurf`, `antigravity-ide`, `antigravity-cli` | — | — | `com.gitlab/mcp` |
-| `claude-code-mcp` | Claude Code as MCP | Use Claude Code as a sub-agent inside other editors | `cursor`, `vscode`, `gemini`, `windsurf`, `antigravity-ide`, `antigravity-cli` | — | — | bundled |
+| `github` | ★ GitHub | PRs, issues, repos, code search (official remote MCP, OAuth) | `cursor`, `claude-code`, `vscode`, `vscode-insiders`, `codex`, `gemini`, `antigravity`, `antigravity-ide`, `antigravity-cli`, `devin-desktop`, `devin-cli` | — | — | `io.github.github/github-mcp-server` |
+| `gitlab` | GitLab | Merge requests, issues, pipelines (official remote MCP) | `cursor`, `claude-code`, `vscode`, `vscode-insiders`, `codex`, `gemini`, `antigravity`, `antigravity-ide`, `antigravity-cli`, `devin-desktop`, `devin-cli` | — | — | `com.gitlab/mcp` |
+| `claude-code-mcp` | Claude Code as MCP | Use Claude Code as a sub-agent inside other editors | `cursor`, `vscode`, `vscode-insiders`, `gemini`, `antigravity`, `antigravity-ide`, `antigravity-cli`, `devin-desktop`, `devin-cli` | — | — | bundled |
 
 ## 🎨 Design
 
@@ -39,7 +39,7 @@ Design-to-code workflows
 
 | ID | Name | Description | Agents | Required env | Required input | Source |
 | --- | --- | --- | --- | --- | --- | --- |
-| `figma` | Figma | Design-to-code from Figma components | `cursor`, `claude-code`, `vscode`, `codex`, `gemini`, `windsurf`, `antigravity-ide`, `antigravity-cli` | — | — | `com.figma.mcp/mcp` |
+| `figma` | Figma | Design-to-code from Figma components | `cursor`, `claude-code`, `vscode`, `vscode-insiders`, `codex`, `gemini`, `antigravity`, `antigravity-ide`, `antigravity-cli`, `devin-desktop`, `devin-cli` | — | — | `com.figma.mcp/mcp` |
 
 ## 📋 Productivity
 
@@ -47,9 +47,9 @@ Project management and communication
 
 | ID | Name | Description | Agents | Required env | Required input | Source |
 | --- | --- | --- | --- | --- | --- | --- |
-| `notion` | Notion | Read/write Notion pages and databases | `cursor`, `claude-code`, `vscode`, `codex`, `gemini`, `windsurf`, `antigravity-ide`, `antigravity-cli` | — | — | `com.notion/mcp` |
-| `slack` | Slack | Search messages, channels, send notifications | `cursor`, `claude-code`, `vscode`, `codex`, `gemini`, `windsurf`, `antigravity-ide`, `antigravity-cli` | `SLACK_BOT_TOKEN` | — | bundled |
-| `linear` | Linear | Issues, projects, cycles management (official remote MCP, OAuth) | `cursor`, `claude-code`, `vscode`, `codex`, `gemini`, `windsurf`, `antigravity-ide`, `antigravity-cli` | — | — | `app.linear/linear` |
+| `notion` | Notion | Read/write Notion pages and databases | `cursor`, `claude-code`, `vscode`, `vscode-insiders`, `codex`, `gemini`, `antigravity`, `antigravity-ide`, `antigravity-cli`, `devin-desktop`, `devin-cli` | — | — | `com.notion/mcp` |
+| `slack` | Slack | Search messages, channels, send notifications | `cursor`, `claude-code`, `vscode`, `vscode-insiders`, `codex`, `gemini`, `antigravity`, `antigravity-ide`, `antigravity-cli`, `devin-desktop`, `devin-cli` | `SLACK_BOT_TOKEN` | — | bundled |
+| `linear` | Linear | Issues, projects, cycles management (official remote MCP, OAuth) | `cursor`, `claude-code`, `vscode`, `vscode-insiders`, `codex`, `gemini`, `antigravity`, `antigravity-ide`, `antigravity-cli`, `devin-desktop`, `devin-cli` | — | — | `app.linear/linear` |
 
 ## 🗄️  Database
 
@@ -57,8 +57,8 @@ Database access and management
 
 | ID | Name | Description | Agents | Required env | Required input | Source |
 | --- | --- | --- | --- | --- | --- | --- |
-| `supabase` | Supabase | Supabase database, auth, storage (official remote MCP) | `cursor`, `claude-code`, `vscode`, `codex`, `gemini`, `windsurf`, `antigravity-ide`, `antigravity-cli` | — | — | `com.supabase/mcp` |
-| `neon` | Neon Postgres | Serverless Postgres database | `cursor`, `claude-code`, `vscode`, `codex`, `gemini`, `windsurf`, `antigravity-ide`, `antigravity-cli` | `NEON_API_KEY` | — | bundled |
+| `supabase` | Supabase | Supabase database, auth, storage (official remote MCP) | `cursor`, `claude-code`, `vscode`, `vscode-insiders`, `codex`, `gemini`, `antigravity`, `antigravity-ide`, `antigravity-cli`, `devin-desktop`, `devin-cli` | — | — | `com.supabase/mcp` |
+| `neon` | Neon Postgres | Serverless Postgres database | `cursor`, `claude-code`, `vscode`, `vscode-insiders`, `codex`, `gemini`, `antigravity`, `antigravity-ide`, `antigravity-cli`, `devin-desktop`, `devin-cli` | `NEON_API_KEY` | — | bundled |
 
 ## 🌐 Browser & Testing
 
@@ -66,8 +66,8 @@ Browser automation and testing
 
 | ID | Name | Description | Agents | Required env | Required input | Source |
 | --- | --- | --- | --- | --- | --- | --- |
-| `playwright` | ★ Playwright | Browser automation, E2E testing, screenshots | `cursor`, `claude-code`, `vscode`, `codex`, `gemini`, `windsurf`, `antigravity-ide`, `antigravity-cli` | — | — | `io.github.microsoft/playwright-mcp` |
-| `browserbase` | Browserbase | Cloud browser sessions for testing | `cursor`, `claude-code`, `vscode`, `codex`, `gemini`, `windsurf`, `antigravity-ide`, `antigravity-cli` | `BROWSERBASE_API_KEY`, `BROWSERBASE_PROJECT_ID`, `GEMINI_API_KEY` | — | `io.github.browserbase/mcp-server-browserbase` |
+| `playwright` | ★ Playwright | Browser automation, E2E testing, screenshots | `cursor`, `claude-code`, `vscode`, `vscode-insiders`, `codex`, `gemini`, `antigravity`, `antigravity-ide`, `antigravity-cli`, `devin-desktop`, `devin-cli` | — | — | `io.github.microsoft/playwright-mcp` |
+| `browserbase` | Browserbase | Cloud browser sessions for testing | `cursor`, `claude-code`, `vscode`, `vscode-insiders`, `codex`, `gemini`, `antigravity`, `antigravity-ide`, `antigravity-cli`, `devin-desktop`, `devin-cli` | `BROWSERBASE_API_KEY`, `BROWSERBASE_PROJECT_ID`, `GEMINI_API_KEY` | — | `io.github.browserbase/mcp-server-browserbase` |
 
 ## ☁️  Cloud & Deploy
 
@@ -75,8 +75,8 @@ Deployment and infrastructure
 
 | ID | Name | Description | Agents | Required env | Required input | Source |
 | --- | --- | --- | --- | --- | --- | --- |
-| `vercel` | Vercel | Deploy, manage projects, domains (official remote MCP) | `cursor`, `claude-code`, `vscode`, `codex`, `gemini`, `windsurf`, `antigravity-ide`, `antigravity-cli` | — | — | `com.vercel/vercel-mcp` |
-| `cloudflare` | Cloudflare | Workers bindings: KV, D1, R2, Durable Objects (official remote MCP) | `cursor`, `claude-code`, `vscode`, `codex`, `gemini`, `windsurf`, `antigravity-ide`, `antigravity-cli` | — | — | `com.cloudflare.mcp/mcp` |
+| `vercel` | Vercel | Deploy, manage projects, domains (official remote MCP) | `cursor`, `claude-code`, `vscode`, `vscode-insiders`, `codex`, `gemini`, `antigravity`, `antigravity-ide`, `antigravity-cli`, `devin-desktop`, `devin-cli` | — | — | `com.vercel/vercel-mcp` |
+| `cloudflare` | Cloudflare | Workers bindings: KV, D1, R2, Durable Objects (official remote MCP) | `cursor`, `claude-code`, `vscode`, `vscode-insiders`, `codex`, `gemini`, `antigravity`, `antigravity-ide`, `antigravity-cli`, `devin-desktop`, `devin-cli` | — | — | `com.cloudflare.mcp/mcp` |
 
 ## ⚡ Advanced
 
@@ -84,8 +84,8 @@ Agent orchestration and specialized tools
 
 | ID | Name | Description | Agents | Required env | Required input | Source |
 | --- | --- | --- | --- | --- | --- | --- |
-| `filesystem` | Filesystem | Secure file access outside project root | `cursor`, `claude-code`, `vscode`, `codex`, `gemini`, `windsurf`, `antigravity-ide`, `antigravity-cli` | — | `allowedPath` | bundled |
-| `memory` | Memory | Persistent memory across agent sessions | `cursor`, `claude-code`, `vscode`, `codex`, `gemini`, `windsurf`, `antigravity-ide`, `antigravity-cli` | — | — | bundled |
+| `filesystem` | Filesystem | Secure file access outside project root | `cursor`, `claude-code`, `vscode`, `vscode-insiders`, `codex`, `gemini`, `antigravity`, `antigravity-ide`, `antigravity-cli`, `devin-desktop`, `devin-cli` | — | `allowedPath` | bundled |
+| `memory` | Memory | Persistent memory across agent sessions | `cursor`, `claude-code`, `vscode`, `vscode-insiders`, `codex`, `gemini`, `antigravity`, `antigravity-ide`, `antigravity-cli`, `devin-desktop`, `devin-cli` | — | — | bundled |
 
 ## Want one that's missing?
 

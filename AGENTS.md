@@ -5,7 +5,7 @@
 
 ## Project
 
-**dxai** — Interactive CLI to bootstrap AI-powered dev environments across Cursor, Claude Code, VS Code/Copilot, Codex, Gemini CLI, Windsurf, and Antigravity. One command configures MCP servers, agent skills, cursor rules, and project instruction files in the right format for each tool.
+**dxai** — Interactive CLI to bootstrap AI-powered dev environments across Cursor, Claude Code, VS Code/Copilot, Codex, Gemini CLI, Google Antigravity, and Devin (formerly Windsurf). One command configures MCP servers, agent skills, cursor rules, and project instruction files in the right format for each tool. The authoritative list of supported tools is `AGENT_DEFINITIONS` in `src/detect.js` — don't enumerate agents in prose elsewhere; link to the generated [Supported Agents](docs/src/content/docs/reference/agents.md) page.
 
 ## Tech Stack
 
@@ -24,7 +24,7 @@ bin/cli.js              → Commander entry point, exports buildProgram()
 src/index.js            → Main orchestration: run(), apply(), saveProfileCmd()
 src/config-writer.js    → All file writers (JSON, TOML, CLI, markdown)
 src/config-remover.js   → Manifest-aware config removal
-src/detect.js           → OS, agent, prerequisite detection
+src/detect.js           → OS, prerequisite detection + AGENT_DEFINITIONS (the single source of truth for every supported tool: detection, config paths, MCP dialect, docs, verifiedAt)
 src/detect-project.js   → Stack, tooling, git, maturity inference
 src/profile.js          → Profile load/merge/save/discovery
 src/manifest.js         → Install manifest tracking (.dxai/manifest.json)
@@ -49,6 +49,8 @@ src/registry/
   data/
     mcp-servers.json    → MCP server catalog (count lives in the JSON — don't cite numbers here, they drift)
 scripts/registry-sync.mjs → Re-resolves registry-linked catalog entries; run weekly by the catalog-health workflow (opens a bot PR)
+scripts/agent-health.mjs  → Flags agent definitions past their review window, vanished brew/winget channels, moved docs; weekly, opens an issue
+scripts/docs/gen-agents.mjs → Generates docs/reference/agents.md from AGENT_DEFINITIONS (docs:check fails if it drifts)
     skills.json         → Skills catalog
     automation-tools.json → Automation tool catalog
 ```
@@ -143,7 +145,70 @@ exist surface themselves rather than rotting silently.
 - Config writes must be idempotent — merge, don't overwrite
 - Back up existing config files before modifying them (only when the write actually changes something; snapshots are capped at 5 per file)
 - Record all writes to the manifest for drift detection; skills are recorded by **id** (the on-disk directory name), never display name
+- Every agent definition must carry `docs` (the vendor pages it was verified against) and `verifiedAt`; `test/detect.test.js` enforces the shape and `scripts/agent-health.mjs` enforces freshness. See "Supported agents" below before touching `AGENT_DEFINITIONS`
+- Never hand-write per-agent `configs` blocks in the catalogue — declare `transport` and let derivation render each agent's dialect (`test/registry-schema.test.js` rejects entries without one)
 - Setup/add flows must exit non-zero when any per-step write fails (`errorCount` plumbing in `src/index.js` / `src/mcp-cmd.js`)
+
+## Supported agents (src/detect.js → AGENT_DEFINITIONS)
+
+The tools dxai configures are moving targets: in 2026 alone Windsurf became
+Devin Desktop and moved its MCP file, Antigravity split into three installs,
+Gemini CLI was cut off for consumer accounts, Cursor retired `.cursor/commands`,
+Claude Code made `local` the default MCP scope, and Codex never interpolated the
+`$VAR` env values we wrote. Each of those shipped as a silent gap because the
+definitions were written once and never re-checked. The rules below exist so
+that cannot happen again.
+
+**One source of truth.** `AGENT_DEFINITIONS` drives detection, every config
+writer, cleanup/status, the `--agents` help text, the docs (`gen-agents.mjs`),
+and the health check. Nothing else may hardcode an agent's paths, keys, binary
+names or install commands. If you find a duplicate, delete it and read the
+definition.
+
+**Every entry is verified, and says so.** A definition must carry:
+
+- `docs` — the vendor pages (MCP config reference + install page) it was checked against.
+- `verifiedAt` — the date of that check (`YYYY-MM-DD`). Bump it only after actually re-reading the docs.
+- `install` — the machine-checkable channel ids (`brewCask`, `winget`) the health check probes.
+- `mcpDialect` — how the agent spells an MCP server: remote URL key, whether the
+  schema requires a `type` field, and `envRef` (how the agent references an env
+  var: `dollar` = `${VAR}`, `vscode` = `${env:VAR}`, `literal` = no interpolation,
+  dxai substitutes the value at write time). Never assume `${VAR}` works — check.
+- `projectMcpPath` / `projectMcpDialect` / `projectConfigFormat` when the project
+  file differs from the global one (Claude Code: CLI globally, `.mcp.json` in projects).
+- Multiple `detectCommand` / `detectApp` names and `detectPaths` when a tool has
+  renamed itself or installs outside `PATH` (`~/.local/bin`, in-app shims).
+
+**Renames keep the old id working.** When a product renames, change the
+definition's `id`/`name`, add the former id to `AGENT_ID_ALIASES` (flags,
+profiles and manifests are normalised through it), add the former config
+location to `legacyGlobalMcpPaths` so status/cleanup still see what dxai wrote
+there, and add the former catalogue key to `MCP_CONFIG_ALIASES`.
+
+**Audit checklist** — run it for an agent whenever the health check flags it,
+whenever the vendor ships a major version, and at least every 90 days:
+
+1. Binary name(s) and macOS bundle name(s) — check the vendor's Homebrew cask
+   artifacts (`brew info --cask <token>`) and the install docs. Watch for shims
+   installed by the app itself (`~/.antigravity-ide/.../bin`, `~/.local/bin`).
+2. State directory and global MCP file path per OS; project MCP file path.
+3. MCP JSON/TOML schema: top-level key, remote URL key, required `type`,
+   env-var interpolation syntax, any per-agent extras (`headers`, `env_vars`).
+4. CLI-driven agents: default scope, flag order quirks, what expands and what
+   doesn't (Claude Code: nothing expands at user scope, `--env` must not sit
+   directly before the server name).
+5. Instruction and skills surfaces: which of `AGENTS.md` / `CLAUDE.md` /
+   `GEMINI.md` the tool reads natively; skills directories it discovers.
+6. Install commands: current brew cask token (`old_tokens` means a rename),
+   winget id (publisher moves), official installer script, deprecations.
+7. Product status: rebrands, sunsets, audience restrictions → `notice`.
+8. Update the definition, the golden rows in `test/registry-schema.test.js`,
+   bump `verifiedAt`, run `npm run docs:generate`, and note the change in the
+   commit body with the doc URLs.
+
+Local run: `node scripts/agent-health.mjs` (network). CI: the `agent-health`
+job in `catalog-health.yml` runs weekly and opens/updates an issue labelled
+`agent-health`.
 
 ## Agent-Specific Notes
 

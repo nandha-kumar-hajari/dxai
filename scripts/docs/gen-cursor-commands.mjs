@@ -15,13 +15,13 @@ export default function generate() {
   const sections = [];
 
   sections.push(
-    'Pre-built Cursor custom commands installed by `dxai project` when you enable the `cursor-commands` feature. They land in `.cursor/commands/<name>.md` so Cursor can run them as slash commands (e.g. `/pr`).',
+    'Pre-built Cursor slash commands installed by `dxai project` when you enable the `cursor-commands` feature. Cursor retired `.cursor/commands/` in favour of skills, so each command lands in `.cursor/skills/<name>/SKILL.md` with `disable-model-invocation: true` — invoked explicitly as `/pr`, never picked up automatically.',
     '',
   );
 
   const rows = Object.entries(CURSOR_COMMANDS).map(([name, body]) => {
     const { title, firstStep } = summarize(body);
-    return ['`/' + name + '`', '`' + name + '.md`', title, firstStep];
+    return ['`/' + name + '`', '`' + name + '/SKILL.md`', title, firstStep];
   });
 
   sections.push('## Commands');

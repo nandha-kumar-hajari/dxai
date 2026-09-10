@@ -187,6 +187,9 @@ export function validateRegistryPayload(listKey, items) {
           problems.push(`server ${id} (${agent}): command not allowlisted "${cfg.command}"`);
         }
       }
+      if (item.excludeAgents !== undefined && !(Array.isArray(item.excludeAgents) && item.excludeAgents.every(isSafeId))) {
+        problems.push(`server ${id}: excludeAgents must be a list of agent ids`);
+      }
     }
   }
   return problems;

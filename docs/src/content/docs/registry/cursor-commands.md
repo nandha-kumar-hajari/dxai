@@ -8,17 +8,17 @@ Regenerate via: npm run docs:generate
 Source: src/registry/stacks.js (CURSOR_COMMANDS) — generator: scripts/docs/gen-cursor-commands.mjs
 -->
 
-Pre-built Cursor custom commands installed by `dxai project` when you enable the `cursor-commands` feature. They land in `.cursor/commands/<name>.md` so Cursor can run them as slash commands (e.g. `/pr`).
+Pre-built Cursor slash commands installed by `dxai project` when you enable the `cursor-commands` feature. Cursor retired `.cursor/commands/` in favour of skills, so each command lands in `.cursor/skills/<name>/SKILL.md` with `disable-model-invocation: true` — invoked explicitly as `/pr`, never picked up automatically.
 
 ## Commands
 
 | Slash command | File | Title | Step 1 |
 | --- | --- | --- | --- |
-| `/pr` | `pr.md` | Create Pull Request | Look at all staged and unstaged changes with `git diff` |
-| `/fix-issue` | `fix-issue.md` | Fix GitHub Issue | Accept an issue number as input |
-| `/review` | `review.md` | Code Review | Run the linter on all changed files |
-| `/test-all` | `test-all.md` | Run All Tests | Detect the test framework being used (jest, vitest, pytest, go test, etc.) |
-| `/refactor` | `refactor.md` | Refactor Module | Accept a file or directory path as input |
+| `/pr` | `pr/SKILL.md` | Create Pull Request | Look at all staged and unstaged changes with `git diff` |
+| `/fix-issue` | `fix-issue/SKILL.md` | Fix GitHub Issue | Accept an issue number as input |
+| `/review` | `review/SKILL.md` | Code Review | Run the linter on all changed files |
+| `/test-all` | `test-all/SKILL.md` | Run All Tests | Detect the test framework being used (jest, vitest, pytest, go test, etc.) |
+| `/refactor` | `refactor/SKILL.md` | Refactor Module | Accept a file or directory path as input |
 
 ## Full bodies
 

@@ -143,43 +143,18 @@
       "name": "Claude Code as MCP",
       "description": "Use Claude Code as a sub-agent inside other editors",
       "category": "code-git",
-      "configs": {
-        "cursor": {
-          "command": "npx",
-          "args": [
-            "-y",
-            "@anthropic-ai/claude-code-mcp"
-          ]
-        },
-        "gemini": {
-          "command": "npx",
-          "args": [
-            "-y",
-            "@anthropic-ai/claude-code-mcp"
-          ]
-        },
-        "vscode": {
-          "command": "npx",
-          "args": [
-            "-y",
-            "@anthropic-ai/claude-code-mcp"
-          ]
-        },
-        "windsurf": {
-          "command": "npx",
-          "args": [
-            "-y",
-            "@anthropic-ai/claude-code-mcp"
-          ]
-        },
-        "antigravity": {
-          "command": "npx",
-          "args": [
-            "-y",
-            "@anthropic-ai/claude-code-mcp"
-          ]
-        }
-      }
+      "transport": {
+        "type": "stdio",
+        "command": "npx",
+        "args": [
+          "-y",
+          "@anthropic-ai/claude-code-mcp"
+        ]
+      },
+      "excludeAgents": [
+        "claude-code",
+        "codex"
+      ]
     },
     {
       "id": "figma",
@@ -241,72 +216,13 @@
       "requiresEnv": {
         "SLACK_BOT_TOKEN": "Slack Bot OAuth Token"
       },
-      "configs": {
-        "cursor": {
-          "command": "npx",
-          "args": [
-            "-y",
-            "@modelcontextprotocol/server-slack"
-          ],
-          "env": {
-            "SLACK_BOT_TOKEN": "${SLACK_BOT_TOKEN}"
-          }
-        },
-        "claude-code": {
-          "command": "claude",
-          "args": [
-            "mcp",
-            "add",
-            "slack",
-            "--",
-            "npx",
-            "-y",
-            "@modelcontextprotocol/server-slack"
-          ]
-        },
-        "codex": {
-          "toml": "[mcp_servers.slack]\ncommand = \"npx\"\nargs = [\"-y\", \"@modelcontextprotocol/server-slack\"]\n\n[mcp_servers.slack.env]\nSLACK_BOT_TOKEN = \"$SLACK_BOT_TOKEN\""
-        },
-        "gemini": {
-          "command": "npx",
-          "args": [
-            "-y",
-            "@modelcontextprotocol/server-slack"
-          ],
-          "env": {
-            "SLACK_BOT_TOKEN": "${SLACK_BOT_TOKEN}"
-          }
-        },
-        "vscode": {
-          "command": "npx",
-          "args": [
-            "-y",
-            "@modelcontextprotocol/server-slack"
-          ],
-          "env": {
-            "SLACK_BOT_TOKEN": "${SLACK_BOT_TOKEN}"
-          }
-        },
-        "windsurf": {
-          "command": "npx",
-          "args": [
-            "-y",
-            "@modelcontextprotocol/server-slack"
-          ],
-          "env": {
-            "SLACK_BOT_TOKEN": "${SLACK_BOT_TOKEN}"
-          }
-        },
-        "antigravity": {
-          "command": "npx",
-          "args": [
-            "-y",
-            "@modelcontextprotocol/server-slack"
-          ],
-          "env": {
-            "SLACK_BOT_TOKEN": "${SLACK_BOT_TOKEN}"
-          }
-        }
+      "transport": {
+        "type": "stdio",
+        "command": "npx",
+        "args": [
+          "-y",
+          "@modelcontextprotocol/server-slack"
+        ]
       }
     },
     {
@@ -367,72 +283,13 @@
       "requiresEnv": {
         "NEON_API_KEY": "Neon API Key"
       },
-      "configs": {
-        "cursor": {
-          "command": "npx",
-          "args": [
-            "-y",
-            "@neondatabase/mcp-server-neon"
-          ],
-          "env": {
-            "NEON_API_KEY": "${NEON_API_KEY}"
-          }
-        },
-        "claude-code": {
-          "command": "claude",
-          "args": [
-            "mcp",
-            "add",
-            "neon",
-            "--",
-            "npx",
-            "-y",
-            "@neondatabase/mcp-server-neon"
-          ]
-        },
-        "codex": {
-          "toml": "[mcp_servers.neon]\ncommand = \"npx\"\nargs = [\"-y\", \"@neondatabase/mcp-server-neon\"]\n\n[mcp_servers.neon.env]\nNEON_API_KEY = \"$NEON_API_KEY\""
-        },
-        "gemini": {
-          "command": "npx",
-          "args": [
-            "-y",
-            "@neondatabase/mcp-server-neon"
-          ],
-          "env": {
-            "NEON_API_KEY": "${NEON_API_KEY}"
-          }
-        },
-        "vscode": {
-          "command": "npx",
-          "args": [
-            "-y",
-            "@neondatabase/mcp-server-neon"
-          ],
-          "env": {
-            "NEON_API_KEY": "${NEON_API_KEY}"
-          }
-        },
-        "windsurf": {
-          "command": "npx",
-          "args": [
-            "-y",
-            "@neondatabase/mcp-server-neon"
-          ],
-          "env": {
-            "NEON_API_KEY": "${NEON_API_KEY}"
-          }
-        },
-        "antigravity": {
-          "command": "npx",
-          "args": [
-            "-y",
-            "@neondatabase/mcp-server-neon"
-          ],
-          "env": {
-            "NEON_API_KEY": "${NEON_API_KEY}"
-          }
-        }
+      "transport": {
+        "type": "stdio",
+        "command": "npx",
+        "args": [
+          "-y",
+          "@neondatabase/mcp-server-neon"
+        ]
       }
     },
     {
@@ -565,63 +422,14 @@
           "placeholder": "/path/to/allowed"
         }
       },
-      "configs": {
-        "cursor": {
-          "command": "npx",
-          "args": [
-            "-y",
-            "@modelcontextprotocol/server-filesystem",
-            "/path/to/allowed"
-          ]
-        },
-        "claude-code": {
-          "command": "claude",
-          "args": [
-            "mcp",
-            "add",
-            "filesystem",
-            "--",
-            "npx",
-            "-y",
-            "@modelcontextprotocol/server-filesystem",
-            "/path/to/allowed"
-          ]
-        },
-        "codex": {
-          "toml": "[mcp_servers.filesystem]\ncommand = \"npx\"\nargs = [\"-y\", \"@modelcontextprotocol/server-filesystem\", \"/path/to/allowed\"]"
-        },
-        "gemini": {
-          "command": "npx",
-          "args": [
-            "-y",
-            "@modelcontextprotocol/server-filesystem",
-            "/path/to/allowed"
-          ]
-        },
-        "vscode": {
-          "command": "npx",
-          "args": [
-            "-y",
-            "@modelcontextprotocol/server-filesystem",
-            "/path/to/allowed"
-          ]
-        },
-        "windsurf": {
-          "command": "npx",
-          "args": [
-            "-y",
-            "@modelcontextprotocol/server-filesystem",
-            "/path/to/allowed"
-          ]
-        },
-        "antigravity": {
-          "command": "npx",
-          "args": [
-            "-y",
-            "@modelcontextprotocol/server-filesystem",
-            "/path/to/allowed"
-          ]
-        }
+      "transport": {
+        "type": "stdio",
+        "command": "npx",
+        "args": [
+          "-y",
+          "@modelcontextprotocol/server-filesystem",
+          "/path/to/allowed"
+        ]
       }
     },
     {
@@ -630,57 +438,13 @@
       "description": "Persistent memory across agent sessions",
       "category": "advanced",
       "version": "2026.1.26",
-      "configs": {
-        "cursor": {
-          "command": "npx",
-          "args": [
-            "-y",
-            "@modelcontextprotocol/server-memory"
-          ]
-        },
-        "claude-code": {
-          "command": "claude",
-          "args": [
-            "mcp",
-            "add",
-            "memory",
-            "--",
-            "npx",
-            "-y",
-            "@modelcontextprotocol/server-memory"
-          ]
-        },
-        "codex": {
-          "toml": "[mcp_servers.memory]\ncommand = \"npx\"\nargs = [\"-y\", \"@modelcontextprotocol/server-memory\"]"
-        },
-        "gemini": {
-          "command": "npx",
-          "args": [
-            "-y",
-            "@modelcontextprotocol/server-memory"
-          ]
-        },
-        "vscode": {
-          "command": "npx",
-          "args": [
-            "-y",
-            "@modelcontextprotocol/server-memory"
-          ]
-        },
-        "windsurf": {
-          "command": "npx",
-          "args": [
-            "-y",
-            "@modelcontextprotocol/server-memory"
-          ]
-        },
-        "antigravity": {
-          "command": "npx",
-          "args": [
-            "-y",
-            "@modelcontextprotocol/server-memory"
-          ]
-        }
+      "transport": {
+        "type": "stdio",
+        "command": "npx",
+        "args": [
+          "-y",
+          "@modelcontextprotocol/server-memory"
+        ]
       }
     }
   ]

@@ -32,7 +32,7 @@ export function buildProgram() {
   const sharedSetupOptions = (cmd) =>
     cmd
       .addOption(new Option('-y, --yes', 'skip prompts; use defaults / values from flags'))
-      .addOption(new Option('--agents <list>', 'comma-separated agent IDs (cursor,claude-code,vscode,codex,gemini,windsurf,antigravity-ide,antigravity-cli)').argParser(csv))
+      .addOption(new Option('--agents <list>', 'comma-separated agent IDs (cursor,claude-code,vscode,vscode-insiders,codex,gemini,antigravity,antigravity-ide,antigravity-cli,devin-desktop,devin-cli; former ids like windsurf still work)').argParser(csv))
       .addOption(new Option('--mcp <list>', 'comma-separated MCP server IDs').argParser(csv))
       .addOption(new Option('--skills <list>', 'comma-separated skill IDs').argParser(csv))
       .addOption(new Option('--tools <list>', 'comma-separated automation tool IDs (agent-browser,agent-device)').argParser(csv))

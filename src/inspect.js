@@ -72,7 +72,8 @@ function readActualMcp(agent, home, cwd, ids = KNOWN_MCP_IDS) {
   const out = { global: [], project: [] };
 
   if (agent.configFormat === 'json' && typeof agent.globalMcpPath === 'function') {
-    out.global = scanJsonMcpConfig(agent.globalMcpPath(home), agent.mcpKey, ids);
+    const legacy = typeof agent.legacyGlobalMcpPaths === 'function' ? agent.legacyGlobalMcpPaths(home) : [];
+    out.global = [...new Set([agent.globalMcpPath(home), ...legacy].flatMap((p) => scanJsonMcpConfig(p, agent.mcpKey, ids)))];
   } else if (agent.configFormat === 'toml' && typeof agent.globalMcpPath === 'function') {
     out.global = scanTomlMcpConfig(agent.globalMcpPath(home), ids);
   } else if (agent.configFormat === 'cli') {
@@ -82,7 +83,9 @@ function readActualMcp(agent, home, cwd, ids = KNOWN_MCP_IDS) {
   if (typeof agent.projectMcpPath === 'function') {
     const projPath = path.join(cwd, agent.projectMcpPath());
     if (fs.existsSync(projPath)) {
-      out.project = scanJsonMcpConfig(projPath, agent.mcpKey, ids);
+      out.project = (agent.projectConfigFormat || agent.configFormat) === 'toml'
+        ? scanTomlMcpConfig(projPath, ids)
+        : scanJsonMcpConfig(projPath, agent.projectMcpKey || agent.mcpKey, ids);
     }
   }
 

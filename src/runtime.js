@@ -1,3 +1,4 @@
+import { normalizeAgentIds } from './detect.js';
 // Runtime options + non-interactive helpers.
 // Centralizes how we decide whether to prompt or use flag-provided values.
 
@@ -16,7 +17,7 @@ export function normalizeOptions(opts = {}) {
     nonInteractive,
     // --no-update sets opts.update === false (commander negation).
     update: opts.update !== false,
-    agents: opts.agents,
+    agents: opts.agents ? normalizeAgentIds(opts.agents) : opts.agents,
     mcp: opts.mcp,
     skills: opts.skills,
     tools: opts.tools,

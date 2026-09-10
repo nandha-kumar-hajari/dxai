@@ -6,7 +6,7 @@
   <strong>One command to make your repo ready for every AI coding agent.</strong>
 </p>
 
-`dxai` is an interactive CLI that configures **MCP servers**, **agent skills**, **Cursor rules and commands**, **project instruction files** (`CLAUDE.md`, `GEMINI.md`, `AGENTS.md`), and **AI-friendly project scaffolding** across **Cursor, Claude Code, VS Code / Copilot, OpenAI Codex CLI, Gemini CLI, Windsurf, and Google Antigravity** — simultaneously and in the right format for each.
+`dxai` is an interactive CLI that configures **MCP servers**, **agent skills**, **Cursor rules and commands**, **project instruction files** (`CLAUDE.md`, `GEMINI.md`, `AGENTS.md`), and **AI-friendly project scaffolding** across **Cursor, Claude Code, VS Code / Copilot, OpenAI Codex, Gemini CLI, Google Antigravity, and Devin Desktop (formerly Windsurf)** — simultaneously and in the right format for each.
 
 📚 **Full documentation:** <https://nandha-kumar-hajari.github.io/dxai/>
 
@@ -24,7 +24,7 @@ npx dxai --help     # full usage
 
 ## Headline features
 
-- **One config, every tool.** Pick an MCP server once and dxai writes the right format for every selected agent (JSON for Cursor / VS Code / Gemini / Windsurf / Antigravity, TOML for Codex, `claude mcp add` for Claude Code).
+- **One config, every tool.** Pick an MCP server once and dxai writes the right format for every selected agent (JSON for Cursor / VS Code / Gemini / Antigravity / Devin, TOML for Codex, `claude mcp add` for Claude Code). The full per-agent map lives in [Supported Agents](https://nandha-kumar-hajari.github.io/dxai/reference/agents/).
 - **Profiles for teams.** `dxai save-profile --here` writes `./.dxai/profile.json`. Teammates run `dxai apply` to get the same setup.
 - **Drift-aware introspection.** `dxai list` / `status` / `doctor` read a manifest of installs, so cleanup is precise and PR review can spot config drift.
 - **CI-ready.** Set `CI=true` (or pass `--yes`) for unattended runs. JSON output mode pipes into the rest of your tooling.

@@ -3,7 +3,7 @@ import { writePage, mdTable } from './lib/render.mjs';
 
 const KEY_DOCS = {
   mode: { type: '`"system"` | `"project"` | `"both"`', desc: 'Default mode `dxai apply` runs when this profile is active.' },
-  agents: { type: '`string[]`', desc: 'Agent IDs to configure (cursor, claude-code, vscode, codex, gemini, windsurf, antigravity).' },
+  agents: { type: '`string[]`', desc: 'Agent IDs to configure — see [Supported Agents](/reference/agents/) for the list; former ids (e.g. windsurf) are accepted.' },
   mcp: { type: '`string[]`', desc: 'MCP server IDs to install. See [Registry / MCP servers](/registry/mcp-servers/).' },
   skills: { type: '`string[]`', desc: 'Skill IDs to install. See [Registry / Skills](/registry/skills/).' },
   features: { type: '`string[]`', desc: 'Project features to generate (cursor-rules, agents-md, editorconfig, etc.).' },
