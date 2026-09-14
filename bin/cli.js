@@ -23,7 +23,7 @@ export function buildProgram() {
   const program = new Command();
 
   program
-    .name('dxai')
+    .name('dxai-cli')
     .description('Interactive CLI to bootstrap your AI-powered dev environment.')
     .version(pkg.version, '-v, --version', 'output the version number')
     .showHelpAfterError('(run with --help for usage)');
@@ -213,23 +213,23 @@ export function buildProgram() {
     'after',
     `
 Examples:
-  $ dxai                                      # interactive menu
-  $ dxai system                               # interactive system setup
-  $ dxai project --yes                        # accept defaults, no prompts
-  $ dxai system -y --agents cursor,claude-code --mcp github,playwright
-  $ dxai project -y --stack react,node --features cursor-rules,agents-md
-  $ CI=true dxai system --agents cursor       # non-interactive (CI mode)
-  $ dxai save-profile myteam --agents cursor --mcp github,playwright
-  $ dxai add github playwright                # add MCP servers to detected agents
-  $ dxai add context7 --agents cursor,codex   # target specific agents
-  $ dxai add io.github.upstash/context7       # any server from the official MCP Registry
-  $ dxai remove github --dry-run              # preview an MCP removal
-  $ dxai apply myteam                         # run setup from a saved profile
-  $ dxai apply --dry-run                      # auto-load ./.dxai/profile.json
-  $ dxai profiles                             # list saved profiles
-  $ dxai cleanup                              # remove dxai-managed configs
-  $ dxai rollback --list                      # show restorable .bak backups
-  $ dxai rollback --dry-run                   # preview a restore, write nothing
+  $ npx dxai-cli                                     # interactive menu
+  $ npx dxai-cli system                              # interactive system setup
+  $ npx dxai-cli project --yes                       # accept defaults, no prompts
+  $ npx dxai-cli system -y --agents cursor,claude-code --mcp github,playwright
+  $ npx dxai-cli project -y --stack react,node --features cursor-rules,agents-md
+  $ CI=true npx dxai-cli system --agents cursor      # non-interactive (CI mode)
+  $ npx dxai-cli save-profile myteam --agents cursor --mcp github,playwright
+  $ npx dxai-cli add github playwright               # add MCP servers to detected agents
+  $ npx dxai-cli add context7 --agents cursor,codex  # target specific agents
+  $ npx dxai-cli add io.github.upstash/context7      # any server from the official MCP Registry
+  $ npx dxai-cli remove github --dry-run             # preview an MCP removal
+  $ npx dxai-cli apply myteam                        # run setup from a saved profile
+  $ npx dxai-cli apply --dry-run                     # auto-load ./.dxai/profile.json
+  $ npx dxai-cli profiles                            # list saved profiles
+  $ npx dxai-cli cleanup                             # remove dxai-managed configs
+  $ npx dxai-cli rollback --list                     # show restorable .bak backups
+  $ npx dxai-cli rollback --dry-run                  # preview a restore, write nothing
 
 Profiles are auto-loaded from (in order):
   ./.dxai/profile.json   (project-local)

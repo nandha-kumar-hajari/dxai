@@ -8,7 +8,7 @@
 
 `dxai` is an interactive CLI that configures **MCP servers**, **agent skills**, **Cursor rules and commands**, **project instruction files** (`CLAUDE.md`, `GEMINI.md`, `AGENTS.md`), and **AI-friendly project scaffolding** across **Cursor, Claude Code, VS Code / Copilot, OpenAI Codex, Gemini CLI, Google Antigravity, and Devin Desktop (formerly Windsurf)** — simultaneously and in the right format for each.
 
-📚 **Full documentation:** <https://nandha-kumar-hajari.github.io/dxai/>
+📚 **Full documentation:** <https://dxai.dev/>
 
 ---
 
@@ -24,51 +24,51 @@ npx dxai-cli --help     # full usage
 
 ## Headline features
 
-- **One config, every tool.** Pick an MCP server once and dxai writes the right format for every selected agent (JSON for Cursor / VS Code / Gemini / Antigravity / Devin, TOML for Codex, `claude mcp add` for Claude Code). The full per-agent map lives in [Supported Agents](https://nandha-kumar-hajari.github.io/dxai/reference/agents/).
-- **Profiles for teams.** `dxai save-profile --here` writes `./.dxai/profile.json`. Teammates run `dxai apply` to get the same setup.
-- **Drift-aware introspection.** `dxai list` / `status` / `doctor` read a manifest of installs, so cleanup is precise and PR review can spot config drift.
+- **One config, every tool.** Pick an MCP server once and dxai writes the right format for every selected agent (JSON for Cursor / VS Code / Gemini / Antigravity / Devin, TOML for Codex, `claude mcp add` for Claude Code). The full per-agent map lives in [Supported Agents](https://dxai.dev/reference/agents/).
+- **Profiles for teams.** `dxai-cli save-profile --here` writes `./.dxai/profile.json`. Teammates run `dxai-cli apply` to get the same setup.
+- **Drift-aware introspection.** `dxai-cli list` / `status` / `doctor` read a manifest of installs, so cleanup is precise and PR review can spot config drift.
 - **CI-ready.** Set `CI=true` (or pass `--yes`) for unattended runs. JSON output mode pipes into the rest of your tooling.
-- **Backed by the official MCP Registry.** Catalog entries link to their record on [registry.modelcontextprotocol.io](https://registry.modelcontextprotocol.io); a weekly sync keeps the bundled catalog current and `dxai update` re-resolves live. Any registry server can be added by name: `dxai add io.github.owner/server`.
-- **Bundled + remote registry.** `dxai update` refreshes the MCP / skill catalog from a remote URL; bundled JSON is the offline fallback. Override the source with `DXAI_REGISTRY_URL`. Network calls (registry refresh, skill downloads) use native `fetch` with per-attempt timeouts and retry/backoff — no `curl` dependency.
-- **Reversible.** Every write is backed up as `<file>.bak.<ts>`; `dxai rollback` restores the most recent snapshot (and snapshots the current file first, so it's undoable).
+- **Backed by the official MCP Registry.** Catalog entries link to their record on [registry.modelcontextprotocol.io](https://registry.modelcontextprotocol.io); a weekly sync keeps the bundled catalog current and `dxai-cli update` re-resolves live. Any registry server can be added by name: `dxai-cli add io.github.owner/server`.
+- **Bundled + remote registry.** `dxai-cli update` refreshes the MCP / skill catalog from a remote URL; bundled JSON is the offline fallback. Override the source with `DXAI_REGISTRY_URL`. Network calls (registry refresh, skill downloads) use native `fetch` with per-attempt timeouts and retry/backoff — no `curl` dependency.
+- **Reversible.** Every write is backed up as `<file>.bak.<ts>`; `dxai-cli rollback` restores the most recent snapshot (and snapshots the current file first, so it's undoable).
 
 ## Commands
 
 | Command | What it does |
 |---|---|
-| `dxai system` | Global IDE configs, MCP servers, agent skills |
-| `dxai project` | Repo-local AI scaffolding (rules, CLAUDE.md, AGENTS.md, etc.) |
-| `dxai both` | System + project setup in one go |
-| `dxai init` | Alias for `dxai project` (first-time project setup) |
-| `dxai add <mcp...>` | Add MCP server(s) to detected agents — fast path, no wizard |
-| `dxai remove <mcp...>` (alias `rm`) | Remove MCP server(s) from detected agents |
-| `dxai apply [name]` | Run setup using a saved profile |
-| `dxai save-profile [name]` | Save selections as a reusable profile |
-| `dxai profiles` | List discoverable profiles |
-| `dxai list` | Show what dxai installed (from manifest) |
-| `dxai status` | Compare manifest with live config (drift detection) |
-| `dxai doctor` | Validate dxai installation |
-| `dxai update` | Refresh registry cache from remote |
-| `dxai rollback` | Restore dxai-managed files from their most recent `.bak.<ts>` backup |
-| `dxai cleanup [scope]` (alias `reset`) | Remove dxai-managed configs and files (`system`/`project`/`both`; supports `-y`, `--json`, `--dry-run`, `--backups`) |
+| `dxai-cli system` | Global IDE configs, MCP servers, agent skills |
+| `dxai-cli project` | Repo-local AI scaffolding (rules, CLAUDE.md, AGENTS.md, etc.) |
+| `dxai-cli both` | System + project setup in one go |
+| `dxai-cli init` | Alias for `dxai-cli project` (first-time project setup) |
+| `dxai-cli add <mcp...>` | Add MCP server(s) to detected agents — fast path, no wizard |
+| `dxai-cli remove <mcp...>` (alias `rm`) | Remove MCP server(s) from detected agents |
+| `dxai-cli apply [name]` | Run setup using a saved profile |
+| `dxai-cli save-profile [name]` | Save selections as a reusable profile |
+| `dxai-cli profiles` | List discoverable profiles |
+| `dxai-cli list` | Show what dxai installed (from manifest) |
+| `dxai-cli status` | Compare manifest with live config (drift detection) |
+| `dxai-cli doctor` | Validate dxai installation |
+| `dxai-cli update` | Refresh registry cache from remote |
+| `dxai-cli rollback` | Restore dxai-managed files from their most recent `.bak.<ts>` backup |
+| `dxai-cli cleanup [scope]` (alias `reset`) | Remove dxai-managed configs and files (`system`/`project`/`both`; supports `-y`, `--json`, `--dry-run`, `--backups`) |
 
-Per-command pages with full options tables: [Reference / Commands](https://nandha-kumar-hajari.github.io/dxai/reference/commands/).
+Per-command pages with full options tables: [Reference / Commands](https://dxai.dev/reference/commands/).
 
 ## Non-interactive / CI
 
 ```bash
-dxai system --yes \
+npx dxai-cli system --yes \
   --agents cursor,claude-code \
   --mcp github,playwright,context7
 
-dxai project --yes \
+npx dxai-cli project --yes \
   --stack react,node \
   --features cursor-rules,agents-md,editorconfig
 
-CI=true dxai system --agents cursor --dry-run --json | jq .
+CI=true npx dxai-cli system --agents cursor --dry-run --json | jq .
 ```
 
-Full flag table: [Reference / Flags](https://nandha-kumar-hajari.github.io/dxai/reference/flags/).
+Full flag table: [Reference / Flags](https://dxai.dev/reference/flags/).
 
 ## Requirements
 
@@ -95,7 +95,7 @@ CI matrix runs on every push and PR across **Ubuntu, macOS, Windows × Node 18, 
 
 1. `node --check` for every `.js` in `src/` and `bin/`
 2. `npm test`
-3. Smoke run of `dxai --version` and `dxai --help`
+3. Smoke run of `dxai-cli --version` and `dxai-cli --help`
 4. `npm run docs:check` (drift guard — fails if `bin/cli.js` flags or registry JSON change without regenerating docs)
 
 ## Documentation site
@@ -115,15 +115,15 @@ Auto-generated pages (regenerated by the generators in `scripts/docs/`):
 
 | Page | Source |
 |---|---|
-| [Registry / MCP servers](https://nandha-kumar-hajari.github.io/dxai/registry/mcp-servers/) | `src/registry/data/mcp-servers.json` |
-| [Registry / Skills](https://nandha-kumar-hajari.github.io/dxai/registry/skills/) | `src/registry/data/skills.json` |
-| [Registry / Stacks](https://nandha-kumar-hajari.github.io/dxai/registry/stacks/) | `src/registry/stacks.js` (`TECH_STACKS`, `CURSOR_RULES`) |
-| [Registry / Cursor commands](https://nandha-kumar-hajari.github.io/dxai/registry/cursor-commands/) | `src/registry/stacks.js` (`CURSOR_COMMANDS`) |
-| [Reference / Commands](https://nandha-kumar-hajari.github.io/dxai/reference/commands/) | `bin/cli.js` (`buildProgram()`) |
-| [Reference / Flags](https://nandha-kumar-hajari.github.io/dxai/reference/flags/) | `bin/cli.js` (`buildProgram()`) |
-| [Reference / Profile schema](https://nandha-kumar-hajari.github.io/dxai/reference/profile-schema/) | `src/profile.js` (`PROFILE_KEYS`) |
-| [Reference / Manifest schema](https://nandha-kumar-hajari.github.io/dxai/reference/manifest-schema/) | `src/manifest.js` (`emptyManifest`) |
-| [Changelog](https://nandha-kumar-hajari.github.io/dxai/changelog/) | `git log` (conventional commits) |
+| [Registry / MCP servers](https://dxai.dev/registry/mcp-servers/) | `src/registry/data/mcp-servers.json` |
+| [Registry / Skills](https://dxai.dev/registry/skills/) | `src/registry/data/skills.json` |
+| [Registry / Stacks](https://dxai.dev/registry/stacks/) | `src/registry/stacks.js` (`TECH_STACKS`, `CURSOR_RULES`) |
+| [Registry / Cursor commands](https://dxai.dev/registry/cursor-commands/) | `src/registry/stacks.js` (`CURSOR_COMMANDS`) |
+| [Reference / Commands](https://dxai.dev/reference/commands/) | `bin/cli.js` (`buildProgram()`) |
+| [Reference / Flags](https://dxai.dev/reference/flags/) | `bin/cli.js` (`buildProgram()`) |
+| [Reference / Profile schema](https://dxai.dev/reference/profile-schema/) | `src/profile.js` (`PROFILE_KEYS`) |
+| [Reference / Manifest schema](https://dxai.dev/reference/manifest-schema/) | `src/manifest.js` (`emptyManifest`) |
+| [Changelog](https://dxai.dev/changelog/) | `git log` (conventional commits) |
 
 The site also publishes `llms.txt` / `llms-full.txt` for AI-agent consumption (via `starlight-llms-txt`).
 

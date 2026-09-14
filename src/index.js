@@ -181,7 +181,7 @@ async function sharedSetup(runtime) {
 
         if (!(await confirm('Continue with setup for selected tools?'))) {
           console.log();
-          infoMsg('Run dxai again after installing your tools. Bye!');
+          infoMsg('Run npx dxai-cli again after installing your tools. Bye!');
           process.exit(0);
         }
       }
@@ -335,7 +335,7 @@ async function runSystem(ctx, runtime) {
   });
 
   if (!runtime.nonInteractive && !(await confirm('Proceed with system setup?'))) {
-    infoMsg('Setup cancelled. Run dxai again anytime.');
+    infoMsg('Setup cancelled. Run npx dxai-cli again anytime.');
     process.exit(0);
   }
 
@@ -630,7 +630,7 @@ async function runProject(ctx, runtime, { handleSkills = false } = {}) {
   });
 
   if (!runtime.nonInteractive && !(await confirm('Proceed with project setup?'))) {
-    infoMsg('Setup cancelled. Run dxai again anytime.');
+    infoMsg('Setup cancelled. Run npx dxai-cli again anytime.');
     process.exit(0);
   }
 
@@ -929,7 +929,7 @@ export async function saveProfileCmd(nameOrPath, opts = {}) {
   if (empty) {
     throw new Error(
       'No selections to save. Pass values via flags, e.g.:\n' +
-      '  dxai save-profile myteam --agents cursor --mcp github,playwright --features cursor-rules,agents-md'
+      '  npx dxai-cli save-profile myteam --agents cursor --mcp github,playwright --features cursor-rules,agents-md'
     );
   }
 

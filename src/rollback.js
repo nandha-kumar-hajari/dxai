@@ -124,7 +124,7 @@ export async function rollbackCmd(opts = {}) {
       console.log(`    ${theme.dim(`↩ ${path.basename(r.backup)}`)}`);
     }
     console.log();
-    infoMsg('Run `dxai rollback` to restore, or `--dry-run` to preview.');
+    infoMsg('Run `dxai-cli rollback` to restore, or `--dry-run` to preview.');
     console.log();
     return;
   }
