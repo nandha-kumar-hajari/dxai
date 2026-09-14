@@ -1,5 +1,5 @@
 ---
-title: dxai profiles
+title: "dxai-cli profiles"
 description: List discoverable profiles (~/.dxai/profiles + ./.dxai)
 sidebar: {"order":10}
 ---
@@ -14,7 +14,7 @@ List discoverable profiles (~/.dxai/profiles + ./.dxai)
 ## Synopsis
 
 ```bash
-dxai profiles [options]
+npx dxai-cli profiles [options]
 ```
 
 ## Options

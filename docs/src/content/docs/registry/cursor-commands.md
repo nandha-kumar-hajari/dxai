@@ -1,6 +1,6 @@
 ---
 title: Cursor Commands
-description: "5 pre-built Cursor slash commands installed by dxai project."
+description: "5 pre-built Cursor slash commands installed by dxai-cli project."
 ---
 <!--
 AUTO-GENERATED — do not edit by hand.
@@ -8,7 +8,7 @@ Regenerate via: npm run docs:generate
 Source: src/registry/stacks.js (CURSOR_COMMANDS) — generator: scripts/docs/gen-cursor-commands.mjs
 -->
 
-Pre-built Cursor slash commands installed by `dxai project` when you enable the `cursor-commands` feature. Cursor retired `.cursor/commands/` in favour of skills, so each command lands in `.cursor/skills/<name>/SKILL.md` with `disable-model-invocation: true` — invoked explicitly as `/pr`, never picked up automatically.
+Pre-built Cursor slash commands installed by `dxai-cli project` when you enable the `cursor-commands` feature. Cursor retired `.cursor/commands/` in favour of skills, so each command lands in `.cursor/skills/<name>/SKILL.md` with `disable-model-invocation: true` — invoked explicitly as `/pr`, never picked up automatically.
 
 ## Commands
 

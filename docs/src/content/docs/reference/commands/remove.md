@@ -1,5 +1,5 @@
 ---
-title: dxai remove
+title: "dxai-cli remove"
 description: "Remove MCP server(s) from detected agents (fast path, no wizard)"
 sidebar: {"order":6}
 ---
@@ -14,12 +14,12 @@ Remove MCP server(s) from detected agents (fast path, no wizard)
 ## Synopsis
 
 ```bash
-dxai remove [options] <mcp...>
+npx dxai-cli remove [options] <mcp...>
 ```
 
 ## Aliases
 
-`dxai rm`
+`dxai-cli rm`
 
 ## Arguments
 

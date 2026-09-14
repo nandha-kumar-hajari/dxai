@@ -1,5 +1,5 @@
 ---
-title: dxai apply
+title: "dxai-cli apply"
 description: "Run setup using a saved profile (auto-loads ./.dxai/profile.json if no name given)"
 sidebar: {"order":8}
 ---
@@ -14,7 +14,7 @@ Run setup using a saved profile (auto-loads ./.dxai/profile.json if no name give
 ## Synopsis
 
 ```bash
-dxai apply [options] [nameOrPath]
+npx dxai-cli apply [options] [nameOrPath]
 ```
 
 ## Arguments

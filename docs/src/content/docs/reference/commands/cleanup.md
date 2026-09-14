@@ -1,5 +1,5 @@
 ---
-title: dxai cleanup
+title: "dxai-cli cleanup"
 description: "Remove dxai-managed configs, files, and skills (scope: system | project | both)"
 sidebar: {"order":4}
 ---
@@ -14,12 +14,12 @@ Remove dxai-managed configs, files, and skills (scope: system | project | both)
 ## Synopsis
 
 ```bash
-dxai cleanup [options] [scope]
+npx dxai-cli cleanup [options] [scope]
 ```
 
 ## Aliases
 
-`dxai reset`
+`dxai-cli reset`
 
 ## Arguments
 

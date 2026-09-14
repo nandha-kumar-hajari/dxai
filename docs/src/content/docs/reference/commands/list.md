@@ -1,5 +1,5 @@
 ---
-title: dxai list
+title: "dxai-cli list"
 description: "Show dxai-managed installs from the manifest (system + project)"
 sidebar: {"order":11}
 ---
@@ -14,7 +14,7 @@ Show dxai-managed installs from the manifest (system + project)
 ## Synopsis
 
 ```bash
-dxai list [options]
+npx dxai-cli list [options]
 ```
 
 ## Options

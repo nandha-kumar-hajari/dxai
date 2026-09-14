@@ -28,8 +28,8 @@ Unknown IDs fail fast with a `Known: ...` hint rather than silently doing nothin
 
 Non-zero exit codes are reliable signals for CI:
 
-- Setup flows (`system` / `project` / `both`) and `dxai add` exit **1** when any per-step write fails, even if the rest succeeded. JSON output carries `ok: false` and an `errorCount`.
-- `dxai doctor` exits **1** on any error-severity finding; `dxai update` exits **1** if any registry file failed to refresh.
+- Setup flows (`system` / `project` / `both`) and `dxai-cli add` exit **1** when any per-step write fails, even if the rest succeeded. JSON output carries `ok: false` and an `errorCount`.
+- `dxai-cli doctor` exits **1** on any error-severity finding; `dxai-cli update` exits **1** if any registry file failed to refresh.
 
 ## Environment variables
 
@@ -47,27 +47,27 @@ Non-zero exit codes are reliable signals for CI:
 
 ```bash
 # Accept defaults — uses recommended MCPs + skills, all features.
-dxai project --yes
+npx dxai-cli project --yes
 
 # Pin exactly what to install.
-dxai system -y --agents cursor,claude-code --mcp github,playwright,context7
+npx dxai-cli system -y --agents cursor,claude-code --mcp github,playwright,context7
 
 # Fast path — add/remove servers without the wizard.
-dxai add github playwright --agents cursor --json
-dxai remove github --dry-run
+npx dxai-cli add github playwright --agents cursor --json
+npx dxai-cli remove github --dry-run
 
 # CI pipeline run, JSON output, no writes.
-CI=true dxai system --agents cursor --dry-run
+CI=true npx dxai-cli system --agents cursor --dry-run
 
 # Pipe results into jq.
-dxai project --yes --json --stack react | jq '.project.features'
+npx dxai-cli project --yes --json --stack react | jq '.project.features'
 
 # Tear down unattended (keeps CLAUDE.md/AGENTS.md-style files and backups;
 # add --backups to delete backups too).
-dxai cleanup both --yes --json
+npx dxai-cli cleanup both --yes --json
 
 # Restore every file from its latest backup, no prompts.
-dxai rollback --yes
+npx dxai-cli rollback --yes
 ```
 
 For the auto-generated, always-current flag reference see [Reference / Flags](/reference/flags/).

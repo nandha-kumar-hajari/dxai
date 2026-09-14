@@ -41,26 +41,26 @@ CLI flags **always beat** profile values. The profile only fills in keys that we
 
 ```bash
 # Save personal defaults to ~/.dxai/profiles/me.json
-dxai save-profile me \
+npx dxai-cli save-profile me \
   --agents cursor,claude-code \
   --mcp github,playwright \
   --features cursor-rules,agents-md,editorconfig
 
 # Apply that profile in any project.
 cd ~/some-project
-dxai apply me
+npx dxai-cli apply me
 
 # Save a project-local profile (commit ./.dxai/profile.json).
-dxai save-profile --here \
+npx dxai-cli save-profile --here \
   --stack react,node \
   --features cursor-rules,agents-md \
   --mcp playwright
 
 # A teammate clones the repo and runs:
-dxai apply               # auto-loads ./.dxai/profile.json
+npx dxai-cli apply               # auto-loads ./.dxai/profile.json
 
 # List discoverable profiles.
-dxai profiles
+npx dxai-cli profiles
 ```
 
 For the live schema see [Reference / Profile schema](/reference/profile-schema/).

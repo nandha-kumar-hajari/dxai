@@ -11,13 +11,13 @@ dxai writes a manifest after each install so it knows exactly what it changed:
 Three commands consume it:
 
 ```bash
-dxai list           # what's installed (system + project)
-dxai status         # drift between manifest and live config
-dxai doctor         # validate install (configs parse, env vars, tools on PATH)
+npx dxai-cli list           # what's installed (system + project)
+npx dxai-cli status         # drift between manifest and live config
+npx dxai-cli doctor         # validate install (configs parse, env vars, tools on PATH)
 ```
 
 `status` reports both **missing** entries (recorded but no longer in config) and **extra** entries (in config but not added by dxai). All three commands support `--json`. `doctor` exits 1 if any error-severity finding is reported.
 
-For a deeper health check, `dxai doctor --handshake` actually **spawns each installed stdio MCP server**, sends a JSON-RPC `initialize`, and verifies the reply — catching servers that are configured but broken. Remote/URL servers and servers with unset required env vars are reported as skipped.
+For a deeper health check, `dxai-cli doctor --handshake` actually **spawns each installed stdio MCP server**, sends a JSON-RPC `initialize`, and verifies the reply — catching servers that are configured but broken. Remote/URL servers and servers with unset required env vars are reported as skipped.
 
-The manifest also makes `dxai cleanup` precise — it only removes things dxai actually installed — and `dxai rollback` can restore any dxai-managed file from its most recent `.bak.<ts>` backup.
+The manifest also makes `dxai-cli cleanup` precise — it only removes things dxai actually installed — and `dxai-cli rollback` can restore any dxai-managed file from its most recent `.bak.<ts>` backup.

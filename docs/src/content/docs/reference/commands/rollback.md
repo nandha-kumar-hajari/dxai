@@ -1,5 +1,5 @@
 ---
-title: dxai rollback
+title: "dxai-cli rollback"
 description: "Restore dxai-managed files from their most recent .bak.<ts> backup"
 sidebar: {"order":7}
 ---
@@ -14,7 +14,7 @@ Restore dxai-managed files from their most recent .bak.<ts> backup
 ## Synopsis
 
 ```bash
-dxai rollback [options]
+npx dxai-cli rollback [options]
 ```
 
 ## Options

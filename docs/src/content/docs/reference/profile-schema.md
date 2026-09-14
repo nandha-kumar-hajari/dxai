@@ -8,7 +8,7 @@ Regenerate via: npm run docs:generate
 Source: src/profile.js (PROFILE_KEYS) — generator: scripts/docs/gen-profile-schema.mjs
 -->
 
-A profile is a JSON file capturing what `dxai system` / `dxai project` should install. CLI flags always beat profile values.
+A profile is a JSON file capturing what `dxai-cli system` / `dxai-cli project` should install. CLI flags always beat profile values.
 
 Auto-discovery: `./.dxai/profile.json` → `~/.dxai/config.json` → `~/.dxairc`. Override with `--profile <nameOrPath>`. See [Guide / Profiles](/guide/profiles/) for usage.
 
@@ -16,7 +16,7 @@ Auto-discovery: `./.dxai/profile.json` → `~/.dxai/config.json` → `~/.dxairc`
 
 | Key | Type | Description |
 | --- | --- | --- |
-| `mode` | `"system"` \| `"project"` \| `"both"` | Default mode `dxai apply` runs when this profile is active. |
+| `mode` | `"system"` \| `"project"` \| `"both"` | Default mode `dxai-cli apply` runs when this profile is active. |
 | `agents` | `string[]` | Agent IDs to configure — see [Supported Agents](/reference/agents/) for the list; former ids (e.g. windsurf) are accepted. |
 | `mcp` | `string[]` | MCP server IDs to install. See [Registry / MCP servers](/registry/mcp-servers/). |
 | `skills` | `string[]` | Skill IDs to install. See [Registry / Skills](/registry/skills/). |

@@ -53,7 +53,7 @@ export default function generate() {
   sections.push('');
   sections.push('Four options:');
   sections.push('');
-  sections.push('1. Add it straight from the official MCP Registry by name: `dxai add io.github.owner/server`. No catalog change needed.');
+  sections.push('1. Add it straight from the official MCP Registry by name: `dxai-cli add io.github.owner/server`. No catalog change needed.');
   sections.push('2. Open a PR adding it to [`src/registry/data/mcp-servers.json`](https://github.com/nandha-kumar-hajari/dxai/main/src/registry/data/mcp-servers.json) — a `registry` block is enough, the weekly sync fills in the rest.');
   sections.push('3. Host your own catalog and point [`DXAI_REGISTRY_URL`](/registry/custom-registry/) at it.');
   sections.push('4. Add the entry directly to your tool\'s config; dxai will leave hand-added entries alone.');

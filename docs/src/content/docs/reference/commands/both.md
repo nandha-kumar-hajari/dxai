@@ -1,5 +1,5 @@
 ---
-title: dxai both
+title: "dxai-cli both"
 description: Run system + project setup in one go
 sidebar: {"order":3}
 ---
@@ -14,7 +14,7 @@ Run system + project setup in one go
 ## Synopsis
 
 ```bash
-dxai both [options]
+npx dxai-cli both [options]
 ```
 
 ## Options

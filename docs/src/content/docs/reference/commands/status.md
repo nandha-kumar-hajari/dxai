@@ -1,5 +1,5 @@
 ---
-title: dxai status
+title: "dxai-cli status"
 description: Compare manifest with live config files; surface drift
 sidebar: {"order":12}
 ---
@@ -14,7 +14,7 @@ Compare manifest with live config files; surface drift
 ## Synopsis
 
 ```bash
-dxai status [options]
+npx dxai-cli status [options]
 ```
 
 ## Options

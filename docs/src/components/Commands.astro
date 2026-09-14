@@ -5,37 +5,37 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 
 const commands = [
   {
-    term: 'dxai init',
+    term: 'dxai-cli init',
     href: `${base}/guide/quick-start/`,
-    body: 'Make the current repo AI-agent-ready: detects your stack and writes AGENTS.md, CLAUDE.md, Cursor rules, and project MCP configs. dxai system does the same for global configs across all seven tools; dxai both runs everything.',
+    body: 'Make the current repo AI-agent-ready: detects your stack and writes AGENTS.md, CLAUDE.md, Cursor rules, and project MCP configs. dxai-cli system does the same for global configs across all seven tools; dxai-cli both runs everything.',
   },
   {
-    term: 'dxai add <mcp…>',
+    term: 'dxai-cli add <mcp…>',
     href: `${base}/reference/commands/add/`,
     body: 'Fast path, no wizard. Wires a server into every detected agent in one line; remove takes it out again. Both honour --project, --dry-run, and --json.',
   },
   {
-    term: 'dxai apply <profile>',
+    term: 'dxai-cli apply <profile>',
     href: `${base}/guide/profiles/`,
     body: 'Team setups as data. Commit .dxai/profile.json and a teammate reproduces your whole environment with one command.',
   },
   {
-    term: 'dxai status / doctor',
+    term: 'dxai-cli status / doctor',
     href: `${base}/guide/introspection/`,
     body: 'Every write lands in a manifest, so drift is visible: what went missing, what was added behind dxai’s back. doctor --handshake spawns each MCP server and verifies it actually speaks JSON-RPC.',
   },
   {
-    term: 'dxai rollback',
+    term: 'dxai-cli rollback',
     href: `${base}/reference/commands/rollback/`,
     body: 'Writes merge instead of overwriting, and every touched file is snapshotted first. Rollback restores the latest backup — after snapshotting the current state, so it’s undoable too.',
   },
   {
-    term: 'dxai update',
+    term: 'dxai-cli update',
     href: `${base}/registry/custom-registry/`,
     body: 'The MCP / skills catalog ships separately from the CLI and refreshes itself on a TTL. New servers arrive without an npm upgrade — or host your own registry with DXAI_REGISTRY_URL.',
   },
   {
-    term: 'dxai cleanup --yes',
+    term: 'dxai-cli cleanup --yes',
     href: `${base}/reference/commands/cleanup/`,
     body: 'The whole lifecycle is scriptable: set up, verify, and tear down under CI with JSON output — and partial failures exit non-zero instead of pretending everything worked.',
   },

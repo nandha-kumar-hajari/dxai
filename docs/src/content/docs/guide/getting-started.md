@@ -14,7 +14,7 @@ Two independent flows that you can run separately or together:
 - **System mode** — global, machine-level config files (`~/.cursor/mcp.json`, `~/.codex/config.toml`, …). Adds the MCP servers and agent skills you select to every selected tool, in the right format for each.
 - **Project mode** — repo-local AI-friendly scaffolding: `CLAUDE.md`, `GEMINI.md`, `AGENTS.md`, `.cursorignore`, `.editorconfig`, `.gitattributes`, stack-specific Cursor rules, and project-level MCP configs that you can commit.
 
-Run with no arguments for an interactive menu, or call `dxai system` / `dxai project` / `dxai both` directly.
+Run with no arguments for an interactive menu, or call `dxai-cli system` / `dxai-cli project` / `dxai-cli both` directly.
 
 ## Run it now
 
@@ -39,7 +39,7 @@ That's it for interactive mode. Continue to [Quick Start](/guide/quick-start/) f
 |---|---|
 | `~/.dxai/profiles/<name>.json` | Saved user profiles |
 | `~/.dxai/manifest.json` | Record of system-level installs (read by `list` / `status` / `doctor`) |
-| `~/.dxai/cache/` | Cached registry from `dxai update` |
+| `~/.dxai/cache/` | Cached registry from `dxai-cli update` |
 | `./.dxai/profile.json` | Project-local profile (commit this for your team) |
 | `./.dxai/manifest.json` | Record of project-level installs |
 

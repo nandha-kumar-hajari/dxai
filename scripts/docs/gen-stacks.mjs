@@ -19,7 +19,7 @@ export default function generate() {
   const sections = [];
 
   sections.push(
-    'Stacks dxai recognizes from your project. When you select stacks during `dxai project`, dxai writes a corresponding `.mdc` rule file into `.cursor/rules/` (in addition to a universal `general.mdc`).',
+    'Stacks dxai recognizes from your project. When you select stacks during `dxai-cli project`, dxai writes a corresponding `.mdc` rule file into `.cursor/rules/` (in addition to a universal `general.mdc`).',
     '',
     'Pass `--stack <id1>,<id2>` for non-interactive runs. Detected stacks are pre-checked in the wizard.',
     '',

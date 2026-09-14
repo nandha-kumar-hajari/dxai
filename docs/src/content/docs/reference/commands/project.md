@@ -1,5 +1,5 @@
 ---
-title: dxai project
+title: "dxai-cli project"
 description: "Project-level setup (stack, rules, CLAUDE.md, .editorconfig, etc.)"
 sidebar: {"order":2}
 ---
@@ -14,12 +14,12 @@ Project-level setup (stack, rules, CLAUDE.md, .editorconfig, etc.)
 ## Synopsis
 
 ```bash
-dxai project [options]
+npx dxai-cli project [options]
 ```
 
 ## Aliases
 
-`dxai init`
+`dxai-cli init`
 
 ## Options
 

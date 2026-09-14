@@ -1,7 +1,7 @@
 ---
 // Landing hero, structured like the top of a man page: NAME line as the
 // headline, SYNOPSIS as a copyable command, and the fan-out diagram — one
-// `dxai init` making a repo AI-agent-ready — as the signature.
+// `dxai-cli init` making a repo AI-agent-ready — as the signature.
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 const getStartedHref = `${base}/guide/getting-started/`;
 const githubHref = 'https://github.com/nandha-kumar-hajari/dxai';
@@ -26,7 +26,7 @@ const fanout = [
       <p class="dx-hero-eyebrow" aria-hidden="true">
         <span>User Commands</span>
         <span class="dx-hero-eyebrow-rule"></span>
-        <span>dxai(1)</span>
+        <span>dxai-cli(1)</span>
       </p>
       <h1 id="dx-hero-title" class="dx-hero-title">
         <strong>dxai</strong><span class="dx-hero-dash"> — </span>make your repo ready for every AI coding agent
@@ -54,10 +54,10 @@ const fanout = [
       </div>
     </header>
 
-    <figure class="dx-fan" aria-label="dxai init detects the stack, then configures and ticks off each agent in turn">
+    <figure class="dx-fan" aria-label="dxai-cli init detects the stack, then configures and ticks off each agent in turn">
       <figcaption class="dx-fan-caption">run it inside any repo</figcaption>
       <div class="dx-fan-body">
-        <span class="dx-fan-line dx-fan-cmd"><span class="dx-prompt">$</span>&nbsp;<span class="dx-fan-typed">dxai init</span><span class="dx-fan-caret" aria-hidden="true">▍</span></span>
+        <span class="dx-fan-line dx-fan-cmd"><span class="dx-prompt">$</span>&nbsp;<span class="dx-fan-typed">npx dxai-cli init</span><span class="dx-fan-caret" aria-hidden="true">▍</span></span>
         <span class="dx-fan-line dx-fan-det" style="--i:0"><span class="dx-fan-note">› detected: react + node · npm · vitest · github-actions</span></span>
         {fanout.map((f, i) => (
           <span class="dx-fan-line dx-fan-row" style={`--i:${i + 1}`}>
@@ -381,7 +381,7 @@ const fanout = [
 
   /*
    * Orchestrated once-per-load sequence, motion permitting:
-   *   0.4s–1.15s  `dxai init` types itself (9 steps), caret blinking
+   *   0.4s–1.15s  `npx dxai-cli init` types itself (17 steps), caret blinking
    *   1.25s       stack detection line appears
    *   1.5s→       agents appear one every 230ms, each pending "…"
    *   +340ms      …then its ✓ ticks in — a cascade of completions
@@ -394,8 +394,8 @@ const fanout = [
       overflow: hidden;
       white-space: nowrap;
       vertical-align: bottom;
-      width: 9ch;
-      animation: dx-fan-type 0.75s steps(9, end) 400ms both;
+      width: 17ch;
+      animation: dx-fan-type 0.75s steps(17, end) 400ms both;
     }
 
     .dx-fan-caret {
@@ -428,7 +428,7 @@ const fanout = [
 
     @keyframes dx-fan-type {
       from { width: 0; }
-      to { width: 9ch; }
+      to { width: 17ch; }
     }
     @keyframes dx-fan-caret-blink {
       0%, 50% { opacity: 1; }

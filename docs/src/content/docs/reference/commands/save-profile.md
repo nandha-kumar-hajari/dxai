@@ -1,5 +1,5 @@
 ---
-title: "dxai save-profile"
+title: "dxai-cli save-profile"
 description: "Save selections as a profile. Defaults to ~/.dxai/profiles/<name>.json"
 sidebar: {"order":9}
 ---
@@ -14,7 +14,7 @@ Save selections as a profile. Defaults to ~/.dxai/profiles/<name>.json
 ## Synopsis
 
 ```bash
-dxai save-profile [options] [name]
+npx dxai-cli save-profile [options] [name]
 ```
 
 ## Arguments

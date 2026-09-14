@@ -1,5 +1,5 @@
 ---
-title: dxai doctor
+title: "dxai-cli doctor"
 description: "Validate dxai installation: configs parse, env vars set, tools on PATH"
 sidebar: {"order":13}
 ---
@@ -14,7 +14,7 @@ Validate dxai installation: configs parse, env vars set, tools on PATH
 ## Synopsis
 
 ```bash
-dxai doctor [options]
+npx dxai-cli doctor [options]
 ```
 
 ## Options

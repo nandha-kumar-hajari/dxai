@@ -63,7 +63,7 @@ If you change `bin/cli.js` flags/commands, `src/registry/data/*.json`, `PROFILE_
 
 The catalog and the CLI ship on **two independent tracks**:
 
-- **Data track** — `src/registry/data/*.json`. Push to `main`; users pick it up via the auto-refresh TTL (7 days) or `dxai update` instantly. **No version bump.** Use for new/changed servers, skills, tools, description edits, `stale` markers, pin bumps.
+- **Data track** — `src/registry/data/*.json`. Push to `main`; users pick it up via the auto-refresh TTL (7 days) or `dxai-cli update` instantly. **No version bump.** Use for new/changed servers, skills, tools, description edits, `stale` markers, pin bumps.
 - **Code track** — npm package. Bump `package.json` + publish, only for CLI *logic* changes.
 
 When adding an MCP server, prefer a single `transport` declaration — per-agent config blocks are derived from `AGENT_DEFINITIONS` automatically (see the Registry section of AGENTS.md). Pin versions only when reproducibility genuinely matters.

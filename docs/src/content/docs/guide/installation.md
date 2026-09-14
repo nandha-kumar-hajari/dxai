@@ -17,15 +17,15 @@ npx dxai-cli
 
 ```bash
 npm install -g dxai-cli
-dxai --version
+dxai-cli --version
 ```
 
-Now `dxai` is on your `$PATH`. Use this if you'll run it often, or if you want shell completions later.
+Now `dxai-cli` is on your `$PATH`. Use this if you'll run it often, or if you want shell completions later.
 
 To uninstall:
 
 ```bash
-npm uninstall -g dxai
+npm uninstall -g dxai-cli
 ```
 
 ## 3. From source (for contributors)
@@ -38,13 +38,13 @@ node bin/cli.js --help
 
 # optional: link the local checkout as a global command
 npm link
-dxai --version
+dxai-cli --version
 ```
 
 When you're done:
 
 ```bash
-npm unlink -g dxai
+npm unlink -g dxai-cli
 ```
 
 ## System requirements

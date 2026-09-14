@@ -43,7 +43,7 @@ scripts/
 .github/workflows/        # ci.yml (tests + lint + docs-check), docs.yml, catalog-health.yml
 ```
 
-Loading is synchronous: registry data is resolved at module import via `loadRegistry(name)`, which prefers `~/.dxai/cache/<name>.json` (written by `dxai update` / the auto-refresh) and falls back to the bundled JSON shipped in `src/registry/data/`.
+Loading is synchronous: registry data is resolved at module import via `loadRegistry(name)`, which prefers `~/.dxai/cache/<name>.json` (written by `dxai-cli update` / the auto-refresh) and falls back to the bundled JSON shipped in `src/registry/data/`.
 
 Two design decisions do most of the work:
 

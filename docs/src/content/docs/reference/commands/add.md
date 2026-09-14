@@ -1,5 +1,5 @@
 ---
-title: dxai add
+title: "dxai-cli add"
 description: "Add MCP server(s) to detected agents (fast path, no wizard). Takes catalogue ids or official MCP Registry names like io.github.owner/server"
 sidebar: {"order":5}
 ---
@@ -14,7 +14,7 @@ Add MCP server(s) to detected agents (fast path, no wizard). Takes catalogue ids
 ## Synopsis
 
 ```bash
-dxai add [options] <mcp...>
+npx dxai-cli add [options] <mcp...>
 ```
 
 ## Arguments

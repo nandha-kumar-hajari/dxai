@@ -19,7 +19,7 @@ function rowForOption(opt) {
 }
 
 // Build a single command's MD body.
-function renderCommand(cmd, parentName = 'dxai') {
+function renderCommand(cmd, parentName = 'dxai-cli') {
   const fullName = `${parentName} ${cmd.name()}`;
   const aliases = cmd.aliases?.() ?? [];
   const args = cmd.registeredArguments ?? cmd._args ?? [];
@@ -32,7 +32,7 @@ function renderCommand(cmd, parentName = 'dxai') {
   sections.push('## Synopsis');
   sections.push('');
   sections.push('```bash');
-  sections.push(`${fullName} ${usage}`.trim());
+  sections.push(`npx ${fullName} ${usage}`.trim());
   sections.push('```');
   sections.push('');
 
@@ -81,7 +81,7 @@ export default function generate() {
     writePage({
       relativePath: `reference/commands/${cmd.name()}.md`,
       frontmatter: {
-        title: `dxai ${cmd.name()}`,
+        title: `dxai-cli ${cmd.name()}`,
         description: cmd.description(),
         sidebar: { order: i + 1 },
       },
@@ -92,7 +92,7 @@ export default function generate() {
 
   // Index page summarising all commands.
   const indexRows = subcommands.map((cmd) => {
-    const name = '`dxai ' + cmd.name() + '`';
+    const name = '`dxai-cli ' + cmd.name() + '`';
     const aliases = cmd.aliases?.() ?? [];
     const aliasNote = aliases.length ? ` (alias: \`${aliases.join(', ')}\`)` : '';
     const desc = cmd.description() + aliasNote;

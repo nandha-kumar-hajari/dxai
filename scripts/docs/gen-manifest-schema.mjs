@@ -11,7 +11,7 @@ const FIELD_DOCS = {
   agents: { type: '`string[]`', desc: 'Agent IDs for which dxai has installed something.' },
   mcp: { type: '`{ [agentId]: { [serverId]: { addedAt, configPath } } }`', desc: 'Per-agent record of installed MCP servers. `addedAt` is ISO 8601; `configPath` points at the file dxai wrote into.' },
   skills: { type: '`{ [skillId]: { addedAt, path } }`', desc: 'Installed agent skills. `path` is the directory containing the skill on disk.' },
-  files: { type: '`[{ relativePath, addedAt }]`', desc: 'Project files dxai created (`AGENTS.md`, `.cursor/rules/*.mdc`, etc.). Used by `dxai status` to detect deletion.' },
+  files: { type: '`[{ relativePath, addedAt }]`', desc: 'Project files dxai created (`AGENTS.md`, `.cursor/rules/*.mdc`, etc.). Used by `dxai-cli status` to detect deletion.' },
 };
 
 export default function generate() {
@@ -24,7 +24,7 @@ export default function generate() {
     `- **System** — \`~/.dxai/manifest.json\` (path constant: \`${SYSTEM_MANIFEST_PATH.replace(process.env.HOME || '', '~')}\`)`,
     `- **Project** — \`./${PROJECT_MANIFEST_PATH}\` (relative to the project where you ran dxai)`,
     '',
-    'Both files share the same shape and are written by the helpers in `src/manifest.js`. `dxai list`, `dxai status`, `dxai doctor`, and `dxai cleanup` all read these.',
+    'Both files share the same shape and are written by the helpers in `src/manifest.js`. `dxai-cli list`, `dxai-cli status`, `dxai-cli doctor`, and `dxai-cli cleanup` all read these.',
     '',
   );
 
@@ -48,7 +48,7 @@ export default function generate() {
 
   sections.push('## Populated example');
   sections.push('');
-  sections.push('After `dxai system --agents cursor --mcp github,playwright`:');
+  sections.push('After `dxai-cli system --agents cursor --mcp github,playwright`:');
   sections.push('');
   sections.push('```json');
   sections.push(JSON.stringify({

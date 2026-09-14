@@ -10,7 +10,7 @@ Source: src/registry/data/skills.json (generator: scripts/docs/gen-skills.mjs)
 
 Skills are downloadable instruction packages that teach AI agents specialized capabilities. They're sourced from official and community GitHub repos and installed into your project.
 
-Pick skills in the wizard, or pass `--skills <id1>,<id2>` to `dxai system`. ★ marks recommended (pre-checked) entries.
+Pick skills in the wizard, or pass `--skills <id1>,<id2>` to `dxai-cli system`. ★ marks recommended (pre-checked) entries.
 
 Skills are installed into `.agents/skills/` (read natively by Codex, Cursor, Devin and Antigravity) and mirrored into `.claude/skills/` when Claude Code is selected — the only location it discovers.
 

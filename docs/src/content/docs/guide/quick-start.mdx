@@ -43,31 +43,31 @@ Pass `--json` to get machine-readable output for piping into other tools. See [N
 
 ```bash
 # In a project repo:
-dxai save-profile --here \
+npx dxai-cli save-profile --here \
   --agents cursor,claude-code \
   --mcp github,playwright \
   --features cursor-rules,agents-md
 git add .dxai/profile.json && git commit -m "Add dxai profile"
 ```
 
-Anyone who clones the repo can then run `dxai apply` to get the same setup.
+Anyone who clones the repo can then run `dxai-cli apply` to get the same setup.
 
 ## What just happened?
 
-Run `dxai list` to see what was installed:
+Run `dxai-cli list` to see what was installed:
 
 ```bash
-dxai list             # human-readable
-dxai list --json      # machine-readable
+npx dxai-cli list             # human-readable
+npx dxai-cli list --json      # machine-readable
 ```
 
-Run `dxai doctor` to validate everything's healthy:
+Run `dxai-cli doctor` to validate everything's healthy:
 
 ```bash
-dxai doctor
+npx dxai-cli doctor
 ```
 
-If you ever want to back out, `dxai cleanup` walks the manifest and removes only what dxai installed — it won't touch entries you added by hand.
+If you ever want to back out, `dxai-cli cleanup` walks the manifest and removes only what dxai installed — it won't touch entries you added by hand.
 
 ## Next steps
 

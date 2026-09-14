@@ -1,5 +1,5 @@
 ---
-title: dxai system
+title: "dxai-cli system"
 description: "System-level setup (global IDE configs, MCP servers, skills)"
 sidebar: {"order":1}
 ---
@@ -14,7 +14,7 @@ System-level setup (global IDE configs, MCP servers, skills)
 ## Synopsis
 
 ```bash
-dxai system [options]
+npx dxai-cli system [options]
 ```
 
 ## Options

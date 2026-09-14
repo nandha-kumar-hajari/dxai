@@ -26,7 +26,8 @@
   },
   "type": "module",
   "bin": {
-    "dxai": "bin/cli.js"
+    "dxai": "bin/cli.js",
+    "dxai-cli": "bin/cli.js"
   },
   "main": "src/index.js",
   "scripts": {

@@ -45,26 +45,26 @@ Entries without a `registry` block (the reference servers, and vendors with no r
 ## How the catalog stays current
 
 - **Weekly, maintainer-side.** The `catalog-health` workflow runs `scripts/registry-sync.mjs`, which re-resolves every linked entry and opens a pull request when something changed. The report lists what changed, what failed, and registry hits for the hand-written entries so migration candidates surface themselves. Run it locally with `node scripts/registry-sync.mjs --dry-run`.
-- **On `dxai update`, user-side.** After fetching the catalog snapshot, `dxai update` re-resolves linked entries live and caches the result. Any failure keeps the snapshot values. Pass `--no-resolve` to skip the live stage. The background auto-refresh never resolves live; it only picks up the snapshot.
+- **On `dxai-cli update`, user-side.** After fetching the catalog snapshot, `dxai-cli update` re-resolves linked entries live and caches the result. Any failure keeps the snapshot values. Pass `--no-resolve` to skip the live stage. The background auto-refresh never resolves live; it only picks up the snapshot.
 
 ## Adding any registry server
 
-You are not limited to the catalog. `dxai add` accepts a registry name:
+You are not limited to the catalog. `dxai-cli add` accepts a registry name:
 
 ```bash
-dxai add io.github.upstash/context7 --agents cursor,claude-code
-dxai add io.github.microsoft/playwright-mcp --dry-run
+npx dxai-cli add io.github.upstash/context7 --agents cursor,claude-code
+npx dxai-cli add io.github.microsoft/playwright-mcp --dry-run
 ```
 
-The record is resolved live, validated, and written like a catalog entry under the last segment of its name (`playwright-mcp`). A name that a catalog entry already links to uses that entry. `dxai remove` takes the same name. Because these servers are not in the catalog, their registry name and required env vars are recorded in the manifest so `doctor` and `status` still cover them.
+The record is resolved live, validated, and written like a catalog entry under the last segment of its name (`playwright-mcp`). A name that a catalog entry already links to uses that entry. `dxai-cli remove` takes the same name. Because these servers are not in the catalog, their registry name and required env vars are recorded in the manifest so `doctor` and `status` still cover them.
 
-Set `DXAI_MCP_REGISTRY_URL` to point both the live stage and `dxai add` at a mirror.
+Set `DXAI_MCP_REGISTRY_URL` to point both the live stage and `dxai-cli add` at a mirror.
 
 ## Runtime resolution
 
 At runtime dxai resolves the catalog as **cache → bundled**:
 
-1. **Local cache** at `~/.dxai/cache/<name>.json`, written by `dxai update` and the periodic auto-refresh.
+1. **Local cache** at `~/.dxai/cache/<name>.json`, written by `dxai-cli update` and the periodic auto-refresh.
 2. **Bundled snapshot** shipped with the npm package, always available offline.
 
 `DXAI_REGISTRY_SOURCE=bundled` forces the bundled snapshot. The test runner, doc generators and catalog scripts set it so a developer's cache never stands in for the JSON in the repo.
@@ -117,9 +117,9 @@ Fetched catalogs are validated before they are cached: ids must be safe map keys
 ## Refreshing the cache
 
 ```bash
-dxai update                # fetch the snapshot, re-resolve live, cache, report the diff
-dxai update --no-resolve   # snapshot only
-dxai update --json         # machine-readable
+npx dxai-cli update                # fetch the snapshot, re-resolve live, cache, report the diff
+npx dxai-cli update --no-resolve   # snapshot only
+npx dxai-cli update --json         # machine-readable
 ```
 
 The cache is read at every CLI startup; nothing else is required.

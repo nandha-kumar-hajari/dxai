@@ -1,5 +1,5 @@
 ---
-title: dxai update
+title: "dxai-cli update"
 description: "Fetch the latest registry (MCP servers, skills) and cache it locally"
 sidebar: {"order":14}
 ---
@@ -14,7 +14,7 @@ Fetch the latest registry (MCP servers, skills) and cache it locally
 ## Synopsis
 
 ```bash
-dxai update [options]
+npx dxai-cli update [options]
 ```
 
 ## Options

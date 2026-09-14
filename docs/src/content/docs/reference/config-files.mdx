@@ -11,7 +11,7 @@ description: Where dxai reads from and writes to on your filesystem.
 | `~/.dxai/config.json` | User-level default profile (auto-loaded) |
 | `~/.dxairc` / `~/.dxairc.json` | Alternate user-level default profile |
 | `~/.dxai/manifest.json` | Record of system-level installs |
-| `~/.dxai/cache/<name>.json` | Cached registry from `dxai update` |
+| `~/.dxai/cache/<name>.json` | Cached registry from `dxai-cli update` |
 | `./.dxai/profile.json` | Project-local profile (commit this) |
 | `./.dxai/manifest.json` | Record of project-level installs |
 
@@ -27,4 +27,4 @@ Any time dxai modifies an existing config file, it creates a timestamped backup 
 ~/.cursor/mcp.json.bak.2026-04-26T10-15-30
 ```
 
-Use `dxai cleanup` to remove backups and managed entries.
+Use `dxai-cli cleanup` to remove backups and managed entries.
