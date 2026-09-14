@@ -1,6 +1,6 @@
 {
   "name": "dxai-cli",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Interactive CLI to bootstrap your AI-powered dev environment — MCP servers, agent skills, cursor rules & more across Cursor, Claude Code, VS Code / Copilot, Codex, Gemini CLI, Windsurf, and Antigravity.",
   "keywords": [
     "ai",
