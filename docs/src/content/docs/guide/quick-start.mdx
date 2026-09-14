@@ -12,7 +12,7 @@ import { Steps } from '@astrojs/starlight/components';
 1. **Run the wizard.**
 
    ```bash
-   npx dxai
+   npx dxai-cli
    ```
 
 2. **Pick what to set up.** Choose `Both` if you're configuring a brand-new machine and a brand-new project.
@@ -28,11 +28,11 @@ import { Steps } from '@astrojs/starlight/components';
 ## Non-interactive (CI / scripted)
 
 ```bash
-npx dxai system --yes \
+npx dxai-cli system --yes \
   --agents cursor,claude-code \
   --mcp github,playwright,context7
 
-npx dxai project --yes \
+npx dxai-cli project --yes \
   --stack react,node \
   --features cursor-rules,agents-md,editorconfig
 ```

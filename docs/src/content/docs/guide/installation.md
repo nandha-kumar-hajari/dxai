@@ -8,7 +8,7 @@ Three ways to run dxai. Pick the one that suits your workflow.
 ## 1. `npx` (no install)
 
 ```bash
-npx dxai
+npx dxai-cli
 ```
 
 `npx` downloads dxai on demand and runs it. Best for one-off setup or trying it out. No commitment to a global install.
@@ -16,7 +16,7 @@ npx dxai
 ## 2. Global install via npm
 
 ```bash
-npm install -g dxai
+npm install -g dxai-cli
 dxai --version
 ```
 

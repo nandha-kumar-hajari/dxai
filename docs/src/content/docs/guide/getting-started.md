@@ -19,7 +19,7 @@ Run with no arguments for an interactive menu, or call `dxai system` / `dxai pro
 ## Run it now
 
 ```bash
-npx dxai
+npx dxai-cli
 ```
 
 You'll be prompted to choose what to set up:

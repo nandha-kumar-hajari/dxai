@@ -15,11 +15,11 @@
 ## Quick Start
 
 ```bash
-npx dxai            # interactive menu
-npx dxai system     # global IDE configs only
-npx dxai project    # repo-local scaffolding only
-npx dxai --yes      # accept defaults; non-interactive
-npx dxai --help     # full usage
+npx dxai-cli            # interactive menu
+npx dxai-cli system     # global IDE configs only
+npx dxai-cli project    # repo-local scaffolding only
+npx dxai-cli --yes      # accept defaults; non-interactive
+npx dxai-cli --help     # full usage
 ```
 
 ## Headline features
@@ -88,7 +88,7 @@ cd dxai
 npm install
 npm test                          # 143 tests, ~0.5s (node:test, no extra framework)
 npm run smoke                     # quick --version + --help check
-npm link                          # optional: simulate `npx dxai`
+npm link                          # optional: simulate `npx dxai-cli`
 ```
 
 CI matrix runs on every push and PR across **Ubuntu, macOS, Windows × Node 18, 20, 22**:

@@ -893,7 +893,7 @@ export async function run(mode, opts = {}) {
       console.log(theme.dim(`    ${step++}. Fill in AGENTS.md with your project's architecture details`));
     }
   }
-  console.log(theme.dim(`    ${step}. Re-run ${chalk.cyan('npx dxai')} anytime to add more tools`));
+  console.log(theme.dim(`    ${step}. Re-run ${chalk.cyan('npx dxai-cli')} anytime to add more tools`));
   console.log();
 }
 
