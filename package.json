@@ -16,9 +16,17 @@
   ],
   "author": "d3v",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nandha-kumar-hajari/dxai.git"
+  },
+  "homepage": "https://github.com/nandha-kumar-hajari/dxai#readme",
+  "bugs": {
+    "url": "https://github.com/nandha-kumar-hajari/dxai/issues"
+  },
   "type": "module",
   "bin": {
-    "dxai": "./bin/cli.js"
+    "dxai": "bin/cli.js"
   },
   "main": "src/index.js",
   "scripts": {
