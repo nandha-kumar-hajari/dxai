@@ -6,9 +6,10 @@ export function normalizeOptions(opts = {}) {
   const ci = process.env.CI === 'true' || process.env.CI === '1';
   const dryRun = !!opts.dryRun || process.env.DXAI_DRY_RUN === '1';
   const json = !!opts.json;
-  // --yes implies non-interactive. CI=true also implies non-interactive (and json output).
+  // --yes implies non-interactive. CI=true also implies non-interactive (and json
+  // output), and --json is machine-facing so it never prompts either.
   const yes = !!opts.yes || ci;
-  const nonInteractive = yes;
+  const nonInteractive = yes || json;
   return {
     yes,
     ci,

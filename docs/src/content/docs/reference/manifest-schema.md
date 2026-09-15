@@ -24,7 +24,7 @@ Both files share the same shape and are written by the helpers in `src/manifest.
 | `updatedAt` | `string` (ISO 8601) | Timestamp of the most recent write. |
 | `agents` | `string[]` | Agent IDs for which dxai has installed something. |
 | `mcp` | `{ [agentId]: { [serverId]: { addedAt, configPath } } }` | Per-agent record of installed MCP servers. `addedAt` is ISO 8601; `configPath` points at the file dxai wrote into. |
-| `skills` | `{ [skillId]: { addedAt, path } }` | Installed agent skills. `path` is the directory containing the skill on disk. |
+| `skills` | `{ [skillId]: { addedAt, updatedAt, path, dirs } }` | Installed agent skills. `dirs` lists every skill directory dxai wrote (skills install per project, mirrored to `.claude/skills` for Claude Code); `path` is the base directory of the latest install, kept for older readers. Cleanup removes exactly the recorded `dirs`. |
 | `tools` | — | — |
 | `files` | `[{ relativePath, addedAt }]` | Project files dxai created (`AGENTS.md`, `.cursor/rules/*.mdc`, etc.). Used by `dxai-cli status` to detect deletion. |
 

@@ -18,7 +18,7 @@ export function emptyManifest() {
     updatedAt: null,
     agents: [],
     mcp: {},     // { [agentId]: { [serverId]: { addedAt, configPath } } }
-    skills: {},  // { [skillId]: { addedAt, path } }
+    skills: {},  // { [skillId]: { addedAt, path, dirs } } — path: base dir of the last install; dirs: every skill directory written (incl. mirrors)
     tools: {},   // { [toolId]: { addedAt } }
     files: [],   // [{ relativePath, addedAt }]
   };
@@ -103,14 +103,31 @@ function recordMcp(filePath, mcpResults, meta = {}) {
 
 // `skillResults.installed` holds skill IDs (which are also the on-disk
 // directory names), so manifest keys line up with what cleanup scans for.
+// Skills land in the *current project* (`.agents/skills`, mirrored to
+// `.claude/skills`), so one id can be installed in several places over time;
+// `dirs` accumulates every directory so cleanup can find all of them, while
+// `path` keeps the base dir of the latest install for older readers.
 function recordSkills(filePath, skillResults) {
   if (!skillResults || skillResults.installed.length === 0) return;
   updateManifest(filePath, (m) => {
     const now = new Date().toISOString();
+    const bases = [skillResults.directory, ...(skillResults.extraDirectories || [])].filter(Boolean);
     for (const skillId of skillResults.installed) {
-      m.skills[skillId] = { addedAt: now, path: skillResults.directory };
+      const prev = m.skills[skillId] || {};
+      const dirs = new Set(prev.dirs || []);
+      if (prev.path) dirs.add(path.join(prev.path, skillId));
+      for (const base of bases) dirs.add(path.join(base, skillId));
+      m.skills[skillId] = { addedAt: prev.addedAt || now, updatedAt: now, path: skillResults.directory, dirs: [...dirs] };
     }
   });
+}
+
+// Every directory the manifest says a skill was written to (current and
+// legacy shapes), whether or not it still exists.
+export function manifestSkillDirs(entry, skillId) {
+  const dirs = new Set(entry?.dirs || []);
+  if (entry?.path) dirs.add(path.join(entry.path, skillId));
+  return [...dirs];
 }
 
 export function recordSystemMcp(mcpResults, meta) {

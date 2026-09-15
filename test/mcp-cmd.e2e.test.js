@@ -163,3 +163,53 @@ test('e2e remove by registry name: removes the slug it was added under', () => {
   const cfg = fs.readJsonSync(cursorMcpPath());
   assert.ok(!cfg.mcpServers || !cfg.mcpServers.foo);
 });
+
+// ── Regressions from the 1.0.1 sandbox run ──
+
+test('e2e remove --project: Claude Code edits ./.mcp.json, never the global CLI config', () => {
+  const add = runCli(['add', 'memory', '--project', '--agents', 'claude-code', '--yes', '--json']);
+  assert.equal(add.status, 0, add.stderr);
+  const projectFile = path.join(tmp, '.mcp.json');
+  assert.ok(fs.readJsonSync(projectFile).mcpServers.memory);
+
+  const r = runCli(['remove', 'memory', '--project', '--agents', 'claude-code', '--json']);
+  assert.equal(r.status, 0, r.stderr);
+  const out = JSON.parse(r.stdout);
+  assert.equal(fs.realpathSync(path.dirname(out.removed[0].path)), fs.realpathSync(tmp));
+  assert.ok(!fs.existsSync(projectFile), 'emptied project file is removed rather than left as {}');
+  const manifest = fs.readJsonSync(path.join(tmp, '.dxai', 'manifest.json'));
+  assert.equal(manifest.mcp['claude-code'], undefined);
+});
+
+test('e2e add --json: stdout stays pure JSON even when a backup is taken', () => {
+  runCli(['add', 'context7', '--agents', 'cursor', '--yes', '--json']);
+  const r = runCli(['add', 'github', '--agents', 'cursor', '--yes', '--json']);
+  assert.equal(r.status, 0, r.stderr);
+  const out = JSON.parse(r.stdout); // used to be preceded by an "ℹ Backed up:" line
+  assert.match(out.results.cursor.backup, /mcp\.json\.bak\./);
+  const text = runCli(['add', 'playwright', '--agents', 'cursor', '--yes']);
+  assert.match(text.stdout, /Backed up: mcp\.json → mcp\.json\.bak\./); // text mode still says so
+});
+
+test('e2e remove: Codex sections written by dxai are actually removed from config.toml', () => {
+  const add = runCli(['add', 'github', 'playwright', '--agents', 'codex', '--yes', '--json']);
+  assert.equal(add.status, 0, add.stderr);
+  const toml = path.join(tmp, '.codex', 'config.toml');
+  assert.match(fs.readFileSync(toml, 'utf8'), /\[mcp_servers\.playwright\]/);
+
+  const r = runCli(['remove', 'playwright', '--agents', 'codex', '--json']);
+  assert.equal(r.status, 0, r.stderr);
+  const after = fs.readFileSync(toml, 'utf8');
+  assert.doesNotMatch(after, /\[mcp_servers\.playwright\]/);
+  assert.match(after, /\[mcp_servers\.github\]/);
+  assert.equal(fs.statSync(toml).mode & 0o777, 0o600); // secret-capable file keeps its mode
+  const status = runCli(['status', '--json']);
+  assert.equal(JSON.parse(status.stdout).clean, true);
+});
+
+test('e2e add: a stdio server with a required input uses the project directory by default', () => {
+  const r = runCli(['add', 'filesystem', '--agents', 'cursor', '--yes', '--json']);
+  assert.equal(r.status, 0, r.stderr);
+  const cfg = fs.readJsonSync(cursorMcpPath());
+  assert.equal(fs.realpathSync(cfg.mcpServers.filesystem.args.at(-1)), fs.realpathSync(tmp)); // not the whole home directory
+});

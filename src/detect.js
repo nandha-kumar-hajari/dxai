@@ -140,7 +140,7 @@ export function checkPrerequisites() {
 // `projectMcpDialect` overrides the dialect for the project-level file when it
 // differs from the global one (Claude Code: CLI globally, .mcp.json in projects).
 
-const VERIFIED = '2026-09-10';
+const VERIFIED = '2026-09-14';
 
 function vscodeUserDir(home, product) {
   const platform = os.platform();
@@ -394,6 +394,24 @@ export const MCP_CONFIG_ALIASES = {
   windsurf: ['devin-desktop', 'devin-cli'],
 };
 
+// A TOML basic string. Registry data is untrusted, so a quote, backslash or
+// control character in a URL or argument must never be able to close the
+// string and inject keys or tables into the user's Codex config.
+export function tomlString(value) {
+  // eslint-disable-next-line no-control-regex -- escaping control chars is the point
+  const s = String(value).replace(/[\\"\x00-\x1f\x7f]/g, (ch) => {
+    switch (ch) {
+      case '\\': return '\\\\';
+      case '"': return '\\"';
+      case '\n': return '\\n';
+      case '\r': return '\\r';
+      case '\t': return '\\t';
+      default: return `\\u${ch.charCodeAt(0).toString(16).padStart(4, '0')}`;
+    }
+  });
+  return `"${s}"`;
+}
+
 function envRefFor(dialect, name) {
   // 'literal' still writes the placeholder — config-writer substitutes the real
   // value from dxai's own environment at write time.
@@ -449,15 +467,17 @@ export function renderAgentConfig(agent, server, { project = false } = {}) {
       return null;
     }
     case 'toml': {
+      // Ids are charset-checked by the registry validator (see isSafeId), so
+      // the table header itself can't be broken out of; every value is quoted.
       if (transport.type === 'http') {
-        return { toml: `[mcp_servers.${id}]\nurl = "${transport.url}"` };
+        return { toml: `[mcp_servers.${id}]\nurl = ${tomlString(transport.url)}` };
       }
       if (transport.type === 'stdio') {
-        const argsList = (transport.args || []).map((a) => `"${a}"`).join(', ');
-        let toml = `[mcp_servers.${id}]\ncommand = "${transport.command}"\nargs = [${argsList}]`;
+        const argsList = (transport.args || []).map(tomlString).join(', ');
+        let toml = `[mcp_servers.${id}]\ncommand = ${tomlString(transport.command)}\nargs = [${argsList}]`;
         // Codex forwards named variables from its own environment; `env` values
         // are literal and never interpolated.
-        if (envVars.length) toml += `\nenv_vars = [${envVars.map((v) => `"${v}"`).join(', ')}]`;
+        if (envVars.length) toml += `\nenv_vars = [${envVars.map(tomlString).join(', ')}]`;
         return { toml };
       }
       return null;

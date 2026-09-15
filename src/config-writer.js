@@ -5,8 +5,10 @@ import { execFileSync } from 'child_process';
 import { warnMsg, infoMsg } from './branding.js';
 import { buildAgentsMd, buildClaudeMd, buildGeminiMd, buildCursorRule } from './registry/stacks.js';
 import { isValidRepo, isValidSkillPath, isSafeId } from './registry/validate.js';
+import { tomlString } from './detect.js';
 import { listClaudeCodeMcpOutput, outputHasServerId } from './config-remover.js';
 import { writeFileAtomic, writeJsonAtomic } from './fs-atomic.js';
+import { backupFile } from './backup.js';
 import { fetchText } from './net.js';
 
 const HOME = os.homedir();
@@ -16,29 +18,46 @@ function escapeRegExp(s) {
 }
 
 // ── Input substitution ──
-// Resolve a user-provided path: expand ~ and $HOME.
-function resolveInputPath(value) {
+// Resolve a user-provided path: expand ~ and $HOME, and anchor a relative path
+// (`.`, `./data`) to the current project so an MCP server that is later spawned
+// from some other working directory still gets the directory the user meant.
+export function resolveInputPath(value, { home = HOME, cwd = process.cwd() } = {}) {
   if (typeof value !== 'string') return value;
   let v = value.trim();
-  if (v === '~' || v.startsWith('~/')) v = path.join(HOME, v.slice(1));
-  v = v.replace(/\$HOME\b/g, HOME);
+  if (v === '~' || v.startsWith('~/')) v = path.join(home, v.slice(1));
+  v = v.replace(/\$HOME\b/g, home);
+  if (v === '.' || v.startsWith('./') || v.startsWith('../')) v = path.resolve(cwd, v);
   return v;
 }
 
-// Walk a config object (deep) and replace each placeholder string with its resolved value.
+// The inside of a TOML basic string for `value` (tomlString without the
+// surrounding quotes), for splicing into an already-rendered TOML block.
+function tomlInner(value) {
+  return tomlString(value).slice(1, -1);
+}
+
+// Walk a config object (deep) and replace each placeholder string with its
+// resolved value. A `{ toml }` block is already-rendered TOML text whose
+// placeholders sit inside quoted strings, so the value is escaped the same way
+// renderAgentConfig escapes every other TOML value — a replacement carrying
+// `"]` + newline (a poisoned registry default, or a hostile prompt answer)
+// must never be able to close the string and start a new table.
 function substitutePlaceholders(config, replacements) {
   if (!replacements || Object.keys(replacements).length === 0) return config;
 
-  const replace = (s) => {
+  const replace = (s, escape = (v) => v) => {
     let out = s;
     for (const [placeholder, value] of Object.entries(replacements)) {
       if (typeof out === 'string' && out.includes(placeholder)) {
-        out = out.split(placeholder).join(value);
+        out = out.split(placeholder).join(escape(value));
       }
     }
     return out;
   };
 
+  if (config && typeof config === 'object' && !Array.isArray(config) && typeof config.toml === 'string') {
+    return { ...config, toml: replace(config.toml, tomlInner) };
+  }
   if (typeof config === 'string') return replace(config);
   if (Array.isArray(config)) return config.map((v) => substitutePlaceholders(v, replacements));
   if (config && typeof config === 'object') {
@@ -124,39 +143,10 @@ export function pinPackageVersion(config, version) {
   return config;
 }
 
-// ── Backup helper ──
-// How many `.bak.<ts>` snapshots to keep per file. Older ones are pruned on
-// each new backup so repeated runs can't accumulate snapshots forever.
-const MAX_BACKUPS_PER_FILE = 5;
-
-function pruneOldBackups(filePath) {
-  const dir = path.dirname(filePath);
-  const prefix = `${path.basename(filePath)}.bak.`;
-  let siblings;
-  try {
-    siblings = fs.readdirSync(dir).filter((f) => f.startsWith(prefix));
-  } catch {
-    return;
-  }
-  // Timestamp suffixes sort lexicographically == chronologically.
-  siblings.sort().reverse();
-  for (const stale of siblings.slice(MAX_BACKUPS_PER_FILE)) {
-    try { fs.removeSync(path.join(dir, stale)); } catch { /* best-effort */ }
-  }
-}
-
-function backupFile(filePath) {
-  if (fs.existsSync(filePath)) {
-    const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-    const backupPath = `${filePath}.bak.${ts}`;
-    fs.copySync(filePath, backupPath);
-    pruneOldBackups(filePath);
-    return backupPath;
-  }
-  return null;
-}
-
 // ── JSON Config Merge (Cursor, VS Code, Gemini, Windsurf) ──
+// Merge results carry `backup` (the snapshot path, or null) instead of printing
+// it, so --json callers get clean output and text callers report it via
+// reportMcpResults.
 function mergeJsonMcpConfig(filePath, mcpKey, newServers) {
   let config = {};
   if (fs.existsSync(filePath)) {
@@ -190,16 +180,15 @@ function mergeJsonMcpConfig(filePath, mcpKey, newServers) {
   }
 
   // Nothing to change → don't touch the file (and don't mint a pointless backup).
-  if (added === 0) return { added, skipped, addedIds };
+  if (added === 0) return { added, skipped, addedIds, backup: null };
 
   const backup = backupFile(filePath);
-  if (backup) infoMsg(`Backed up: ${path.basename(filePath)} → ${path.basename(backup)}`);
 
   // Atomic write + 0600: configs may carry ${VAR} secret references, and a
   // crash mid-write must never truncate the user's real config.
   writeJsonAtomic(filePath, config, { spaces: 2, mode: 0o600 });
 
-  return { added, skipped, addedIds };
+  return { added, skipped, addedIds, backup };
 }
 
 // ── TOML Config Merge (Codex CLI) ──
@@ -232,14 +221,13 @@ function mergeTomlMcpConfig(filePath, newTomlBlocks) {
   }
 
   // Nothing to change → don't touch the file (and don't mint a pointless backup).
-  if (added === 0) return { added, skipped, addedIds };
+  if (added === 0) return { added, skipped, addedIds, backup: null };
 
   const backup = backupFile(filePath);
-  if (backup) infoMsg(`Backed up: ${path.basename(filePath)} → ${path.basename(backup)}`);
 
   writeFileAtomic(filePath, content, { mode: 0o600 });
 
-  return { added, skipped, addedIds };
+  return { added, skipped, addedIds, backup };
 }
 
 // ── Claude Code CLI Config ──

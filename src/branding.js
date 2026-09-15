@@ -1,5 +1,6 @@
 import chalk from 'chalk';
 import ora from 'ora';
+import path from 'node:path';
 import { createRequire } from 'node:module';
 
 const { version } = createRequire(import.meta.url)('../package.json');
@@ -73,6 +74,7 @@ export function startSpinner(runtime, text) {
 // Print the per-agent outcome of a writeMcpConfigs / writeProjectMcpConfigs call.
 export function reportMcpResults(results, verb = 'added') {
   for (const r of Object.values(results)) {
+    if (r.backup) infoMsg(`Backed up: ${path.basename(r.path || r.backup)} → ${path.basename(r.backup)}`);
     if (r.added > 0) successMsg(`${r.agent}: ${r.added} MCP server(s) ${verb}` + (r.path ? ` → ${r.path}` : ''));
     if (r.skipped > 0) infoMsg(`${r.agent}: ${r.skipped} already configured, skipped`);
     for (const err of r.errors || []) warnMsg(`${r.agent}: ${err.id} — ${err.error}`);

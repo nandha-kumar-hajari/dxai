@@ -80,14 +80,14 @@ Renamed tools keep answering to their old id in `--agents`, profiles and manifes
 
 | ID | Verified | Checked against |
 | --- | --- | --- |
-| `cursor` | 2026-09-10 | <https://cursor.com/docs/context/mcp>, <https://cursor.com/docs/get-started/installation> |
-| `claude-code` | 2026-09-10 | <https://code.claude.com/docs/en/mcp>, <https://code.claude.com/docs/en/setup> |
-| `vscode` | 2026-09-10 | <https://code.visualstudio.com/docs/agents/reference/mcp-configuration>, <https://code.visualstudio.com/docs/setup/linux> |
-| `vscode-insiders` | 2026-09-10 | <https://code.visualstudio.com/docs/agents/reference/mcp-configuration>, <https://code.visualstudio.com/docs/configure/profiles> |
-| `codex` | 2026-09-10 | <https://learn.chatgpt.com/docs/config-file/config-reference>, <https://learn.chatgpt.com/docs/extend/mcp?surface=cli> |
-| `gemini` | 2026-09-10 | <https://geminicli.com/docs/tools/mcp-server/>, <https://developers.googleblog.com/an-important-update-transitioning-gemini-cli-to-antigravity-cli/> |
-| `antigravity` | 2026-09-10 | <https://antigravity.google/docs/mcp/>, <https://antigravity.google/docs/cli/getting-started/> |
-| `antigravity-ide` | 2026-09-10 | <https://antigravity.google/docs/mcp/>, <https://antigravity.google/docs/cli/getting-started/> |
-| `antigravity-cli` | 2026-09-10 | <https://antigravity.google/docs/mcp/>, <https://antigravity.google/docs/cli/getting-started/> |
-| `devin-desktop` | 2026-09-10 | <https://docs.devin.ai/cli/extensibility/mcp/configuration>, <https://docs.devin.ai/desktop/getting-started> |
-| `devin-cli` | 2026-09-10 | <https://docs.devin.ai/cli>, <https://docs.devin.ai/cli/extensibility/mcp/configuration> |
+| `cursor` | 2026-09-14 | <https://cursor.com/docs/context/mcp>, <https://cursor.com/docs/get-started/installation> |
+| `claude-code` | 2026-09-14 | <https://code.claude.com/docs/en/mcp>, <https://code.claude.com/docs/en/setup> |
+| `vscode` | 2026-09-14 | <https://code.visualstudio.com/docs/agents/reference/mcp-configuration>, <https://code.visualstudio.com/docs/setup/linux> |
+| `vscode-insiders` | 2026-09-14 | <https://code.visualstudio.com/docs/agents/reference/mcp-configuration>, <https://code.visualstudio.com/docs/configure/profiles> |
+| `codex` | 2026-09-14 | <https://learn.chatgpt.com/docs/config-file/config-reference>, <https://learn.chatgpt.com/docs/extend/mcp?surface=cli> |
+| `gemini` | 2026-09-14 | <https://geminicli.com/docs/tools/mcp-server/>, <https://developers.googleblog.com/an-important-update-transitioning-gemini-cli-to-antigravity-cli/> |
+| `antigravity` | 2026-09-14 | <https://antigravity.google/docs/mcp/>, <https://antigravity.google/docs/cli/getting-started/> |
+| `antigravity-ide` | 2026-09-14 | <https://antigravity.google/docs/mcp/>, <https://antigravity.google/docs/cli/getting-started/> |
+| `antigravity-cli` | 2026-09-14 | <https://antigravity.google/docs/mcp/>, <https://antigravity.google/docs/cli/getting-started/> |
+| `devin-desktop` | 2026-09-14 | <https://docs.devin.ai/cli/extensibility/mcp/configuration>, <https://docs.devin.ai/desktop/getting-started> |
+| `devin-cli` | 2026-09-14 | <https://docs.devin.ai/cli>, <https://docs.devin.ai/cli/extensibility/mcp/configuration> |

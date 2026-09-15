@@ -1,5 +1,9 @@
 import { execFileSync } from 'child_process';
-import inquirer from 'inquirer';
+import {
+  detectOS, checkPrerequisites, detectAgents,
+  printDetectionResults, AGENT_DEFINITIONS, INSTALL_COMMANDS,
+  detectAutomationTools, normalizeAgentIds,
+} from './detect.js';
 import chalk from 'chalk';
 import path from 'path';
 import fs from 'fs-extra';
@@ -8,11 +12,6 @@ import {
   printBanner, sectionHeader, successMsg, warnMsg,
   errorMsg, infoMsg, theme, quiet, startSpinner, reportMcpResults,
 } from './branding.js';
-import {
-  detectOS, checkPrerequisites, detectAgents,
-  printDetectionResults, AGENT_DEFINITIONS, INSTALL_COMMANDS,
-  detectAutomationTools,
-} from './detect.js';
 import { MCP_SERVERS, MCP_CATEGORIES } from './registry/mcp-servers.js';
 import { SKILLS, SKILL_CATEGORIES } from './registry/skills.js';
 import { AUTOMATION_TOOLS, AUTOMATION_TOOL_CATEGORIES } from './registry/automation-tools.js';
@@ -24,8 +23,8 @@ import {
   writeGitattributes, writeEditorconfig, writeAgentsMd,
   previewMcpConfigs,
 } from './config-writer.js';
-import { normalizeOptions } from './runtime.js';
-import { resolveSelection, buildCatalogChoices, confirm } from './select.js';
+import { normalizeOptions, partitionByKnown } from './runtime.js';
+import { resolveSelection, buildCatalogChoices, confirm, prompt } from './select.js';
 import { parseSafeCommand } from './registry/validate.js';
 import { maybeRefreshCatalog } from './auto-update.js';
 import { resolveProfile, readProfile, mergeWithProfile, saveProfile, listProfiles } from './profile.js';
@@ -70,7 +69,7 @@ export async function collectMcpInputs(selectedMcpIds, mcpRegistry, runtime) {
       default: def.default,
       validate: (v) => (v && v.trim().length > 0) || 'Required.',
     }));
-    inputs[id] = await inquirer.prompt(questions);
+    inputs[id] = await prompt(questions);
   }
   return inputs;
 }
@@ -88,7 +87,7 @@ async function promptMcpServers(selectedAgentIds, message) {
   const choices = buildCatalogChoices(MCP_CATEGORIES, mcpServersFor(selectedAgentIds), {
     decorate: (s) => ({ note: s.requiresEnv ? chalk.dim(' (needs API key)') : '' }),
   });
-  const { picked } = await inquirer.prompt([
+  const { picked } = await prompt([
     { type: 'checkbox', name: 'picked', message, choices, pageSize: 25, loop: false },
   ]);
   return picked;
@@ -144,7 +143,7 @@ async function sharedSetup(runtime) {
         };
       });
 
-      const { picked } = await inquirer.prompt([
+      const { picked } = await prompt([
         {
           type: 'checkbox',
           name: 'picked',
@@ -214,7 +213,7 @@ async function selectSkills(runtime, headerLabel, { recommendByDefault = true } 
       });
 
       const skillChoices = buildCatalogChoices(SKILL_CATEGORIES, SKILLS);
-      const { picked } = await inquirer.prompt([
+      const { picked } = await prompt([
         {
           type: 'checkbox',
           name: 'picked',
@@ -302,7 +301,7 @@ async function runSystem(ctx, runtime) {
         decorate: (t) => ({ status: t.installed ? chalk.green(' (detected)') : '' }),
       });
 
-      const { picked } = await inquirer.prompt([
+      const { picked } = await prompt([
         {
           type: 'checkbox',
           name: 'picked',
@@ -511,7 +510,7 @@ async function runProject(ctx, runtime, { handleSkills = false } = {}) {
         console.log();
       });
 
-      const { picked } = await inquirer.prompt([
+      const { picked } = await prompt([
         {
           type: 'checkbox',
           name: 'picked',
@@ -569,7 +568,7 @@ async function runProject(ctx, runtime, { handleSkills = false } = {}) {
         { name: '.editorconfig — consistent formatting', value: 'editorconfig', checked: true },
       );
 
-      const { picked } = await inquirer.prompt([
+      const { picked } = await prompt([
         {
           type: 'checkbox',
           name: 'picked',
@@ -793,7 +792,7 @@ export async function run(mode, opts = {}) {
       mode = 'both';
     } else {
       console.log();
-      const { selectedMode } = await inquirer.prompt([
+      const { selectedMode } = await prompt([
         {
           type: 'list',
           name: 'selectedMode',
@@ -914,11 +913,37 @@ export async function apply(nameOrPath, opts = {}) {
   await run(mode, { ...merged, profile: profilePath });
 }
 
+// Every project feature id the wizard can offer (the offered subset depends on
+// the selected agents, but a profile may name any of them).
+export const PROJECT_FEATURE_IDS = [
+  'cursor-rules', 'cursor-commands', 'cursor-ignore', 'project-mcp',
+  'agent-instructions', 'agents-md', 'gitattributes', 'editorconfig',
+];
+
+// Validate profile selections up front so a typo fails at `save-profile` time,
+// not on the teammate's `dxai apply` weeks later. Former agent ids are
+// normalised the same way the setup flags are.
+function validateProfileSelections(data) {
+  const check = (values, knownIds, label) => {
+    if (values === undefined) return;
+    const { invalid } = partitionByKnown(values, knownIds);
+    if (invalid.length) throw new Error(`Unknown ${label}(s): ${invalid.join(', ')}. Known: ${knownIds.join(', ')}`);
+  };
+  if (data.mode !== undefined && !['system', 'project', 'both'].includes(data.mode)) {
+    throw new Error(`Unknown mode: ${data.mode}. Known: system, project, both`);
+  }
+  check(data.agents, AGENT_DEFINITIONS.map((a) => a.id), 'agent ID');
+  check(data.mcp, MCP_SERVERS.map((s) => s.id), 'MCP server ID');
+  check(data.skills, SKILLS.map((s) => s.id), 'skill ID');
+  check(data.stack, TECH_STACKS.map((s) => s.id), 'stack ID');
+  check(data.features, PROJECT_FEATURE_IDS, 'feature ID');
+}
+
 // ── Save current selections as a named profile ──
 export async function saveProfileCmd(nameOrPath, opts = {}) {
   const data = {
     mode: opts.mode,
-    agents: opts.agents,
+    agents: opts.agents ? normalizeAgentIds(opts.agents) : opts.agents,
     mcp: opts.mcp,
     skills: opts.skills,
     features: opts.features,
@@ -932,6 +957,7 @@ export async function saveProfileCmd(nameOrPath, opts = {}) {
       '  npx dxai-cli save-profile myteam --agents cursor --mcp github,playwright --features cursor-rules,agents-md'
     );
   }
+  validateProfileSelections(data);
 
   let target;
   if (opts.here) target = { here: true };

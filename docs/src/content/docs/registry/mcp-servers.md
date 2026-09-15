@@ -84,7 +84,7 @@ Agent orchestration and specialized tools
 
 | ID | Name | Description | Agents | Required env | Required input | Source |
 | --- | --- | --- | --- | --- | --- | --- |
-| `filesystem` | Filesystem | Secure file access outside project root | `cursor`, `claude-code`, `vscode`, `vscode-insiders`, `codex`, `gemini`, `antigravity`, `antigravity-ide`, `antigravity-cli`, `devin-desktop`, `devin-cli` | — | `allowedPath` | bundled |
+| `filesystem` | Filesystem | File access limited to one directory (defaults to the current project) | `cursor`, `claude-code`, `vscode`, `vscode-insiders`, `codex`, `gemini`, `antigravity`, `antigravity-ide`, `antigravity-cli`, `devin-desktop`, `devin-cli` | — | `allowedPath` | bundled |
 | `memory` | Memory | Persistent memory across agent sessions | `cursor`, `claude-code`, `vscode`, `vscode-insiders`, `codex`, `gemini`, `antigravity`, `antigravity-ide`, `antigravity-cli`, `devin-desktop`, `devin-cli` | — | — | bundled |
 
 ## Want one that's missing?

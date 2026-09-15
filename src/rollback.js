@@ -6,7 +6,6 @@
 // manages, picks the newest per file, and restores it — snapshotting the current
 // file first so the rollback is itself reversible.
 
-import inquirer from 'inquirer';
 import fs from 'fs-extra';
 import path from 'path';
 import os from 'os';
@@ -16,6 +15,8 @@ import {
 } from './branding.js';
 import { AGENT_DEFINITIONS } from './detect.js';
 import { scanBackupFiles, scanProjectFiles } from './config-remover.js';
+import { nextBackupPath } from './backup.js';
+import { prompt } from './select.js';
 
 // Timestamp suffix of a `<name>.bak.<ts>` file (`YYYY-MM-DDTHH-MM-SS`), or '' if
 // the name doesn't carry one.
@@ -54,18 +55,15 @@ export function collectRestorable(originalPaths) {
   return out;
 }
 
-// Fresh backup timestamp, mirroring config-writer's backupFile format.
-function nowTs() {
-  return new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-}
-
 // Restore `backup` over `original`, first snapshotting the current `original`
-// (when it exists) to `<original>.bak.<ts>` so the rollback can be undone.
+// (when it exists) to a fresh `<original>.bak.<ts>` so the rollback can be
+// undone. The snapshot name is minted by the shared backup helper, which never
+// reuses an existing name — so it can't overwrite the backup being restored.
 export function restoreBackup(original, backup, { dryRun = false } = {}) {
   const result = { original, backup, savedCurrentTo: null };
   if (dryRun) return result;
   if (fs.existsSync(original)) {
-    const snapshot = `${original}.bak.${nowTs()}`;
+    const snapshot = nextBackupPath(original);
     fs.copySync(original, snapshot);
     result.savedCurrentTo = snapshot;
   }
@@ -74,14 +72,18 @@ export function restoreBackup(original, backup, { dryRun = false } = {}) {
 }
 
 // The files dxai may have backed up: file-based agent global configs (CLI agents
-// write no files) plus dxai-generated project files in the cwd.
-function candidateOriginals(home, cwd) {
+// write no files), the agents' project-level MCP files in the cwd, and
+// dxai-generated project files in the cwd.
+export function candidateOriginals(home, cwd) {
   const agentPaths = AGENT_DEFINITIONS
     .filter((a) => a.configFormat !== 'cli')
     .map((a) => { try { return a.globalMcpPath(home); } catch { return null; } })
     .filter(Boolean);
+  const projectMcpPaths = AGENT_DEFINITIONS
+    .filter((a) => typeof a.projectMcpPath === 'function')
+    .map((a) => path.join(cwd, a.projectMcpPath()));
   const projectPaths = scanProjectFiles(cwd).map((f) => f.absolutePath);
-  return [...agentPaths, ...projectPaths];
+  return [...agentPaths, ...projectMcpPaths, ...projectPaths];
 }
 
 // Render an absolute path with the home dir collapsed to `~` for readability.
@@ -133,7 +135,7 @@ export async function rollbackCmd(opts = {}) {
   // latest backup for every file; interactive lets the user pick.
   let selected = restorable;
   if (!opts.yes && !json) {
-    const { picks } = await inquirer.prompt([
+    const { picks } = await prompt([
       {
         type: 'checkbox',
         name: 'picks',

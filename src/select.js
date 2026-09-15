@@ -12,6 +12,29 @@ import inquirer from 'inquirer';
 import chalk from 'chalk';
 import { partitionByKnown } from './runtime.js';
 
+// Every interactive question goes through here. Without a terminal on stdin
+// inquirer either blocks forever (piped stdin) or crashes with
+// ERR_USE_AFTER_CLOSE (closed stdin), so refuse up front with a hint instead.
+export class NoTerminalError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = 'NoTerminalError';
+  }
+}
+
+export function assertInteractive(stdin = process.stdin) {
+  if (stdin && stdin.isTTY) return;
+  throw new NoTerminalError(
+    'This step needs an interactive terminal, but stdin is not a TTY. ' +
+    'Re-run with --yes (or CI=true) to accept defaults, or --json for machine-readable output.'
+  );
+}
+
+export async function prompt(questions) {
+  assertInteractive();
+  return inquirer.prompt(questions);
+}
+
 // Resolve one selection. `flag` is the raw CLI flag value (undefined = not
 // passed), `defaults`/`prompt` are lazy so they only run when actually needed.
 export async function resolveSelection({
@@ -65,7 +88,7 @@ export function buildCatalogChoices(categories, items, { decorate } = {}) {
 
 // Yes/no prompt. Returns the boolean answer.
 export async function confirm(message, { defaultValue = true } = {}) {
-  const { answer } = await inquirer.prompt([
+  const { answer } = await prompt([
     { type: 'confirm', name: 'answer', message, default: defaultValue },
   ]);
   return answer;

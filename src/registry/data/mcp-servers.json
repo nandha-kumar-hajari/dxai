@@ -412,13 +412,13 @@
     {
       "id": "filesystem",
       "name": "Filesystem",
-      "description": "Secure file access outside project root",
+      "description": "File access limited to one directory (defaults to the current project)",
       "category": "advanced",
       "version": "2026.1.14",
       "requiresInput": {
         "allowedPath": {
-          "prompt": "Path the filesystem MCP is allowed to access",
-          "default": "~",
+          "prompt": "Directory the filesystem MCP is allowed to access",
+          "default": ".",
           "placeholder": "/path/to/allowed"
         }
       },

@@ -10,7 +10,7 @@ const FIELD_DOCS = {
   updatedAt: { type: '`string` (ISO 8601)', desc: 'Timestamp of the most recent write.' },
   agents: { type: '`string[]`', desc: 'Agent IDs for which dxai has installed something.' },
   mcp: { type: '`{ [agentId]: { [serverId]: { addedAt, configPath } } }`', desc: 'Per-agent record of installed MCP servers. `addedAt` is ISO 8601; `configPath` points at the file dxai wrote into.' },
-  skills: { type: '`{ [skillId]: { addedAt, path } }`', desc: 'Installed agent skills. `path` is the directory containing the skill on disk.' },
+  skills: { type: '`{ [skillId]: { addedAt, updatedAt, path, dirs } }`', desc: 'Installed agent skills. `dirs` lists every skill directory dxai wrote (skills install per project, mirrored to `.claude/skills` for Claude Code); `path` is the base directory of the latest install, kept for older readers. Cleanup removes exactly the recorded `dirs`.' },
   files: { type: '`[{ relativePath, addedAt }]`', desc: 'Project files dxai created (`AGENTS.md`, `.cursor/rules/*.mdc`, etc.). Used by `dxai-cli status` to detect deletion.' },
 };
 

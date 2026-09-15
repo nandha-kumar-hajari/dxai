@@ -109,14 +109,18 @@ export async function updateCmd(opts = {}) {
     }
   }
 
+  const failed = results.filter((r) => !r.ok);
+  // An explicit `dxai update` that could not refresh is a failure in both
+  // output modes; the bundled snapshot still serves, but the caller asked for
+  // a refresh and did not get one.
+  if (failed.length > 0) process.exitCode = 1;
+
   if (json) {
-    process.stdout.write(JSON.stringify({ ok: results.every((r) => r.ok), results }, null, 2) + '\n');
-    if (results.some((r) => !r.ok)) process.exit(1);
+    process.stdout.write(JSON.stringify({ ok: failed.length === 0, results }, null, 2) + '\n');
     return;
   }
 
   console.log();
-  const failed = results.filter((r) => !r.ok);
   if (failed.length === 0) {
     successMsg('Registry up to date.');
   } else {

@@ -205,13 +205,21 @@ function scanPresent(agent, ids, home, project) {
   }
 }
 
-// Remove `ids` from one agent's config; returns the count removed.
-function removeFrom(agent, ids, configPath) {
-  switch (agent.configFormat) {
+// Remove `ids` from one agent's config; returns the count removed. The
+// project-level file can use a different format/key than the global config
+// (Claude Code: `claude mcp remove` globally, `.mcp.json` in a project), so
+// --project must be honoured here exactly as scanPresent does — otherwise a
+// project removal would silently hit the user's global config instead.
+function removeFrom(agent, ids, configPath, { project = false } = {}) {
+  const format = project ? (agent.projectConfigFormat || agent.configFormat) : agent.configFormat;
+  const key = project ? (agent.projectMcpKey || agent.mcpKey) : agent.mcpKey;
+  // A project file dxai emptied out is deleted rather than left as `{}`.
+  const opts = { removeIfEmpty: project };
+  switch (format) {
     case 'json':
-      return removeJsonMcpServers(configPath, agent.mcpKey, ids).removed;
+      return removeJsonMcpServers(configPath, key, ids, opts).removed;
     case 'toml':
-      return removeTomlMcpServers(configPath, ids).removed;
+      return removeTomlMcpServers(configPath, ids, opts).removed;
     case 'cli':
       return removeClaudeCodeMcpServers(ids).removed;
     default:
@@ -251,7 +259,7 @@ export async function removeMcp(serverIds = [], opts = {}) {
 
     let count;
     try {
-      count = removeFrom(agent, present, configPath);
+      count = removeFrom(agent, present, configPath, { project });
     } catch (err) {
       if (!runtime.json) warnMsg(`${agent.name}: ${err.message}`);
       continue;

@@ -14,15 +14,55 @@ import {
   scanJsonMcpConfig, removeJsonMcpServers,
   scanTomlMcpConfig, removeTomlMcpServers,
   scanClaudeCodeMcpServers, removeClaudeCodeMcpServers,
-  scanBackupFiles, scanSkillDirectories,
-  scanProjectFiles, isEmptyDir,
+  scanBackupFiles, scanProjectFiles, isEmptyDir,
 } from './config-remover.js';
 import { normalizeOptions } from './runtime.js';
-import { confirm } from './select.js';
-import { readManifest, SYSTEM_MANIFEST_PATH, PROJECT_MANIFEST_PATH, writeManifest, unrecordMcp } from './manifest.js';
+import { confirm, prompt } from './select.js';
+import {
+  readManifest, SYSTEM_MANIFEST_PATH, PROJECT_MANIFEST_PATH, writeManifest, unrecordMcp, manifestSkillDirs,
+} from './manifest.js';
+import { CURSOR_COMMANDS } from './registry/stacks.js';
 
 const KNOWN_MCP_IDS = MCP_SERVERS.map((s) => s.id);
-const KNOWN_SKILL_IDS = SKILLS.map((s) => s.id);
+
+// Skills are installed into projects (`.agents/skills`, mirrored to
+// `.claude/skills` — see installSkills) and the manifest records every
+// directory written, so cleanup removes exactly those. Home-level skill
+// folders (~/.claude/skills, ~/.cursor/skills, ...) are user territory dxai
+// never writes to and are never scanned: a user's own skill that happens to
+// share a catalogue id must not be deleted. The same goes for a project dir
+// the manifest does not mention — no guessing by catalogue id.
+function findManifestSkills(manifest) {
+  const found = [];
+  for (const [id, entry] of Object.entries(manifest.skills || {})) {
+    for (const dir of manifestSkillDirs(entry, id)) {
+      if (fs.existsSync(path.join(dir, 'SKILL.md'))) found.push({ id, path: dir, baseDir: path.dirname(dir) });
+    }
+  }
+  return found;
+}
+
+// `npx skills` leaves a `skills-lock.json` in the project root next to
+// `.agents/skills`. Once every skill it tracks has been removed the lock is
+// orphaned; delete it then, and only then.
+function pruneSkillsLocks(removedSkillPaths) {
+  const removedByRoot = new Map();
+  for (const p of removedSkillPaths) {
+    const base = path.dirname(p);
+    if (path.basename(base) !== 'skills') continue;
+    const root = path.dirname(path.dirname(base));
+    if (!removedByRoot.has(root)) removedByRoot.set(root, new Set());
+    removedByRoot.get(root).add(path.basename(p));
+  }
+  for (const [root, removed] of removedByRoot) {
+    const lock = path.join(root, 'skills-lock.json');
+    if (!fs.existsSync(lock)) continue;
+    try {
+      const tracked = Object.keys(fs.readJsonSync(lock).skills || {});
+      if (tracked.every((id) => removed.has(id))) fs.removeSync(lock);
+    } catch { /* not ours to judge — leave it */ }
+  }
+}
 
 // Build the candidate ID list for scanning. If the manifest has entries,
 // prefer it (precise — we only target what dxai installed). Otherwise fall
@@ -40,10 +80,6 @@ function candidateMcpIds(manifest, agentId) {
   return KNOWN_MCP_IDS;
 }
 
-function candidateSkillIds(manifest) {
-  const fromManifest = Object.keys(manifest.skills || {});
-  return fromManifest.length > 0 ? fromManifest : KNOWN_SKILL_IDS;
-}
 
 // Checkbox values are `${agentId}::${serverId}` so one prompt can span agents;
 // regroup the picks into { [agentId]: [serverId] }.
@@ -102,16 +138,23 @@ async function runSystemCleanup(home, ctx) {
     }
   }
 
-  const skillIds = candidateSkillIds(manifest);
-  const skillBaseDirs = [
-    path.join(home, '.cursor', 'skills'),
-    path.join(home, '.agents', 'skills'),
-    path.join(home, '.claude', 'skills'),
-    path.join(process.cwd(), '.cursor', 'skills'),
-    path.join(process.cwd(), '.agents', 'skills'),
-    path.join(process.cwd(), '.claude', 'skills'),
-  ];
-  const foundSkills = scanSkillDirectories(skillBaseDirs, skillIds);
+  const foundSkills = findManifestSkills(manifest);
+
+  // Manifest entries whose server/skill is no longer in the live config were
+  // removed by hand (or by a rollback); they'd otherwise linger as phantom
+  // drift in `list`/`status` forever. Drop them now, unless this is a dry run.
+  const stale = {};
+  for (const agent of AGENT_DEFINITIONS) {
+    const recorded = Object.keys(manifest.mcp[agent.id] || {});
+    if (recorded.length === 0) continue;
+    const found = agentFindings.find((f) => f.agent.id === agent.id)?.foundServers || [];
+    const gone = recorded.filter((id) => !found.includes(id));
+    if (gone.length) stale[agent.id] = gone;
+  }
+  const staleSkills = Object.entries(manifest.skills || {})
+    .filter(([id, entry]) => !manifestSkillDirs(entry, id).some((d) => fs.existsSync(path.join(d, 'SKILL.md'))))
+    .map(([id]) => id);
+  if (!dryRun) pruneSystemManifest(stale, [], staleSkills);
 
   // Scan backup files (only for file-based agents — CLI agents don't write backups,
   // and their globalMcpPath sits in $HOME which would surface unrelated .bak files)
@@ -157,7 +200,7 @@ async function runSystemCleanup(home, ctx) {
       }
 
       console.log();
-      const { selectedMcp } = await inquirer.prompt([
+      const { selectedMcp } = await prompt([
         {
           type: 'checkbox',
           name: 'selectedMcp',
@@ -188,7 +231,7 @@ async function runSystemCleanup(home, ctx) {
       });
 
       console.log();
-      const { selectedSkills } = await inquirer.prompt([
+      const { selectedSkills } = await prompt([
         {
           type: 'checkbox',
           name: 'selectedSkills',
@@ -290,14 +333,17 @@ async function runSystemCleanup(home, ctx) {
     }
   }
 
+  const removedSkillPaths = [];
   for (const skillPath of skillsToRemove) {
     try {
       fs.removeSync(skillPath);
-      quiet(ctx, () => successMsg(`Removed skill: ${path.basename(skillPath)}`));
+      removedSkillPaths.push(skillPath);
+      quiet(ctx, () => successMsg(`Removed skill: ${path.basename(skillPath)} (${path.dirname(skillPath)})`));
     } catch (err) {
       quiet(ctx, () => errorMsg(`Failed to remove ${skillPath}: ${err.message}`));
     }
   }
+  pruneSkillsLocks(removedSkillPaths);
 
   if (deleteBackups) {
     for (const backupPath of foundBackups) {
@@ -316,23 +362,31 @@ async function runSystemCleanup(home, ctx) {
 }
 
 // Remove cleaned-up entries from the system manifest. `mcpToRemove` is
-// { [agentId]: [serverId] }; `skillPaths` are the removed skill directories.
-function pruneSystemManifest(mcpToRemove, skillPaths) {
+// { [agentId]: [serverId] }; `skillPaths` are the removed skill directories;
+// `skillIds` are skills to drop outright (nothing left on disk for them).
+function pruneSystemManifest(mcpToRemove, skillPaths, skillIds = []) {
+  if (!fs.existsSync(SYSTEM_MANIFEST_PATH)) return;
   for (const [agentId, serverIds] of Object.entries(mcpToRemove)) {
     unrecordMcp(SYSTEM_MANIFEST_PATH, agentId, serverIds);
   }
 
   const m = readManifest(SYSTEM_MANIFEST_PATH);
   let changed = false;
+  const drop = (key) => { if (m.skills[key]) { delete m.skills[key]; changed = true; } };
   for (const skillPath of skillPaths) {
     const skillId = path.basename(skillPath);
-    const skill = SKILLS.find((s) => s.id === skillId);
-    // Skills are recorded by id (recordSystemSkills); legacy manifests may
-    // still key them by display name, so try both.
-    for (const key of [skillId, skill?.name].filter(Boolean)) {
-      if (m.skills[key]) { delete m.skills[key]; changed = true; }
+    const entry = m.skills[skillId];
+    if (entry) {
+      // Forget just this directory; the id stays while another copy remains.
+      const remaining = manifestSkillDirs(entry, skillId).filter((d) => d !== skillPath && fs.existsSync(path.join(d, 'SKILL.md')));
+      if (remaining.length === 0) drop(skillId);
+      else { m.skills[skillId] = { ...entry, dirs: remaining, path: path.dirname(remaining[0]) }; changed = true; }
     }
+    // Legacy manifests may still key skills by display name.
+    const skill = SKILLS.find((s) => s.id === skillId);
+    if (skill?.name) drop(skill.name);
   }
+  for (const id of skillIds) drop(id);
 
   if (changed) writeManifest(SYSTEM_MANIFEST_PATH, m);
 }
@@ -350,6 +404,14 @@ async function runProjectCleanup(ctx) {
 
   const foundFiles = scanProjectFiles(cwd);
 
+  // Skills recorded by a project-mode run live in this project's manifest. A
+  // checked-out `.dxai/manifest.json` is repo content, so only directories
+  // inside the project are ever candidates — never a path it points elsewhere.
+  const projectManifest = readManifest(path.join(cwd, PROJECT_MANIFEST_PATH));
+  const foundSkills = findManifestSkills(projectManifest)
+    .filter((s) => isInside(cwd, s.path))
+    .map((s) => ({ ...s, path: realPath(s.path) }));
+
   const projectMcpFindings = [];
   for (const agent of AGENT_DEFINITIONS) {
     if (!agent.projectMcpPath) continue;
@@ -366,9 +428,9 @@ async function runProjectCleanup(ctx) {
 
   spinner?.stop();
 
-  if (foundFiles.length === 0 && projectMcpFindings.length === 0) {
+  if (foundFiles.length === 0 && projectMcpFindings.length === 0 && foundSkills.length === 0) {
     quiet(ctx, () => infoMsg('No dxai-managed project files found in current directory.'));
-    return { files: [], skippedFiles: [], mcp: {} };
+    return { files: [], skippedFiles: [], mcp: {}, skills: [] };
   }
 
   // Select project files to remove. Non-interactive mirrors the interactive
@@ -392,7 +454,7 @@ async function runProjectCleanup(ctx) {
       });
 
       console.log();
-      const { selectedFiles } = await inquirer.prompt([
+      const { selectedFiles } = await prompt([
         {
           type: 'checkbox',
           name: 'selectedFiles',
@@ -432,7 +494,7 @@ async function runProjectCleanup(ctx) {
       }
 
       console.log();
-      const { selectedProjectMcp } = await inquirer.prompt([
+      const { selectedProjectMcp } = await prompt([
         {
           type: 'checkbox',
           name: 'selectedProjectMcp',
@@ -447,10 +509,33 @@ async function runProjectCleanup(ctx) {
     }
   }
 
+  // Project-installed skills — everything found when non-interactive.
+  let skillsToRemove = [];
+  if (foundSkills.length > 0) {
+    if (nonInteractive) {
+      skillsToRemove = foundSkills.map((s) => s.path);
+    } else {
+      console.log();
+      sectionHeader('Installed Skills Found');
+      console.log();
+      const { selectedSkills } = await prompt([
+        {
+          type: 'checkbox',
+          name: 'selectedSkills',
+          message: 'Select skills to remove:',
+          choices: foundSkills.map((s) => ({ name: `${s.id} (${path.relative(cwd, s.path)})`, value: s.path, checked: true })),
+          pageSize: 20,
+          loop: false,
+        },
+      ]);
+      skillsToRemove = selectedSkills;
+    }
+  }
+
   const projectMcpCount = countIds(projectMcpToRemove);
-  if (filesToRemove.length === 0 && projectMcpCount === 0) {
+  if (filesToRemove.length === 0 && projectMcpCount === 0 && skillsToRemove.length === 0) {
     quiet(ctx, () => infoMsg('Nothing selected for removal.'));
-    return { files: [], skippedFiles, mcp: {} };
+    return { files: [], skippedFiles, mcp: {}, skills: [] };
   }
 
   // Summary & confirm (interactive only)
@@ -460,6 +545,7 @@ async function runProjectCleanup(ctx) {
     if (filesToRemove.length > 0) infoMsg(`Files to remove: ${filesToRemove.length}`);
     if (skippedFiles.length > 0) infoMsg(`Skipped (may contain custom edits): ${skippedFiles.join(', ')}`);
     if (projectMcpCount > 0) infoMsg(`Project MCP servers to remove: ${projectMcpCount}`);
+    if (skillsToRemove.length > 0) infoMsg(`Skills to remove: ${skillsToRemove.length}`);
   });
 
   if (!nonInteractive && !dryRun) {
@@ -474,6 +560,7 @@ async function runProjectCleanup(ctx) {
     files: filesToRemove.map((f) => path.relative(cwd, f)),
     skippedFiles,
     mcp: projectMcpToRemove,
+    skills: skillsToRemove.map((s) => path.relative(cwd, s)),
   };
 
   // Execute (skipped entirely on --dry-run)
@@ -493,16 +580,29 @@ async function runProjectCleanup(ctx) {
     }
   }
 
+  const removedSkillPaths = [];
+  for (const skillPath of skillsToRemove) {
+    try {
+      fs.removeSync(skillPath);
+      removedSkillPaths.push(skillPath);
+      quiet(ctx, () => successMsg(`Removed skill: ${path.relative(cwd, skillPath)}`));
+    } catch (err) {
+      quiet(ctx, () => errorMsg(`Failed to remove ${skillPath}: ${err.message}`));
+    }
+  }
+  pruneSkillsLocks(removedSkillPaths);
+
   for (const [agentId, serverIds] of Object.entries(projectMcpToRemove)) {
     const agent = AGENT_DEFINITIONS.find((a) => a.id === agentId);
     if (!agent) continue;
 
     const projectConfigPath = path.join(cwd, agent.projectMcpPath());
     try {
-      const { removed } = (agent.projectConfigFormat || agent.configFormat) === 'toml'
-        ? removeTomlMcpServers(projectConfigPath, serverIds)
-        : removeJsonMcpServers(projectConfigPath, agent.projectMcpKey || agent.mcpKey, serverIds);
-      quiet(ctx, () => successMsg(`Removed ${removed} server(s) from project ${agent.name} config`));
+      // A project config dxai emptied out is deleted rather than left as `{}`.
+      const { removed, deletedFile } = (agent.projectConfigFormat || agent.configFormat) === 'toml'
+        ? removeTomlMcpServers(projectConfigPath, serverIds, { removeIfEmpty: true })
+        : removeJsonMcpServers(projectConfigPath, agent.projectMcpKey || agent.mcpKey, serverIds, { removeIfEmpty: true });
+      quiet(ctx, () => successMsg(`Removed ${removed} server(s) from project ${agent.name} config${deletedFile ? ' (file removed, nothing left in it)' : ''}`));
     } catch (err) {
       quiet(ctx, () => errorMsg(`Failed to clean project ${agent.name} config: ${err.message}`));
     }
@@ -511,9 +611,17 @@ async function runProjectCleanup(ctx) {
   const dirsToCheck = [
     path.join(cwd, '.cursor', 'rules'),
     path.join(cwd, '.cursor', 'commands'),
+    ...Object.keys(CURSOR_COMMANDS).map((name) => path.join(cwd, '.cursor', 'skills', name)),
+    path.join(cwd, '.cursor', 'skills'),
     path.join(cwd, '.cursor'),
     path.join(cwd, '.vscode'),
     path.join(cwd, '.gemini'),
+    path.join(cwd, '.codex'),
+    path.join(cwd, '.devin'),
+    path.join(cwd, '.agents', 'skills'),
+    path.join(cwd, '.agents'),
+    path.join(cwd, '.claude', 'skills'),
+    path.join(cwd, '.claude'),
   ];
 
   for (const dir of dirsToCheck) {
@@ -524,12 +632,25 @@ async function runProjectCleanup(ctx) {
     }
   }
 
-  // Prune the project manifest for the files and MCP servers we removed.
+  // Prune the project manifest for the files, MCP servers and skills we removed.
   pruneProjectManifest(cwd, filesToRemove, projectMcpToRemove);
 
   return report;
 }
 
+// True when `child` is `parent` or lives underneath it, comparing real paths so
+// neither `..` segments nor a symlinked parent (macOS /var → /private/var) can
+// make a directory look like it is somewhere it is not.
+function realPath(p) {
+  try { return fs.realpathSync(p); } catch { return path.resolve(p); }
+}
+function isInside(parent, child) {
+  const rel = path.relative(realPath(parent), realPath(child));
+  return rel === '' || (!rel.startsWith('..') && !path.isAbsolute(rel));
+}
+
+// Drop removed files/servers from the project manifest, plus anything it still
+// records that is no longer on disk (removed by hand, or by a rollback).
 function pruneProjectManifest(cwd, filePaths, projectMcpToRemove) {
   const manifestPath = path.join(cwd, PROJECT_MANIFEST_PATH);
   if (!fs.existsSync(manifestPath)) return;
@@ -538,12 +659,33 @@ function pruneProjectManifest(cwd, filePaths, projectMcpToRemove) {
     unrecordMcp(manifestPath, agentId, serverIds);
   }
 
-  if (filePaths.length === 0) return;
   const m = readManifest(manifestPath);
+  let changed = false;
   const removedRel = new Set(filePaths.map((f) => path.relative(cwd, f)));
-  const before = m.files.length;
-  m.files = m.files.filter((f) => !removedRel.has(f.relativePath));
-  if (m.files.length !== before) writeManifest(manifestPath, m);
+  const files = m.files.filter((f) => !removedRel.has(f.relativePath) && fs.existsSync(path.join(cwd, f.relativePath)));
+  if (files.length !== m.files.length) { m.files = files; changed = true; }
+
+  for (const [agentId, servers] of Object.entries(m.mcp)) {
+    const agent = AGENT_DEFINITIONS.find((a) => a.id === agentId);
+    if (!agent?.projectMcpPath) continue;
+    const p = path.join(cwd, agent.projectMcpPath());
+    const live = (agent.projectConfigFormat || agent.configFormat) === 'toml'
+      ? scanTomlMcpConfig(p, Object.keys(servers))
+      : scanJsonMcpConfig(p, agent.projectMcpKey || agent.mcpKey, Object.keys(servers));
+    for (const id of Object.keys(servers)) {
+      if (!live.includes(id)) { delete servers[id]; changed = true; }
+    }
+    if (Object.keys(servers).length === 0) { delete m.mcp[agentId]; changed = true; }
+  }
+  for (const [id, entry] of Object.entries(m.skills || {})) {
+    const remaining = manifestSkillDirs(entry, id).filter((d) => fs.existsSync(path.join(d, 'SKILL.md')));
+    if (remaining.length === 0) { delete m.skills[id]; changed = true; }
+    else if (remaining.length !== manifestSkillDirs(entry, id).length) {
+      m.skills[id] = { ...entry, dirs: remaining, path: path.dirname(remaining[0]) };
+      changed = true;
+    }
+  }
+  if (changed) writeManifest(manifestPath, m);
 }
 
 // ── Main Cleanup Entry Point ──
@@ -575,7 +717,7 @@ export async function cleanup(scopeArg, opts = {}) {
     if (nonInteractive) {
       scope = 'both';
     } else {
-      const { picked } = await inquirer.prompt([
+      const { picked } = await prompt([
         {
           type: 'list',
           name: 'picked',

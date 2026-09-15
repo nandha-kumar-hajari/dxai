@@ -3,15 +3,19 @@ import path from 'path';
 import { execFileSync } from 'child_process';
 import { warnMsg } from './branding.js';
 import { writeJsonAtomic, writeFileAtomic } from './fs-atomic.js';
+import { CURSOR_COMMANDS } from './registry/stacks.js';
 
 function escapeRegExp(s) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 // Line-anchored [mcp_servers.<id>] header matcher — avoids matching a
-// commented-out header or an id that is a prefix of another.
+// commented-out header or an id that is a prefix of another. Only horizontal
+// whitespace may precede the bracket: a `\s*` here would swallow the blank
+// lines before a section, so the match would start on those lines and the
+// remover would delete the blank lines instead of the section.
 function tomlHeaderRe(id) {
-  return new RegExp(`^\\s*\\[mcp_servers\\.${escapeRegExp(id)}\\]`, 'm');
+  return new RegExp(`^[ \\t]*\\[mcp_servers\\.${escapeRegExp(id)}\\][ \\t]*$`, 'm');
 }
 
 // ── JSON Config Scanning & Removal ──
@@ -33,8 +37,10 @@ export function scanJsonMcpConfig(filePath, mcpKey, knownIds) {
 }
 
 // Remove specific server IDs from a JSON MCP config.
-// If the mcpKey object becomes empty, removes it entirely.
-export function removeJsonMcpServers(filePath, mcpKey, idsToRemove) {
+// If the mcpKey object becomes empty, removes it entirely. With
+// `removeIfEmpty`, a file left with no keys at all is deleted instead of being
+// rewritten as `{}` — used for project-level files dxai created itself.
+export function removeJsonMcpServers(filePath, mcpKey, idsToRemove, { removeIfEmpty = false } = {}) {
   if (!fs.existsSync(filePath)) return { removed: 0 };
 
   let config;
@@ -59,6 +65,13 @@ export function removeJsonMcpServers(filePath, mcpKey, idsToRemove) {
     delete config[mcpKey];
   }
 
+  if (removed === 0) return { removed };
+
+  if (removeIfEmpty && Object.keys(config).length === 0) {
+    fs.removeSync(filePath);
+    return { removed, deletedFile: true };
+  }
+
   writeJsonAtomic(filePath, config, { spaces: 2 });
   return { removed };
 }
@@ -79,8 +92,13 @@ export function scanTomlMcpConfig(filePath, knownIds) {
 }
 
 // Remove TOML sections for specific server IDs.
-// Removes from [mcp_servers.<id>] to the next section header or end of file.
-export function removeTomlMcpServers(filePath, idsToRemove) {
+// A section runs from its `[mcp_servers.<id>]` header line to the line before
+// the next table header (`[...]` or `[[...]]`) or the end of the file. Blank
+// lines directly above the header go with it. Line-based on purpose: the
+// writer's own layout separates sections with blank lines, and a character
+// regex over the whole file mis-measured those (see tomlHeaderRe).
+// With `removeIfEmpty`, a file left with nothing but whitespace is deleted.
+export function removeTomlMcpServers(filePath, idsToRemove, { removeIfEmpty = false } = {}) {
   if (!fs.existsSync(filePath)) return { removed: 0 };
 
   let content;
@@ -90,42 +108,35 @@ export function removeTomlMcpServers(filePath, idsToRemove) {
     return { removed: 0 };
   }
 
+  const lines = content.split('\n');
+  const isHeader = (line) => /^[ \t]*\[/.test(line);
   let removed = 0;
+
   for (const id of idsToRemove) {
-    // Locate the header at the start of a line so a commented-out or
-    // prefix-colliding header isn't matched.
-    const headerMatch = tomlHeaderRe(id).exec(content);
-    if (!headerMatch) continue;
-    const idx = headerMatch.index;
+    const re = tomlHeaderRe(id);
+    const start = lines.findIndex((line) => re.test(line));
+    if (start === -1) continue;
 
-    // Find the end: next section header (line starting with [) or end of file
-    const afterHeader = content.indexOf('\n', idx);
-    if (afterHeader === -1) {
-      // Section header is at end of file
-      content = content.slice(0, idx).trimEnd() + '\n';
-      removed++;
-      continue;
-    }
+    let end = start + 1;
+    while (end < lines.length && !isHeader(lines[end])) end++;
 
-    const rest = content.slice(afterHeader + 1);
-    const nextSectionMatch = rest.match(/^(\[(?!\[))/m);
-    let endIdx;
-    if (nextSectionMatch) {
-      endIdx = afterHeader + 1 + nextSectionMatch.index;
-    } else {
-      endIdx = content.length;
-    }
+    // Take the blank lines above the header too, so sections don't leave
+    // growing gaps behind; keep one separator when something precedes them.
+    let from = start;
+    while (from > 0 && lines[from - 1].trim() === '') from--;
+    if (from < start && from > 0) from++;
 
-    // Also trim leading blank lines before the section
-    let startIdx = idx;
-    while (startIdx > 0 && content[startIdx - 1] === '\n') startIdx--;
-    if (startIdx > 0) startIdx++; // keep one newline
-
-    content = content.slice(0, startIdx) + content.slice(endIdx);
+    lines.splice(from, end - from);
     removed++;
   }
 
-  content = content.trimEnd() + '\n';
+  if (removed === 0) return { removed };
+
+  content = lines.join('\n').trimEnd() + '\n';
+  if (removeIfEmpty && content.trim() === '') {
+    fs.removeSync(filePath);
+    return { removed, deletedFile: true };
+  }
   writeFileAtomic(filePath, content);
   return { removed };
 }
@@ -294,6 +305,8 @@ export function scanProjectFiles(cwd) {
     }
   }
 
+  // Legacy location: Cursor retired `.cursor/commands/*.md`; older dxai runs
+  // wrote the slash commands there.
   const commandsDir = path.join(cwd, '.cursor', 'commands');
   if (fs.existsSync(commandsDir)) {
     try {
@@ -308,6 +321,21 @@ export function scanProjectFiles(cwd) {
     } catch {
       // Skip
     }
+  }
+
+  // Current location: each generated slash command is
+  // `.cursor/skills/<name>/SKILL.md` (see writeCursorCommands). Only the
+  // command names dxai itself generates are candidates — a user's own skills
+  // living next to them are never touched.
+  const skillsDir = path.join(cwd, '.cursor', 'skills');
+  for (const name of Object.keys(CURSOR_COMMANDS)) {
+    const skillFile = path.join(skillsDir, name, 'SKILL.md');
+    if (!fs.existsSync(skillFile)) continue;
+    found.push({
+      relativePath: path.join('.cursor', 'skills', name, 'SKILL.md'),
+      absolutePath: skillFile,
+      mayHaveCustomEdits: false,
+    });
   }
 
   return found;

@@ -199,11 +199,17 @@ export function buildProgram() {
     });
 
   // Default action when no subcommand is given — preserve interactive menu.
+  // Commander routes an unknown subcommand here as a positional argument, so
+  // name the mistake instead of leaking "too many arguments for 'start'".
   sharedSetupOptions(
     program
       .command('start', { isDefault: true, hidden: true })
+      .argument('[command]')
       .description('Interactive menu (default when no subcommand is given)')
-      .action(async (opts) => {
+      .action(async (command, opts) => {
+        if (command !== undefined) {
+          program.error(`error: unknown command '${command}'`);
+        }
         await run(undefined, opts);
       })
   );
@@ -266,7 +272,11 @@ const invokedDirectly = (() => {
 
 if (invokedDirectly) {
   buildProgram().parseAsync(process.argv).catch((err) => {
-    console.error(err.stack || err.message || err);
+    // Expected failures (unknown id, missing profile, no TTY, ...) are thrown
+    // with a message meant for the user; a stack trace only obscures it. Set
+    // DXAI_DEBUG=1 to see where it came from.
+    const message = err?.message || String(err);
+    console.error(process.env.DXAI_DEBUG ? (err.stack || message) : `Error: ${message}`);
     process.exit(1);
   });
 }

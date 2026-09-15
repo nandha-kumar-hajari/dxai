@@ -120,10 +120,84 @@ export function validateRegistryBlock(id, block) {
   return problems;
 }
 
-// Reject registry ids that could pollute Object.prototype when used as a map key.
+// Registry ids become map keys, config-file keys, TOML table names, `claude mcp
+// add` names and on-disk directory names. Restrict them to a plain slug so none
+// of those sinks can be broken out of (`]`, `/`, `..`, quotes, whitespace) and
+// none can pollute Object.prototype.
 const UNSAFE_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+const SAFE_ID_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
 export function isSafeId(id) {
-  return typeof id === 'string' && id.length > 0 && !UNSAFE_KEYS.has(id);
+  return typeof id === 'string' && SAFE_ID_RE.test(id) && !UNSAFE_KEYS.has(id) && !id.includes('..');
+}
+
+// A string safe to place in a config file value: no control characters (a
+// newline or NUL inside a TOML/JSON value is never legitimate registry data).
+// eslint-disable-next-line no-control-regex -- rejecting control chars is the point
+const CONTROL_RE = /[\x00-\x1f\x7f]/;
+export function isCleanConfigString(value) {
+  return typeof value === 'string' && !CONTROL_RE.test(value);
+}
+
+// Environment variable names referenced by a server (`requiresEnv` keys): they
+// are written into configs as `${VAR}` / `env_vars = ["VAR"]` / `--env VAR=…`.
+const ENV_NAME_RE = /^[A-Z_][A-Z0-9_]*$/;
+export function isEnvVarName(name) {
+  return typeof name === 'string' && ENV_NAME_RE.test(name);
+}
+
+// Shape-check `requiresEnv` / `requiresInput`. Input defaults and placeholders
+// are substituted into rendered config text (the Codex TOML block included),
+// so they must be plain strings: no control characters, and a default may not
+// carry a double quote or backslash — nothing legitimate needs either, and
+// they are exactly what a TOML/JSON string injection needs.
+export function validateInputs(id, { requiresEnv, requiresInput } = {}) {
+  const problems = [];
+  if (requiresEnv !== undefined) {
+    if (!requiresEnv || typeof requiresEnv !== 'object') problems.push(`server ${id}: requiresEnv must be an object`);
+    else {
+      for (const [name, desc] of Object.entries(requiresEnv)) {
+        if (!isEnvVarName(name)) problems.push(`server ${id}: requiresEnv key "${name}" is not an environment variable name`);
+        if (desc !== undefined && !isCleanConfigString(String(desc))) problems.push(`server ${id}: requiresEnv.${name} description has control characters`);
+      }
+    }
+  }
+  if (requiresInput !== undefined) {
+    if (!requiresInput || typeof requiresInput !== 'object') problems.push(`server ${id}: requiresInput must be an object`);
+    else {
+      for (const [key, def] of Object.entries(requiresInput)) {
+        if (!isSafeId(key)) { problems.push(`server ${id}: requiresInput key "${key}" is not a plain id`); continue; }
+        if (!def || typeof def !== 'object') { problems.push(`server ${id}: requiresInput.${key} must be an object`); continue; }
+        for (const field of ['prompt', 'placeholder']) {
+          if (def[field] !== undefined && !isCleanConfigString(def[field])) problems.push(`server ${id}: requiresInput.${key}.${field} must be a plain string`);
+        }
+        if (def.default !== undefined && def.default !== null) {
+          if (!isCleanConfigString(def.default) || /["\\]/.test(def.default)) {
+            problems.push(`server ${id}: requiresInput.${key}.default must be a plain string without quotes or backslashes`);
+          }
+        }
+      }
+    }
+  }
+  return problems;
+}
+
+// Shape-check a server's canonical `transport` block: an https URL for remote
+// servers, an allowlisted command plus clean string arguments for stdio ones.
+export function validateTransport(id, transport) {
+  if (transport === undefined) return [];
+  const problems = [];
+  if (!transport || typeof transport !== 'object') return [`server ${id}: transport must be an object`];
+  if (transport.type === 'http' || transport.type === 'sse') {
+    if (!isHttpsUrl(transport.url)) problems.push(`server ${id}: transport.url must be an https URL`);
+  } else if (transport.type === 'stdio') {
+    if (!isAllowedCommand(transport.command)) problems.push(`server ${id}: transport command not allowlisted "${transport.command}"`);
+    if (transport.args !== undefined && !(Array.isArray(transport.args) && transport.args.every(isCleanConfigString))) {
+      problems.push(`server ${id}: transport.args must be a list of plain strings`);
+    }
+  } else {
+    problems.push(`server ${id}: transport.type must be http, sse or stdio`);
+  }
+  return problems;
 }
 
 // Split a registry-supplied install command string into argv for shell-free
@@ -178,13 +252,20 @@ export function validateRegistryPayload(listKey, items) {
       }
     } else if (listKey === 'servers') {
       problems.push(...validateRegistryBlock(id, item.registry));
-      const cmd = item.transport?.command;
-      if (cmd !== undefined && !isAllowedCommand(cmd)) {
-        problems.push(`server ${id}: transport command not allowlisted "${cmd}"`);
-      }
+      problems.push(...validateTransport(id, item.transport));
+      problems.push(...validateInputs(id, item));
       for (const [agent, cfg] of Object.entries(item.configs || {})) {
-        if (cfg && typeof cfg.command === 'string' && cfg.command !== 'claude' && !isAllowedCommand(cfg.command)) {
+        if (!cfg || typeof cfg !== 'object') continue;
+        if (typeof cfg.command === 'string' && cfg.command !== 'claude' && !isAllowedCommand(cfg.command)) {
           problems.push(`server ${id} (${agent}): command not allowlisted "${cfg.command}"`);
+        }
+        for (const key of ['url', 'httpUrl', 'serverUrl']) {
+          if (cfg[key] !== undefined && !isHttpsUrl(cfg[key])) {
+            problems.push(`server ${id} (${agent}): ${key} must be an https URL`);
+          }
+        }
+        if (cfg.args !== undefined && !(Array.isArray(cfg.args) && cfg.args.every(isCleanConfigString))) {
+          problems.push(`server ${id} (${agent}): args must be a list of plain strings`);
         }
       }
       if (item.excludeAgents !== undefined && !(Array.isArray(item.excludeAgents) && item.excludeAgents.every(isSafeId))) {

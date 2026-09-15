@@ -30,11 +30,15 @@ Auto-generated from git history. Conventional-commit prefixes (`feat:`, `fix:`, 
 
 ### Refactor
 
+- rename CLI tool from dxai to dxai-cli ([`77d9132`](https://github.com/nandha-kumar-hajari/dxai/commit/77d91324f72cbd42aa161a259994e94ea5f99e1a))
 - collapse duplicated system/project paths into shared helpers ([`137babe`](https://github.com/nandha-kumar-hajari/dxai/commit/137babe51715b7a2581a6be36f876a1e3aae39c8))
 - replace curl shell-out with native fetch in installSkills ([`539411e`](https://github.com/nandha-kumar-hajari/dxai/commit/539411e8dbc2d5ef7ef5edabcf91fb3dd2ca20d8))
 
 ### Documentation
 
+- update README and CLI references to use dxai-cli ([`82cfded`](https://github.com/nandha-kumar-hajari/dxai/commit/82cfdedefaa809824c7655b3cf7ad67a58085110))
+- update references to dxai to dxai-cli across documentation ([`a8f9498`](https://github.com/nandha-kumar-hajari/dxai/commit/a8f94981154f7a6cd37878539d378bf8e642ed4a))
+- update AGENTS.md and related documentation for agent renaming and enhancements ([`48f8d66`](https://github.com/nandha-kumar-hajari/dxai/commit/48f8d66b4581fda5d077376dfab2f261d41c0749))
 - describe the MCP Registry integration ([`70c19b2`](https://github.com/nandha-kumar-hajari/dxai/commit/70c19b2902d9936425f8b5a78ad96472600808a5))
 - serve site at apex domain dxai.dev ([`0928156`](https://github.com/nandha-kumar-hajari/dxai/commit/0928156c81410938baa5a56fdf4035bf90df9825))
 - document add/remove/init fast-path commands ([`5117469`](https://github.com/nandha-kumar-hajari/dxai/commit/51174697f09e1b9ffb2b2699d3832d5f516cac55))
@@ -46,10 +50,12 @@ Auto-generated from git history. Conventional-commit prefixes (`feat:`, `fix:`, 
 
 ### Chores
 
+- bump version to 1.0.1 in package.json and package-lock.json ([`899f399`](https://github.com/nandha-kumar-hajari/dxai/commit/899f3999ca04d56eb4d6d51d8c7f341d745b911f))
 - sync package description and roadmap with current state ([`e670e1a`](https://github.com/nandha-kumar-hajari/dxai/commit/e670e1ab1be6cb8fa065bf45869a84d72dbe6dea))
 
 ### Other changes
 
+- publishing npm updates ([`e991d2f`](https://github.com/nandha-kumar-hajari/dxai/commit/e991d2fd63b5e68281101d03e1f14abbc492a50a))
 - Merge pull request #4 from nandha-kumar-hajari/sfixesfable-docs-and-landing-updates ([`5281ebd`](https://github.com/nandha-kumar-hajari/dxai/commit/5281ebdf256cc7cbc252ab7baa7f34d322b0282a))
 - Update AGENTS.md with architecture and command enhancements; add ESLint configuration and CI linting job. Introduce new automation tools catalog and improve cleanup command options. Revise README for clarity and update documentation components. ([`eec7b29`](https://github.com/nandha-kumar-hajari/dxai/commit/eec7b297bd0bf382f8dcc552ca0a8c5b6dbadd4e))
 - Merge pull request #3 from nandha-kumar-hajari/audit-fixes ([`13630d9`](https://github.com/nandha-kumar-hajari/dxai/commit/13630d931e3c4d60665c3f75eaf875eaa7e56716))

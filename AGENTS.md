@@ -37,8 +37,10 @@ src/rollback.js         → dxai rollback — restore files from .bak.<ts> snaps
 src/runtime.js          → Option normalization
 src/select.js           → Shared selection resolution (flag > defaults > prompt), catalog checkbox builder, confirm()
 src/branding.js         → Banner, colors, message helpers, quiet()/startSpinner()/reportMcpResults()
+src/handshake.js        → `doctor --handshake`: spawn a stdio MCP server and confirm it answers initialize
 src/net.js              → fetch with per-attempt timeout + retry/backoff (shared)
-src/fs-atomic.js        → Atomic file writes (temp + rename), optional 0600 mode
+src/fs-atomic.js        → Atomic file writes (temp + rename); explicit 0600 mode, else keeps the existing file's mode
+src/backup.js           → `.bak.<ts>` snapshots: millisecond names + collision check, pruning (shared by writers and rollback)
 src/registry/
   validate.js           → Validation for untrusted registry data (commands, repo/path, ids, registry blocks)
   loader.js             → Cache > bundled JSON resolution (DXAI_REGISTRY_SOURCE=bundled skips the cache)
@@ -143,7 +145,12 @@ exist surface themselves rather than rotting silently.
 - Conventional commits: `feat:`, `fix:`, `chore:`, `docs:`, `refactor:`, `test:`
 - One logical change per commit
 - Config writes must be idempotent — merge, don't overwrite
-- Back up existing config files before modifying them (only when the write actually changes something; snapshots are capped at 5 per file)
+- Back up existing config files before modifying them (only when the write actually changes something; snapshots are capped at 5 per file). Mint names only through `src/backup.js` — it guarantees two snapshots of one file never share a name, so a rollback can always be undone
+- Every interactive question goes through `prompt()` / `confirm()` in `src/select.js`, never `inquirer.prompt` directly: the wrapper refuses to prompt without a TTY (piped stdin used to hang forever, closed stdin crashed). `--yes`, `CI=true` and `--json` all mean non-interactive
+- Anything that removes or restores must honour `--project` the same way the write path does (`projectConfigFormat` / `projectMcpKey`), and verify the on-disk result in tests — a "removed" message is not proof
+- Cleanup deletes only what the manifest records (MCP ids per agent, skill `dirs`, generated project files by their known names); never scan a home-level directory by catalogue id, a user's own skill may share the name
+- Removal keeps a config file's mode (a 0600 file with a substituted secret must not come back as 0644) and deletes a project file it emptied rather than leaving `{}`
+- Codex TOML is emitted only via `tomlString()` in `src/detect.js`, and placeholder values spliced into a rendered `{ toml }` block are escaped the same way (`substitutePlaceholders`); registry ids are slug-checked by `isSafeId`, remote URLs must be https (`validateTransport`), and `requiresInput` / `requiresEnv` are shape-checked (`validateInputs`: no control characters, no quotes in defaults, env-var-shaped names) — a poisoned catalogue entry must not be able to inject into a config file. `test/toml-safety.test.js` holds the golden cases
 - Record all writes to the manifest for drift detection; skills are recorded by **id** (the on-disk directory name), never display name
 - Every agent definition must carry `docs` (the vendor pages it was verified against) and `verifiedAt`; `test/detect.test.js` enforces the shape and `scripts/agent-health.mjs` enforces freshness. See "Supported agents" below before touching `AGENT_DEFINITIONS`
 - Never hand-write per-agent `configs` blocks in the catalogue — declare `transport` and let derivation render each agent's dialect (`test/registry-schema.test.js` rejects entries without one)
